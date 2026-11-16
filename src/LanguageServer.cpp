@@ -553,7 +553,6 @@ semantic_style(highlight_role role) wontthrow -> semantic_token_style
       {1, 0                            },
   };
   static_assert(countof(STYLES) == static_cast<usize>(highlight_role::count));
-  if (role == highlight_role::count) return {1, 0};
 
   return STYLES[static_cast<usize>(role)];
 }
@@ -2011,9 +2010,9 @@ append_braced_references(const analysis_symbol_records  &records,
     tail_start = subscript_end + 1;
   }
 
-  let const is_offset_tail =
-      tail_start + 1 < closing && text[tail_start] == ':' &&
-      !StringView{"-=?+"}.find_character(text[tail_start + 1]).has_value();
+  let const is_offset_tail = tail_start + 1 < closing &&
+                             text[tail_start] == ':' &&
+                             !is_colon_modifier_operator(text[tail_start + 1]);
 
   if (is_offset_tail) {
     append_arithmetic_references(text, tail_start + 1, closing, document_offset,
@@ -2083,15 +2082,16 @@ sort_and_deduplicate_rename_spans(ArrayList<rename_span> &spans) throws
     return left.start < right.start;
   });
 
-  let unique = ArrayList<rename_span>{heap_allocator()};
+  usize kept_count = 0;
 
-  for (let const &span : spans) {
-    if (unique.is_empty() || unique.back().start != span.start) {
-      unique.push(span);
+  for (usize index = 0; index < spans.count(); index++) {
+    if (kept_count != 0 && spans[kept_count - 1].start == spans[index].start) {
+      continue;
     }
+    spans[kept_count++] = spans[index];
   }
 
-  spans = steal(unique);
+  spans.truncate(kept_count);
 }
 
 fn
