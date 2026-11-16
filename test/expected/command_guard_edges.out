@@ -31,3 +31,10 @@ handler-default-diagnostic=1
 handler-noninteractive=ok status=127
 handler-exec=ok status=127
 handler-restricted=ok status=1
+value=new new=temporary
+ 61 0d 0a 62
+after=old new=unset
+value=old new=unset
+ 61 0d 0a 62
+handler-dotglob=1
+handler-clock=preserved

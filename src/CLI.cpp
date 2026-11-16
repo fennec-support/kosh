@@ -1524,6 +1524,9 @@ shell_quoted_arg_length(StringView arg) wontthrow -> usize
 
   for (usize i = 0; i < arg.length; i++) {
     quoted_byte_count += arg[i] == '\'' ? 4 : 1;
+    if (arg[i] == '\r' && i + 1 < arg.length && arg[i + 1] == '\n') {
+      quoted_byte_count += 2;
+    }
   }
 
   return quoted_byte_count;
@@ -1545,8 +1548,11 @@ append_shell_quoted_arg(String    &out,
   /* e.g. arg = it's: the loop appends i and t, then '\'' for the apostrophe,
           then s. with the opening and closing quotes, out is 'it'\''s'. */
   for (usize i = 0; i < arg.length; i++) {
+    /* Adjacent quotes separate CRLF bytes before source normalization. */
     if (arg[i] == '\'')
       out += "'\\''";
+    else if (arg[i] == '\r' && i + 1 < arg.length && arg[i + 1] == '\n')
+      out += "\r''";
     else
       out.push(arg[i]);
   }

@@ -42,11 +42,11 @@ kosh_missing_handler_command "two words" "" "\$(literal)" "a;b" "quote'"'"'value
 printf "handler-status=%s state=%s\n" "$?" "$handler_changed"
 command kosh_missing_handler_command wrapped
 printf "command-status=%s\n" "$?"
-kosh_missing_handler_command piped | cat
+kosh_missing_handler_command piped | koshkit cat
 printf "pipeline-status=%s\n" "${PIPESTATUS[0]}"
 kosh_missing_handler_command redirected > "$1/handler-output"
 printf "redirect-status=%s\n" "$?"
-cat "$1/handler-output"
+koshkit cat "$1/handler-output"
 command_not_found_handle() { read -r value; printf "handler-input=<%s>\n" "$value"; }
 kosh_missing_handler_command <<EOF
 handler heredoc
@@ -82,3 +82,29 @@ for invocation in noninteractive exec restricted; do
   esac
   printf 'handler-%s=%s status=%s\n' "$invocation" "$result" "$status"
 done
+
+handler_source='
+command_not_found_handle() {
+  printf "value=%s new=%s\n" "$value" "${new_value-unset}"
+  printf "%s" "$2" | koshkit od -An -t x1
+}
+value=old
+printf -v argument "a\r\nb"
+value=new new_value=temporary kosh_missing_handler_command "$argument"
+printf "after=%s new=%s\n" "$value" "${new_value-unset}"
+command kosh_missing_handler_command "$argument"
+'
+KOSH_WELCOME= KOSH_FAREWELL= "$BIN" --no-init-files --mood bash -i \
+  -c "$handler_source" 2> "$directory/error"
+
+handler_source='
+command_not_found_handle() { :; }
+shopt -u dotglob
+GLOBIGNORE=x kosh_missing_handler_command
+shopt -q dotglob; printf "handler-dotglob=%s\n" "$?"
+SECONDS=0
+SECONDS=1000000 kosh_missing_handler_command
+if (( SECONDS < 100 )); then echo handler-clock=preserved; fi
+'
+KOSH_WELCOME= KOSH_FAREWELL= "$BIN" --no-init-files --mood bash -i \
+  -c "$handler_source" 2> "$directory/error"

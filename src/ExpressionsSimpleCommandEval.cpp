@@ -844,8 +844,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       ArrayList<String> values         = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           cxt.is_associative_array(assignment.name)
-                      ? argument_context::AssociativeLiteral
-                      : argument_context::ArrayLiteral,
+              ? argument_context::AssociativeLiteral
+              : argument_context::ArrayLiteral,
           &subscript_ends);
 
       /* a compound assignment traces its words as written. */
@@ -1446,6 +1446,17 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       if (e.command_status() == 127 &&
           utils::has_command_not_found_handler(cxt))
       {
+        let assignments = String{cxt.scratch_allocator()};
+        for (let const &assignment : saved_env) {
+          if (assignment.did_overlay_shell_value) continue;
+          assignments += assignment.name.view();
+          assignments.push('=');
+          let const value =
+              os::get_environment_variable(assignment.name.view());
+          utils::append_ansi_c_quoted(assignments, value->view(), false);
+          assignments.push(' ');
+        }
+
         let saved_input = Maybe<os::saved_descriptor>{};
 
         if (redirect_in_fd) {
@@ -1458,14 +1469,14 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         };
 
         let const handled = utils::run_command_not_found_handler(
-            cxt, program_args, source_location());
+            cxt, program_args, source_location(), assignments.view());
 
         if (handled.has_value()) {
           did_resolution_fail       = true;
           resolution_failure_status = *handled;
 
-          return ExecContext::make_from_unresolved(
-              source_location(), *handled, StringView{});
+          return ExecContext::make_from_unresolved(source_location(), *handled,
+                                                   StringView{});
         }
       }
 
@@ -1673,8 +1684,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       ArrayList<String> values         = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           is_associative_request || cxt.is_associative_array(assignment.name)
-                      ? argument_context::AssociativeLiteral
-                      : argument_context::ArrayLiteral,
+              ? argument_context::AssociativeLiteral
+              : argument_context::ArrayLiteral,
           &subscript_ends);
 
       do_trace_array_assignment(assignment, values);

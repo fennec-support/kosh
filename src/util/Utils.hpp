@@ -229,7 +229,8 @@ has_command_not_found_handler(const EvalContext &cxt) throws -> bool;
 fn
 run_command_not_found_handler(EvalContext             &cxt,
                               const ArrayList<String> &arguments,
-                              const SourceLocation    &location) throws
+                              const SourceLocation    &location,
+                              StringView               assignments = {}) throws
     -> Maybe<i32>;
 
 fn
