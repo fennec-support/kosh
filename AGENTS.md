@@ -84,6 +84,13 @@ live in the Expressions sources. Shared helpers live in
 src/ExpressionsInternal.hpp. Internal declarations use the owning namespace
 followed by internal.
 
+src/EvalRuntime.hpp owns runtime option values and command identities.
+src/EvalStores.hpp owns evaluator store declarations and their supporting types.
+src/Eval.hpp owns the evaluator interface and per-executor store composition.
+EvalTypes.hpp, EvalSnapshot.hpp, and ExecContext.hpp include their runtime
+prerequisites directly. A localized option save stores its option mask and
+explicit-nounset flag in one optional record, including in scope snapshots.
+
 src/Options.cpp owns the option registry. set, shopt, koshconf, the -o test,
 SHELLOPTS, BASHOPTS, and $- read and write through it. Koshka settings without a
 Bash letter belong to koshconf. Settings are written under their canonical
@@ -239,6 +246,16 @@ the size-focused binary. make test runs Kosh, CLI, completion, highlighting,
 POSIX, and Bash suites. make toiletline_test runs the editor suite. make
 completions rebuilds the generated koshkit block of completions/kosh.bash from
 koshkit --list-flags after a koshkit flag changes.
+
+Zig delegates compilation to src/Makefile and installs its resulting binary.
+Its mode, no-toiletline, no-koshkit, hardened, pgo, and pgo-profile options map
+to the corresponding Make variables. Make owns source selection, compiler
+flags, platform libraries, and generated baked scripts. Linux and macOS CI
+share scripts/verify-test-toolchain.sh. CI regenerates manual pages, baked
+scripts, and utility completions and rejects differences from committed files.
+The Zig adapter rejects architecture selections the Make toolchains cannot
+honor. NO_TOILETLINE=1 make test runs the noninteractive history contract through
+the ordinary failure aggregator; editor-only PTY cases are excluded.
 
 NO_TOILETLINE=1 make, NO_KOSHKIT=1 make, and HARDENED=1 make use separate
 object directories. HARDENED=1 makes a release build trap on a container
