@@ -71,8 +71,8 @@ note: Delete it and retype an ASCII quote.
        |               ^
 note: Delete it and retype an ASCII space.
 42:17: warning: The shell keeps a carriage return in the script text as data in the word it ends. (SC1017)
-    42 |    echo 'carriagereturn'
-       |                  ^
+    42 |    echo 'carriage$'\r'return'
+       |                  ^~~~~
 note: Convert the file to Unix line endings with `tr -d '\r'`.
 46:12: warning: The shell treats the escape `\o` as a plain 'o' and drops the backslash. (SC1001)
     46 |    echo Yay \o/

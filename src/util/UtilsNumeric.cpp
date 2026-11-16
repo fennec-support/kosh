@@ -932,7 +932,9 @@ decode_ansi_c_quote(String &out, StringView body) throws -> void
 static fn
 get_printable_character_length(StringView text,
                                usize      position,
-                               bool       is_utf8_locale) wontthrow -> usize
+                               bool       is_utf8_locale,
+                               bool       should_preserve_unicode = false) wontthrow
+    -> usize
 {
   let const byte = static_cast<unsigned char>(text[position]);
 
@@ -941,9 +943,20 @@ get_printable_character_length(StringView text,
 
   let const decoded = decode_strict_utf8(text, position);
 
-  if (!decoded.has_value() ||
-      !os::code_point_is_in_class("print", decoded->value))
-  {
+  if (!decoded.has_value()) return 0;
+
+  if (should_preserve_unicode) {
+    let const codepoint  = decoded->value;
+    let const is_control = codepoint < 0xa0 || codepoint == 0x061c ||
+                           codepoint == 0xfeff ||
+                           (codepoint >= 0x200e && codepoint <= 0x200f) ||
+                           (codepoint >= 0x2028 && codepoint <= 0x202e) ||
+                           (codepoint >= 0x2066 && codepoint <= 0x2069);
+
+    return is_control ? 0 : decoded->length;
+  }
+
+  if (!os::code_point_is_in_class("print", decoded->value)) {
     return 0;
   }
 
@@ -953,13 +966,15 @@ get_printable_character_length(StringView text,
 }
 
 fn
-should_ansi_c_quote(StringView text, bool is_utf8_locale) throws -> bool
+should_ansi_c_quote(StringView text,
+                    bool       is_utf8_locale,
+                    bool       should_preserve_unicode) throws -> bool
 {
   usize position = 0;
 
   while (position < text.length) {
-    let const length =
-        get_printable_character_length(text, position, is_utf8_locale);
+    let const length = get_printable_character_length(
+        text, position, is_utf8_locale, should_preserve_unicode);
 
     if (length == 0) return true;
 
@@ -972,7 +987,8 @@ should_ansi_c_quote(StringView text, bool is_utf8_locale) throws -> bool
 fn
 append_ansi_c_quoted(String    &out,
                      StringView text,
-                     bool       is_utf8_locale) throws -> void
+                     bool       is_utf8_locale,
+                     bool       should_preserve_unicode) throws -> void
 {
   out += "$'";
 
@@ -996,8 +1012,8 @@ append_ansi_c_quoted(String    &out,
     case '\'':   out += "\\'"; break;
     case '\\':   out += "\\\\"; break;
     default:     {
-      let const length =
-          get_printable_character_length(text, position, is_utf8_locale);
+      let const length = get_printable_character_length(
+          text, position, is_utf8_locale, should_preserve_unicode);
 
       if (length == 0) {
         let const byte = static_cast<unsigned char>(character);

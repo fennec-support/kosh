@@ -9,6 +9,10 @@ cd "$dir" || exit 1
 
 # macOS filenames require valid UTF-8; raw invalid bytes use runtime operands.
 name=$(printf 't\033]0;PWNED\007\033[44m\r\n\177\302\233X.kosh')
+if [ "$TEST_PATH_SEPARATOR" = ';' ]; then
+  # Windows rejects filenames containing ASCII control bytes.
+  name=$(printf 't\177\302\233X.kosh')
+fi
 printf 'echo (\n' > "$name" || exit 1
 
 run_case() {
@@ -18,7 +22,7 @@ run_case() {
   status=$?
   control_count=$(LC_ALL=C tr -d '\012\040-\176' < err | wc -c | tr -d ' ')
   echo "$label: status=$status controls=$control_count"
-  grep -F '\E' err > /dev/null
+  grep -E '\\E|\\302\\233' err > /dev/null
   echo "escaped=$?"
   test ! -s out
   echo "empty stdout=$?"
@@ -33,8 +37,8 @@ run_case 'missing input' "$BIN" --lint "missing-$name"
 # Source excerpts also escape controls without moving the diagnostic caret.
 printf 'echo ( # \033]0;PWNED\007\033[44m\r\177\302\233\233\n' > source.kosh
 run_case 'source excerpt' "$BIN" --lint source.kosh
-invalid_name=$(printf 't\033[44m\233X')
-run_case 'invalid command byte' "$BIN" --no-diagnostics -c '"$1"' name "$invalid_name"
+run_case 'invalid command byte' "$BIN" --no-diagnostics -c \
+  'printf -v name "t\033[44m\233X"; "$name"'
 
 printf '\t\033[2Jecho (\n' > caret.kosh
 run_case 'caret after controls' "$BIN" -n caret.kosh

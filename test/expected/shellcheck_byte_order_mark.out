@@ -1,13 +1,13 @@
 1:1: warning: A UTF-8 byte-order mark precedes the script text. (SC1082)
-     1 |  ﻿#!/bin/env kosh
-       |  ^
+     1 |  $'\357\273\277'#!/bin/env kosh
+       |  ^~~~~~~~~~~~~~~
 note: Save the script as UTF-8 without a byte-order mark.
-1:1: warning: The directory '﻿#!' does not exist.
-     1 |  ﻿#!/bin/env kosh
-       |  ^~~
+1:1: warning: $'The directory \'\357\273\277#!\' does not exist'.
+     1 |  $'\357\273\277'#!/bin/env kosh
+       |  ^~~~~~~~~~~~~~~~~
 note: Create the directory, or correct the path.
 kosh: 2 warnings generated.
-1:1: error: The directory '﻿#!' does not exist.
-     1 |  ﻿#!/bin/env kosh
-       |  ^~~
+1:1: error: $'The directory \'\357\273\277#!\' does not exist'.
+     1 |  $'\357\273\277'#!/bin/env kosh
+       |  ^~~~~~~~~~~~~~~~~
 marked

@@ -196,13 +196,17 @@ fn
 expand_leading_tilde_path(StringView name) throws -> Maybe<String>;
 
 fn
-should_ansi_c_quote(StringView text, bool is_utf8_locale) throws
+should_ansi_c_quote(StringView text,
+                    bool       is_utf8_locale,
+                    bool       should_preserve_unicode = false) throws
     -> bool;
 
 fn
 append_ansi_c_quoted(String    &out,
                      StringView text,
-                     bool       is_utf8_locale) throws -> void;
+                     bool       is_utf8_locale,
+                     bool       should_preserve_unicode = false) throws
+    -> void;
 
 fn
 append_ansi_c_quote_if_needed(String    &out,
