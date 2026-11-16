@@ -257,6 +257,8 @@ append_cat_source(String            &output,
   let   highlight_cache = completion::ShellHighlightCache{output.allocator()};
   usize line_start      = 0;
 
+  if (should_highlight) highlight_cache.prepare_source(source, context);
+
   while (line_start < source.length) {
     let const remaining      = source.substring(line_start);
     let const newline_offset = remaining.find_character('\n');
@@ -273,8 +275,7 @@ append_cat_source(String            &output,
         source.substring_of_length(line_start, line_end - line_start);
 
     if (should_highlight) {
-      let const *spans =
-          highlight_cache.spans_for(source, line_start, line_end, context);
+      let const *spans = highlight_cache.spans_for_line(line_start, line_end);
 
       completion::append_highlighted_range(
           output, line, *spans, 0, line.length,
@@ -352,12 +353,12 @@ Cat::execute(const ExecContext               &ec,
                                  FLAG_CAT_SHOW_ALL.is_enabled() ||
                                  FLAG_CAT_SHOW_ENDS_NONPRINTING.is_enabled() ||
                                  FLAG_CAT_SHOW_TABS_NONPRINTING.is_enabled(),
-      .should_show_ends = FLAG_CAT_SHOW_ENDS.is_enabled() ||
-                          FLAG_CAT_SHOW_ALL.is_enabled() ||
-                          FLAG_CAT_SHOW_ENDS_NONPRINTING.is_enabled(),
-      .should_show_tabs = FLAG_CAT_SHOW_TABS.is_enabled() ||
-                          FLAG_CAT_SHOW_ALL.is_enabled() ||
-                          FLAG_CAT_SHOW_TABS_NONPRINTING.is_enabled(),
+      .should_show_ends        = FLAG_CAT_SHOW_ENDS.is_enabled() ||
+                                 FLAG_CAT_SHOW_ALL.is_enabled() ||
+                                 FLAG_CAT_SHOW_ENDS_NONPRINTING.is_enabled(),
+      .should_show_tabs        = FLAG_CAT_SHOW_TABS.is_enabled() ||
+                                 FLAG_CAT_SHOW_ALL.is_enabled() ||
+                                 FLAG_CAT_SHOW_TABS_NONPRINTING.is_enabled(),
   };
   let const is_formatted = format.should_number ||
                            format.should_squeeze_blank ||

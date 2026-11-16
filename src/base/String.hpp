@@ -17,56 +17,6 @@
 
 namespace koshka {
 
-class ConstString
-{
-public:
-  constexpr ConstString(const char *cstr) wontthrow
-      : m_data(cstr), m_length(__builtin_strlen(cstr))
-  {}
-
-  constexpr
-  operator StringView() const wontthrow
-  {
-    return StringView{m_data, m_length};
-  }
-
-  pure constexpr fn
-  view() const wontthrow -> StringView
-  {
-    return StringView{m_data, m_length};
-  }
-
-  pure constexpr fn
-  c_str() const wontthrow -> const char *
-  {
-    return m_data;
-  }
-
-  pure constexpr fn
-  operator[](usize position) const wontthrow -> char
-  {
-    ASSERT(position < m_length, "ConstString index is out of range");
-
-    return m_data[position];
-  }
-
-  pure constexpr fn
-  count() const wontthrow -> usize
-  {
-    return m_length;
-  }
-
-  pure constexpr fn
-  is_empty() const wontthrow -> bool
-  {
-    return m_length == 0;
-  }
-
-private:
-  const char *m_data;
-  usize       m_length;
-};
-
 class String
 {
 public:
@@ -309,8 +259,8 @@ public:
     let const source_address  = reinterpret_cast<uintptr>(other.data);
     let const storage_address = reinterpret_cast<uintptr>(m_data);
     let const is_aliased      = source_address >= storage_address &&
-                           source_address - storage_address < m_length;
-    usize source_offset = 0;
+                                source_address - storage_address < m_length;
+    usize     source_offset   = 0;
 
     if (is_aliased) source_offset = source_address - storage_address;
     reserve(new_length);

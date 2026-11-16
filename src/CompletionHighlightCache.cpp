@@ -378,6 +378,8 @@ append_highlighted_source(String                &output,
   let   cache      = ShellHighlightCache{output.allocator()};
   usize line_start = 0;
 
+  cache.prepare_source(source, context);
+
   while (line_start < source.length) {
     let line_end = line_start;
 
@@ -387,7 +389,7 @@ append_highlighted_source(String                &output,
 
     if (line_end < source.length) line_end++;
 
-    let const *spans = cache.spans_for(source, line_start, line_end, context);
+    let const *spans = cache.spans_for_line(line_start, line_end);
     let const  line =
         source.substring_of_length(line_start, line_end - line_start);
 
@@ -470,16 +472,12 @@ split_spans_at_lines(StringView                 source,
   }
 }
 
-/* Source bytes are owned so equal-address buffers cannot reuse stale roles.
-   Each call compares the bytes before selecting the requested line spans. */
 fn
-ShellHighlightCache::spans_for(StringView   source,
-                               usize        line_start,
-                               usize        line_end,
-                               EvalContext &context) throws
-    -> const ArrayList<highlight_span> *
+ShellHighlightCache::prepare_source(StringView   source,
+                                    EvalContext &context) throws -> void
 {
-  let const has_source_changed = source != m_source.view();
+  let const mood               = context.runtime_state().get_mood();
+  let const has_source_changed = source != m_source.view() || mood != m_mood;
 
   if (has_source_changed) {
     /* m_source changes only after the pieces are complete, so a scan that
@@ -491,8 +489,26 @@ ShellHighlightCache::spans_for(StringView   source,
     HIGHLIGHT_ARENA.reset();
     split_spans_at_lines(source, m_pieces);
     m_source = String{m_allocator, source};
+    m_mood   = mood;
   }
+}
 
+fn
+ShellHighlightCache::spans_for(StringView   source,
+                               usize        line_start,
+                               usize        line_end,
+                               EvalContext &context) throws
+    -> const ArrayList<highlight_span> *
+{
+  prepare_source(source, context);
+  return spans_for_line(line_start, line_end);
+}
+
+fn
+ShellHighlightCache::spans_for_line(usize line_start,
+                                    usize line_end) throws
+    -> const ArrayList<highlight_span> *
+{
   /* m_pieces holds the pieces of m_source sorted by start. No piece has a
      newline before its last byte. */
   usize first_piece = 0;
@@ -541,7 +557,7 @@ fn
 debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 {
   let       cache  = ShellHighlightCache{heap_allocator()};
-  let const source = ConstString{
+  let const source = StringView{
       "value=\"$(printf value\n) tail\"\nif true\nthen value='start\nend'; fi"};
   usize keyword_line_start = 0;
   usize string_line_start  = 0;
@@ -561,9 +577,9 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
     keyword_line_end++;
   }
 
-  let const *keyword_spans = cache.spans_for(source.view(), keyword_line_start,
-                                             keyword_line_end, context);
-  let        has_keyword_span = false;
+  let const *keyword_spans =
+      cache.spans_for(source, keyword_line_start, keyword_line_end, context);
+  let has_keyword_span = false;
 
   for (let const &span : *keyword_spans) {
     LOG(All, "the cached diagnostic span covers %u through %u as role %u",
@@ -579,7 +595,7 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 
   let const  line_start = string_line_start;
   let const *first =
-      cache.spans_for(source.view(), line_start, source.count(), context);
+      cache.spans_for(source, line_start, source.count(), context);
   /* first points into m_line_spans, which the next spans_for() call
      clears. the spans are copied before the repeated call. */
   let expected = ArrayList<highlight_span>{heap_allocator()};
@@ -608,18 +624,18 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
   unused(highlight_line("printf reset", context));
 
   let const *repeated =
-      cache.spans_for(source.view(), line_start, source.count(), context);
+      cache.spans_for(source, line_start, source.count(), context);
 
   if (!do_spans_match(*repeated)) return false;
 
   let       function_cache      = ShellHighlightCache{heap_allocator()};
-  let const function_source     = ConstString{"finish() { :; }\nfinish"};
-  let const function_call_start = function_source.view().find_character('\n');
+  let const function_source     = StringView{"finish() { :; }\nfinish"};
+  let const function_call_start = function_source.find_character('\n');
 
   if (!function_call_start.has_value()) return false;
 
   let const *function_spans =
-      function_cache.spans_for(function_source.view(), *function_call_start + 1,
+      function_cache.spans_for(function_source, *function_call_start + 1,
                                function_source.count(), context);
   let has_resolved_function_call = false;
 
@@ -683,14 +699,40 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 
   if (has_stale_keyword) return false;
 
+  {
+    let const saved_mood = context.runtime_state().get_mood();
+    defer { context.runtime_state().set_mood(saved_mood); };
+    let const text = StringView{"select item in a; do :; done"};
+    context.runtime_state().set_mood(mimic_mood::Bash);
+    let const *bash_spans = cache.spans_for(text, 0, text.length, context);
+    bool       has_select_keyword = false;
+    for (let const &span : *bash_spans) {
+      if (span.start == 0 && span.end == 6 &&
+          span.role == highlight_role::keyword)
+      {
+        has_select_keyword = true;
+      }
+    }
+    if (!has_select_keyword) return false;
+    context.runtime_state().set_mood(mimic_mood::Posix);
+    let const *posix_spans = cache.spans_for(text, 0, text.length, context);
+    for (let const &span : *posix_spans) {
+      if (span.start == 0 && span.end == 6 &&
+          span.role == highlight_role::keyword)
+      {
+        return false;
+      }
+    }
+  }
+
   /* at this point: the keyword line has a keyword span at 0 through 4, the
      repeated spans_for() call matches the first, the function call has a
      resolved_command span at 0 through 6, and a buffer reuse cannot keep
      the keyword role of earlier bytes. */
 
-  let const  other_source = ConstString{"echo ok"};
+  let const  other_source = StringView{"echo ok"};
   let const *invalidated =
-      cache.spans_for(other_source.view(), 0, other_source.count(), context);
+      cache.spans_for(other_source, 0, other_source.count(), context);
 
   return !do_spans_match(*invalidated);
 }

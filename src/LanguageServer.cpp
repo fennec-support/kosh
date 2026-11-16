@@ -444,10 +444,10 @@ private:
   visit_document_spans(const Document &document,
                        Visitor       &&do_visit) throws -> void
   {
+    m_highlight_cache.prepare_source(document.shell_source(), m_context);
     for (usize line = 0; line < document.line_starts.count(); line++) {
       let const[line_start, line_end] = document.get_line_bounds(line);
-      let const *spans                = m_highlight_cache.spans_for(
-          document.shell_source(), line_start, line_end, m_context);
+      let const *spans = m_highlight_cache.spans_for_line(line_start, line_end);
 
       for (let const &span : *spans) {
         let const absolute_span = highlight_span{

@@ -249,11 +249,15 @@ public:
         m_allocator{allocator}
   {}
 
-  /* memory: the cache owns source bytes, pieces, and line spans. the returned
-             pointer is valid until the next call.
-     time:   source comparison costs O(source.length). a source change scans
-             and splits all pieces; a cache hit searches the pieces and copies
-             the spans that overlap the requested line. */
+  /* Source comparison and scanning run once before a document traversal.
+     spans_for() also prepares independently supplied source buffers. */
+  fn
+  prepare_source(StringView source, EvalContext &context) throws
+      -> void;
+  fn
+  spans_for_line(usize line_start, usize line_end) throws
+      -> const ArrayList<highlight_span> *;
+
   fn
   spans_for(StringView   source,
             usize        line_start,
@@ -266,6 +270,7 @@ private:
   ArrayList<highlight_span> m_pieces;
   ArrayList<highlight_span> m_line_spans;
   Allocator                 m_allocator;
+  mimic_mood                m_mood{mimic_mood::Default};
 };
 
 fn
