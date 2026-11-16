@@ -41,6 +41,8 @@ esc = b'\x1b'
 assert esc + b']0;' not in data and b'PWNED-TITLE' in data, data
 assert esc + b'[44m' not in data and esc + b'[2J' not in data, data
 assert b'blue' in data, data
+assert b'NAME\r\n' in data and data.endswith(b'page text\r\n'), data
+assert b'^J' not in data, data
 print('terminal page keeps controls inert')
 EOF
 echo "pty=$?"

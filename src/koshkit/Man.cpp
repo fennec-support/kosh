@@ -23,6 +23,23 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Man);
 
 namespace koshka::koshkit {
 
+static fn
+escape_manual_text(Allocator allocator, StringView text) throws
+    -> String
+{
+  let   output = String{allocator};
+  usize start  = 0;
+  while (start < text.length) {
+    let const newline = text.substring(start).find_character('\n');
+    let const end     = newline.has_value() ? start + *newline : text.length;
+    output += escape_terminal_text(
+        allocator, text.substring_of_length(start, end - start));
+    if (newline.has_value()) output.push('\n');
+    start = end + 1;
+  }
+  return output;
+}
+
 static pure fn
 is_manual_section(StringView value) wontthrow -> bool
 {
@@ -189,7 +206,7 @@ Man::execute(const ExecContext               &ec,
       }
     }
     if (colors::stdout_is_a_terminal())
-      output = escape_terminal_text(cxt.scratch_allocator(), output.view());
+      output = escape_manual_text(cxt.scratch_allocator(), output.view());
 
     ec.print_to_stdout(output);
 
@@ -232,7 +249,7 @@ Man::execute(const ExecContext               &ec,
     let shown = String{cxt.scratch_allocator(), content->view()};
 
     if (colors::stdout_is_a_terminal())
-      shown = escape_terminal_text(cxt.scratch_allocator(), shown.view());
+      shown = escape_manual_text(cxt.scratch_allocator(), shown.view());
 
     ec.print_to_stdout(shown.view());
   }
