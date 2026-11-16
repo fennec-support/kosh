@@ -1,7 +1,7 @@
 # Contributor: Alexey Andreyev <dev@aa13q.ru>
 pkgname=kosh-shell
 _upstream_name=kosh
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc="Fast, portable, Bash-compatible interactive shell, interpreter and diagnostic tool"
 arch=('x86_64' 'aarch64')
@@ -11,19 +11,19 @@ depends=('glibc')
 makedepends=('clang' 'git')
 conflicts=('kosh')
 install=kosh-shell.install
-_tag=0.4.0
-_release_commit="4d23c3626e288ebf4d52ffa81143c710ed2945ea"
-_release_epoch=1793907060
+_tag=0.4.1
+_release_commit="d9404262976dbbc45f807b745a4daaf0d2a0ed17"
+_release_epoch=1794793971
 _source_directory="$_upstream_name-${_tag#v}"
-_toiletline_commit="d9c4ad722e8191d7abf17d6fd910ce8c27a38323"
+_toiletline_commit="b837fa6e1f3f02483aa92a9746104d8b8f3b9129"
 export SOURCE_DATE_EPOCH="$_release_epoch"
 source=(
   "$_upstream_name-$pkgver.tar.gz::https://github.com/fennec-support/kosh/archive/refs/tags/$_tag.tar.gz"
   "toiletline-$_toiletline_commit.tar.gz::https://github.com/toiletbril/toiletline/archive/$_toiletline_commit.tar.gz"
 )
 sha512sums=(
-  '37e4f7aa0b08ae8f27c86e1fa3969af15359567ef3d6fa269cd504716d6be6ac7c6457115253068804c74fa366cf6dbe8421476cdc8c536e8ca198f22ea8f4f2'
-  'ac7422832c2623e705b9093d820024e5faa8999900c85f255ce79fc49654d587f70fbbc846603e05450f5d338800977855fdd6a933efb6501c9a2122ba369121'
+  '7a6d260a6b748bd81c5250c49cbcbf2c6d49182c8382d69903ecf6bd91a2e8e9042d8a701ba4676abaac3f4b84e77fbe322f872a1bbc369f5c277a5aee0ac15c'
+  '5276aedc633ccf1e9b5fa0adeb8df064ab89f3722650fa84dcc339a94d02ff9ce94ccdc8e341093ee1b8bf08e16f9a2e84f6087be793c564de9f6e2391d68858'
 )
 
 prepare() {
