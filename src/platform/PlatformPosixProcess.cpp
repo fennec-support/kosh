@@ -1151,6 +1151,10 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
       do_install(err_fd, STDERR_FILENO);
 
       reset_signal_handlers();
+      /* Evaluators reap their foreground children before reporting SIGINT. */
+      if (IS_INSIDE_JOB_GROUP && !IS_INTERRUPT_SIGNAL_IGNORED) {
+        install_signal_disposition(SIGINT, handle_interrupt);
+      }
 
 #if defined KOSH_HAS_ADDRESS_SANITIZER
       __lsan_disable();

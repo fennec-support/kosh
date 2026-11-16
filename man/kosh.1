@@ -5422,6 +5422,10 @@ Interactive shells also ignore \f[CR]SIGTERM\f[R], \f[CR]SIGQUIT\f[R],
 \f[CR]SIGINT\f[R] interrupts the running command or the line being
 edited and reports \f[CR]Interrupted\f[R] with status \f[CR]130\f[R].
 .IP \(bu 2
+Under POSIX job control, a foreground subshell or pipeline evaluator
+waits for its running child to finish handling \f[CR]SIGINT\f[R] before
+returning the terminal to the interactive shell.
+.IP \(bu 2
 A shell that does not trap \f[CR]SIGHUP\f[R], and a non\-interactive
 shell that does not trap \f[CR]SIGTERM\f[R] or \f[CR]SIGQUIT\f[R], is
 terminated by the signal, so its parent sees \f[CR]128\f[R] plus the

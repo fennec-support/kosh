@@ -1,4 +1,5 @@
 PASS koshkit yes leaves the shell running
 PASS koshkit sleep leaves the shell running
 PASS koshkit cat leaves the shell running
+PASS subshell interrupt waits for terminal restoration
 status=0

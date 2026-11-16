@@ -3,15 +3,16 @@
 #    This file is a part of the Koshka shell, (c) toiletbril, 2026
 #    See the top-level LICENSE file for the licensing information.
 #
-# Drives an interactive shell through a real PTY, interrupts a running koshkit
-# utility with Ctrl-C, and checks that the shell keeps running and evaluates
-# the next command. Each check prints one stable PASS line.
+# Drives an interactive shell through a real PTY and interrupts utilities and
+# a subshell with Ctrl-C. The next prompt waits for child terminal cleanup and
+# keeps cursor-key editing in raw mode. Each check prints one stable PASS line.
 
 import fcntl
 import os
 import pty
 import select
 import shutil
+import shlex
 import struct
 import sys
 import tempfile
@@ -65,6 +66,63 @@ def survives_interrupt(command, home):
     return is_alive
 
 
+def subshell_restores_terminal(home):
+    child = os.path.join(home, "terminal-child.py")
+    with open(child, "w") as stream:
+        stream.write('''import signal, sys, termios, time
+original = termios.tcgetattr(0)
+def interrupted(number, frame):
+    time.sleep(0.25)
+    termios.tcsetattr(0, termios.TCSANOW, original)
+    print("CHILD-" + "RESTORED", flush=True)
+    sys.exit(130)
+signal.signal(signal.SIGINT, interrupted)
+print("CHILD-" + "READY", flush=True)
+while True:
+    time.sleep(1)
+''')
+    pid, descriptor = pty.fork()
+    if pid == 0:
+        environment = dict(os.environ, TERM="xterm-256color", HOME=home,
+                           KOSH_HISTORY_FILE=os.path.join(home, "history"))
+        os.chdir(home)
+        os.execve(BIN, [BIN, "--no-init-files", "--no-diagnostics", "-i"],
+                  environment)
+    fcntl.ioctl(descriptor, termios.TIOCSWINSZ,
+                struct.pack("HHHH", 24, 100, 0, 0))
+    try:
+        command = ('(' + shlex.quote(sys.executable) + ' -u ' +
+                   shlex.quote(child) + '); echo FOLLOWED-$((6*7))\r')
+        os.write(descriptor, command.encode())
+        output = read_until(descriptor, b"", b"CHILD-READY")
+        if b"CHILD-READY" not in output:
+            return False
+        os.write(descriptor, b"\x03")
+        output = read_until(descriptor, b"", b"CHILD-RESTORED")
+        output = read_until(descriptor, output, b"\x1b[?2004h")
+        if (b"CHILD-RESTORED" not in output or
+                b"\x1b[?2004h" not in output or
+                output.index(b"CHILD-RESTORED") >
+                output.index(b"\x1b[?2004h") or
+                b"FOLLOWED-42" in output):
+            return False
+        mode = termios.tcgetattr(descriptor)
+        if mode[3] & (termios.ECHO | termios.ICANON):
+            return False
+        if os.tcgetpgrp(descriptor) != pid:
+            return False
+        os.write(descriptor, b"echo CURSOR-$((40+1))\x1b[D\x1b[D\x7f2\r")
+        output = read_until(descriptor, b"", b"CURSOR-42")
+        return b"CURSOR-42" in output
+    finally:
+        try:
+            os.kill(pid, 9)
+            os.waitpid(pid, 0)
+        except (ChildProcessError, ProcessLookupError):
+            pass
+        os.close(descriptor)
+
+
 def check(name, is_ok):
     print(("PASS " if is_ok else "FAIL ") + name)
     if not is_ok:
@@ -80,6 +138,8 @@ def main():
               survives_interrupt("koshkit sleep 30", home))
         check("koshkit cat leaves the shell running",
               survives_interrupt("koshkit cat", home))
+        check("subshell interrupt waits for terminal restoration",
+              subshell_restores_terminal(home))
     finally:
         shutil.rmtree(home, ignore_errors=True)
 
