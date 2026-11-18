@@ -349,10 +349,21 @@ public:
   }
 
 private:
+  struct NewlineOffsetComparator
+  {
+    pure fn
+    operator()(usize left, usize right) const wontthrow -> bool
+    {
+      return left < right;
+    }
+  };
+
   class IndexedSource
   {
   public:
-    IndexedSource() : m_newline_offsets(heap_allocator()) {}
+    IndexedSource()
+        : m_newline_offsets(heap_allocator(), NewlineOffsetComparator{})
+    {}
 
     pure fn
     is_built_for(StringView source) const wontthrow -> bool
@@ -380,7 +391,8 @@ private:
         let const newline   = remaining.find_character('\n');
 
         if (!newline.has_value()) break;
-        m_newline_offsets.push(static_cast<u32>(scan_position + *newline));
+        m_newline_offsets.ArrayList<u32>::push(
+            static_cast<u32>(scan_position + *newline));
         scan_position += *newline + 1;
       }
 
@@ -423,17 +435,7 @@ private:
     pure fn
     locate(usize position) const wontthrow -> source_line_position
     {
-      usize low  = 0;
-      usize high = m_newline_offsets.count();
-
-      while (low < high) {
-        const usize mid = low + (high - low) / 2;
-
-        if (m_newline_offsets[mid] < position)
-          low = mid + 1;
-        else
-          high = mid;
-      }
+      let const low = m_newline_offsets.lower_bound(position);
 
       const usize line_start = low == 0 ? 0 : m_newline_offsets[low - 1] + 1;
       const usize line_end   = low == m_newline_offsets.count()
@@ -456,10 +458,10 @@ private:
     }
 
   private:
-    const char    *m_source_data{nullptr};
-    usize          m_source_length{0};
-    ArrayList<u32> m_newline_offsets;
-    u64            m_last_use_tick{0};
+    const char                                   *m_source_data{nullptr};
+    usize                                         m_source_length{0};
+    SortedArrayList<u32, NewlineOffsetComparator> m_newline_offsets;
+    u64                                           m_last_use_tick{0};
   };
 
   fn

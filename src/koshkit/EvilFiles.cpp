@@ -139,12 +139,36 @@ struct socket_description
   String     endpoint;
 };
 
+struct SocketInodeComparator
+{
+  pure fn
+  operator()(const socket_description &left,
+             const socket_description &right) const wontthrow -> bool
+  {
+    return left.inode < right.inode;
+  }
+
+  pure fn
+  operator()(const socket_description &left, u64 right) const wontthrow -> bool
+  {
+    return left.inode < right;
+  }
+
+  pure fn
+  operator()(u64 left, const socket_description &right) const wontthrow -> bool
+  {
+    return left < right.inode;
+  }
+};
+
 struct SocketDirectory
 {
-  explicit SocketDirectory(Allocator allocator) : entries(allocator) {}
+  explicit SocketDirectory(Allocator allocator)
+      : entries(allocator, SocketInodeComparator{})
+  {}
 
-  ArrayList<socket_description> entries;
-  bool                          did_load{false};
+  SortedArrayList<socket_description, SocketInodeComparator> entries;
+  bool                                                       did_load{false};
 };
 
 pure fn
@@ -214,6 +238,7 @@ load_socket_directory(SocketDirectory &directory,
                       Allocator        allocator) throws -> void
 {
   directory.did_load = true;
+  let entries        = ArrayList<socket_description>{allocator};
   if (os::has_network_socket_listing()) {
     let const sockets =
         os::network_sockets(os::network_socket_process_mode::WithoutProcesses);
@@ -226,7 +251,7 @@ load_socket_directory(SocketDirectory &directory,
             socket.family == os::network_address_family::IPv6 ? "IPv6" : "IPv4";
       }
 
-      directory.entries.push(socket_description{
+      entries.push(socket_description{
           socket.identity, type, describe_network_socket(socket, allocator)});
     }
   }
@@ -236,15 +261,11 @@ load_socket_directory(SocketDirectory &directory,
                          ? StringView{"netlink"}
                          : StringView{"packet"};
 
-    directory.entries.push(
+    entries.push(
         socket_description{kernel_socket.identity, type, String{allocator}});
   }
 
-  /* find_socket_description() binary searches entries by inode. */
-  directory.entries.sort(
-      [](const socket_description &left, const socket_description &right) {
-        return left.inode < right.inode;
-      });
+  directory.entries = steal(entries).make_sorted(SocketInodeComparator{});
 }
 
 fn
@@ -254,24 +275,7 @@ find_socket_description(SocketDirectory &directory,
 {
   if (!directory.did_load) load_socket_directory(directory, allocator);
 
-  usize low  = 0;
-  usize high = directory.entries.count();
-
-  while (low < high) {
-    let const middle = low + ((high - low) / 2);
-
-    if (directory.entries[middle].inode < inode)
-      low = middle + 1;
-    else
-      high = middle;
-  }
-
-  if (low < directory.entries.count() && directory.entries[low].inode == inode)
-  {
-    return low;
-  }
-
-  return None;
+  return directory.entries.find(inode);
 }
 
 fn

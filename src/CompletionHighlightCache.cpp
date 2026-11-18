@@ -128,31 +128,12 @@ byte_is_escaped(StringView line, usize position) wontthrow -> bool
   return lexer::count_backslashes_before(line, position) % 2 == 1;
 }
 
-static pure fn
-is_sorted_position(const ArrayList<usize> &positions, usize position) wontthrow
-    -> bool
-{
-  usize low  = 0;
-  usize high = positions.count();
-
-  while (low < high) {
-    let const middle = low + (high - low) / 2;
-
-    if (positions[middle] < position) {
-      low = middle + 1;
-    } else {
-      high = middle;
-    }
-  }
-
-  return low < positions.count() && positions[low] == position;
-}
-
 static fn
-find_bracket_partner(StringView                       line,
-                     const ArrayList<highlight_span> &spans,
-                     const ArrayList<usize>          &case_pattern_ends,
-                     usize                            position) throws -> Maybe<usize>
+find_bracket_partner(
+    StringView                                            line,
+    const ArrayList<highlight_span>                      &spans,
+    const SortedArrayList<usize, OrderComparator<usize>> &case_pattern_ends,
+    usize position) throws -> Maybe<usize>
 {
   let const origin = classify_bracket(line[position]);
 
@@ -164,7 +145,7 @@ find_bracket_partner(StringView                       line,
       [&](usize scan, bracket_byte bracket,
           bool is_literal) throws -> bool {
     if (is_literal || byte_is_escaped(line, scan) ||
-        is_sorted_position(case_pattern_ends, scan))
+        case_pattern_ends.find(scan).has_value())
     {
       return false;
     }
@@ -257,14 +238,15 @@ find_matching_bracket(StringView                       line,
   /* at this point: candidates holds candidate_count indices into line, and
      each is a bracket byte. */
 
-  let case_pattern_ends = ArrayList<usize>{heap_allocator()};
+  let case_pattern_ends = SortedArrayList<usize, OrderComparator<usize>>{
+      heap_allocator(), sort_order::ascending};
 
   if (line.find_substring("case").has_value())
     collect_case_pattern_ends(line, case_pattern_ends);
 
   let const do_is_code_bracket = [&](usize position) throws -> bool {
     if (byte_is_escaped(line, position) ||
-        is_sorted_position(case_pattern_ends, position))
+        case_pattern_ends.find(position).has_value())
     {
       return false;
     }

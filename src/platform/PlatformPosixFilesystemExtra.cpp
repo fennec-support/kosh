@@ -1396,29 +1396,29 @@ execute_batched_syscall_direct(const batched_syscall  &operation,
 
 #if K_PLATFORM_IS K_APPLE
 
-static pure fn
-find_directory_status_entry(const ArrayList<directory_status_entry> &entries,
-                            StringView                               name) wontthrow
-    -> const directory_status_entry *
+struct DirectoryStatusNameComparator
 {
-  usize lower = 0;
-  usize upper = entries.count();
-
-  while (lower < upper) {
-    let const middle = lower + (upper - lower) / 2;
-
-    if (entries[middle].child.name.view() < name)
-      lower = middle + 1;
-    else
-      upper = middle;
+  pure fn
+  operator()(const directory_status_entry &left,
+             const directory_status_entry &right) const wontthrow -> bool
+  {
+    return left.child.name.view() < right.child.name.view();
   }
 
-  if (lower == entries.count() || entries[lower].child.name.view() != name) {
-    return nullptr;
+  pure fn
+  operator()(const directory_status_entry &left, StringView right) const wontthrow
+      -> bool
+  {
+    return left.child.name.view() < right;
   }
 
-  return &entries[lower];
-}
+  pure fn
+  operator()(StringView left, const directory_status_entry &right) const wontthrow
+      -> bool
+  {
+    return left < right.child.name.view();
+  }
+};
 
 static fn
 execute_getattrlistbulk_batch(const batched_syscall  *operations,
@@ -1493,11 +1493,13 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
       let entries =
           list_directory_status_bulk(group_parent.view(), heap_allocator());
 
+      let sorted_entries = SortedArrayList<directory_status_entry,
+                                           DirectoryStatusNameComparator>{
+          heap_allocator(), DirectoryStatusNameComparator{}};
+
       if (entries.has_value()) {
-        entries->sort([](const directory_status_entry &left,
-                         const directory_status_entry &right) {
-          return left.child.name.view() < right.child.name.view();
-        });
+        sorted_entries =
+            steal(*entries).make_sorted(DirectoryStatusNameComparator{});
       }
 
       for (usize group_position = group_start; group_position < group_end;
@@ -1514,11 +1516,12 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
         if (entries.has_value()) {
           let const filename =
               BatchOperationAccess::get_path(operation)->filename();
-          let const *entry = find_directory_status_entry(*entries, filename);
+          let const position = sorted_entries.find(filename);
 
-          if (entry != nullptr && entry->has_status) {
-            *BatchOperationAccess::get_status(operation) = entry->status;
-            has_status                                   = true;
+          if (position.has_value() && sorted_entries[*position].has_status) {
+            *BatchOperationAccess::get_status(operation) =
+                sorted_entries[*position].status;
+            has_status = true;
           }
         }
 

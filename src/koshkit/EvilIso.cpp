@@ -724,6 +724,28 @@ parse_cgroup_identity(StringView path, Allocator allocator) throws
   return result;
 }
 
+struct ProcessPidComparator
+{
+  pure fn
+  operator()(const os::process_entry &left,
+             const os::process_entry &right) const wontthrow -> bool
+  {
+    return left.pid < right.pid;
+  }
+
+  pure fn
+  operator()(const os::process_entry &left, i64 right) const wontthrow -> bool
+  {
+    return left.pid < right;
+  }
+
+  pure fn
+  operator()(i64 left, const os::process_entry &right) const wontthrow -> bool
+  {
+    return left < right.pid;
+  }
+};
+
 /* memory: the returned snapshot and its strings come from allocator, which
            the caller owns. candidates and current are freed on return.
    time:   two os::enumerate_processes() calls, one /proc/<pid>/cgroup read per
@@ -787,31 +809,19 @@ collect_process_cgroup_snapshot(
      enumeration confirms each pid and start_token pair. */
   let current_unsorted =
       os::enumerate_processes(os::process_detail::ResourceStats);
-  let const current = steal(current_unsorted)
-                          .make_sorted([](const os::process_entry &left,
-                                          const os::process_entry &right) {
-                            return left.pid < right.pid;
-                          });
+  let const current =
+      steal(current_unsorted).make_sorted(ProcessPidComparator{});
 
   for (let &candidate : snapshot) {
-    usize lower = 0;
-    usize upper = current.count();
+    let const position = current.find(candidate.process_id);
 
-    while (lower < upper) {
-      let const middle = lower + (upper - lower) / 2;
-
-      if (current[middle].pid < candidate.process_id)
-        lower = middle + 1;
-      else
-        upper = middle;
-    }
-
-    if (lower == current.count() || current[lower].pid != candidate.process_id)
-    {
+    if (!position.has_value()) {
       candidate.status = process_snapshot_status::Exited;
-    } else if (current[lower].start_token == 0 || candidate.start_token == 0) {
+    } else if (current[*position].start_token == 0 ||
+               candidate.start_token == 0)
+    {
       candidate.status = process_snapshot_status::Unverifiable;
-    } else if (current[lower].start_token != candidate.start_token) {
+    } else if (current[*position].start_token != candidate.start_token) {
       candidate.status = process_snapshot_status::Reused;
     } else {
       continue;
