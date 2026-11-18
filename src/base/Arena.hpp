@@ -57,7 +57,7 @@ public:
 
   fn
   register_lifetime() throws -> lifetime_identity;
-  pure fn
+  fn
   is_lifetime_valid(lifetime_identity identity) const wontthrow -> bool;
 
   fn

@@ -354,13 +354,13 @@ public:
   pure fn
   is_empty() const wontthrow -> bool;
 
-  pure fn
+  fn
   get(usize i) const wontthrow -> StringView;
-  pure fn
+  fn
   get_position(usize i) const wontthrow -> usize;
-  pure fn
+  fn
   get_location(usize i) const wontthrow -> SourceLocation;
-  pure fn
+  fn
   was_given_after_plus(usize i) const wontthrow -> bool;
 
   fn
@@ -483,9 +483,9 @@ public:
   is_enabled() const wontthrow -> bool;
   pure fn
   count() const wontthrow -> usize;
-  pure fn
+  fn
   get(usize i) const wontthrow -> StringView;
-  pure fn
+  fn
   get_location(usize i) const wontthrow -> SourceLocation;
 
   fn

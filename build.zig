@@ -48,8 +48,6 @@ pub fn build(b: *std.Build) void {
         make.addArg("NO_TOILETLINE=1");
     if (b.option(bool, "no-koshkit", "Build without bundled utilities") orelse false)
         make.addArg("NO_KOSHKIT=1");
-    if (b.option(bool, "hardened", "Trap on container bounds violations") orelse (optimize == .safe))
-        make.addArg("HARDENED=1");
     if (b.option([]const u8, "pgo", "Make PGO instrumentation mode")) |pgo|
         make.addArg(b.fmt("PGO={s}", .{pgo}));
     if (b.option([]const u8, "pgo-profile", "LLVM profile path")) |profile| {

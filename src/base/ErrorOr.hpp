@@ -94,34 +94,34 @@ public:
     return m_is_error;
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   value() wontthrow -> T &
   {
-    ASSERT(!m_is_error);
+    GUARANTEE(!m_is_error, "value access to an error result");
 
     return value_reference();
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   value() const wontthrow -> const T &
   {
-    ASSERT(!m_is_error);
+    GUARANTEE(!m_is_error, "value access to an error result");
 
     return value_reference();
   }
 
-  mustuse pure fn
+  mustuse fn
   error() wontthrow -> Error &
   {
-    ASSERT(m_is_error);
+    GUARANTEE(m_is_error, "error access to a successful result");
 
     return error_reference();
   }
 
-  mustuse pure fn
+  mustuse fn
   error() const wontthrow -> const Error &
   {
-    ASSERT(m_is_error);
+    GUARANTEE(m_is_error, "error access to a successful result");
 
     return error_reference();
   }
@@ -129,7 +129,7 @@ public:
   hot mustuse fn
   take() throws -> T
   {
-    ASSERT(!m_is_error);
+    GUARANTEE(!m_is_error, "take from an error result");
 
     return steal(value_reference());
   }

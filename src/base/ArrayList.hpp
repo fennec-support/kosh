@@ -179,18 +179,18 @@ public:
     return m_length == 0;
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   operator[](usize i) wontthrow -> T &
   {
-    ASSERT_INDEX(i < m_length, "array index is past the end");
+    GUARANTEE(i < m_length, "array index is past the end");
 
     return m_data[i];
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   operator[](usize i) const wontthrow -> const T &
   {
-    ASSERT_INDEX(i < m_length, "array index is past the end");
+    GUARANTEE(i < m_length, "array index is past the end");
 
     return m_data[i];
   }
@@ -345,7 +345,7 @@ public:
   fn
   pop_back() wontthrow -> void
   {
-    ASSERT(m_length > 0, "pop_back on an empty list");
+    GUARANTEE(m_length > 0, "pop_back on an empty list");
     m_length--;
     if constexpr (!is_trivially_destructible_v<T>) m_data[m_length].~T();
   }
@@ -353,7 +353,7 @@ public:
   fn
   truncate(usize kept_count) wontthrow -> void
   {
-    ASSERT(kept_count <= m_length, "truncate past the end of the list");
+    GUARANTEE(kept_count <= m_length, "truncate past the end of the list");
     if constexpr (is_trivially_destructible_v<T>) {
       m_length = kept_count;
 
@@ -369,7 +369,7 @@ public:
   fn
   remove(usize index) throws -> void
   {
-    ASSERT(index < m_length, "remove past the end of the list");
+    GUARANTEE(index < m_length, "remove past the end of the list");
     if constexpr (is_trivially_copyable_v<T>) {
       let const moved_count = m_length - index - 1;
 
@@ -401,34 +401,34 @@ public:
     destroy_all();
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   back() wontthrow -> T &
   {
-    ASSERT(m_length > 0, "back() on an empty list");
+    GUARANTEE(m_length > 0, "back() on an empty list");
 
     return m_data[m_length - 1];
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   back() const wontthrow -> const T &
   {
-    ASSERT(m_length > 0, "back() on an empty list");
+    GUARANTEE(m_length > 0, "back() on an empty list");
 
     return m_data[m_length - 1];
   }
 
-  mustuse pure fn
+  mustuse fn
   front() wontthrow -> T &
   {
-    ASSERT(m_length > 0, "front() on an empty list");
+    GUARANTEE(m_length > 0, "front() on an empty list");
 
     return m_data[0];
   }
 
-  mustuse pure fn
+  mustuse fn
   front() const wontthrow -> const T &
   {
-    ASSERT(m_length > 0, "front() on an empty list");
+    GUARANTEE(m_length > 0, "front() on an empty list");
 
     return m_data[0];
   }
@@ -602,7 +602,7 @@ private:
   fn
   insert_at(usize index, T value) throws -> void
   {
-    ASSERT(index <= m_length, "array insertion is past the end");
+    GUARANTEE(index <= m_length, "array insertion is past the end");
     if (index == m_length) {
       push(steal(value));
 
@@ -1059,7 +1059,7 @@ public:
   }
 
   template <class Wanted>
-  hot mustuse pure fn
+  hot mustuse fn
   find(const Wanted &wanted) const throws -> Maybe<usize>
   {
     let const index = lower_bound(wanted);
@@ -1090,7 +1090,7 @@ public:
   }
 
   template <class Wanted>
-  pure fn
+  fn
   lower_bound(const Wanted &wanted) const throws -> usize
   {
     usize low  = 0;
@@ -1215,10 +1215,10 @@ public:
     return m_list == nullptr ? 0 : m_list->count();
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   operator[](usize i) const wontthrow -> const T &
   {
-    ASSERT(m_list != nullptr, "array index is past the end");
+    GUARANTEE(m_list != nullptr, "array index is past the end");
 
     return (*m_list)[i];
   }

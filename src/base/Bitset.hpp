@@ -60,7 +60,7 @@ public:
     if (is_set) m_words[word_index] |= u64{1} << (bit_position % BITS_PER_WORD);
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   operator[](usize index) const wontthrow -> bool
   {
     if (index >= m_length) return false;
@@ -72,7 +72,7 @@ public:
   hot fn
   set(usize index, bool is_set = true) wontthrow -> void
   {
-    ASSERT(index < m_length, "bit index is past the end");
+    GUARANTEE(index < m_length, "bit index is past the end");
 
     let const mask = u64{1} << (index % BITS_PER_WORD);
     let      &word = m_words[index / BITS_PER_WORD];
@@ -160,7 +160,7 @@ public:
     return result;
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   any() const wontthrow -> bool
   {
     for (usize i = 0; i < m_words.count(); i++)

@@ -2603,6 +2603,20 @@ install_fatal_exit_hook(void (*hook)()) -> void
   unused(hook);
 }
 
+wontreturn fn
+exit_process_after_catastrophic_failure(const char *message,
+                                        usize       message_byte_count,
+                                        i32         status) wontthrow -> void
+{
+  let const requested_byte_count = static_cast<DWORD>(
+      message_byte_count < 4096 ? message_byte_count : usize{4096});
+  DWORD written_byte_count = 0;
+
+  unused(WriteFile(KOSH_STDERR, message, requested_byte_count,
+                   &written_byte_count, nullptr));
+  exit_process_immediately(status);
+}
+
 } /* namespace os */
 
 } /* namespace koshka */

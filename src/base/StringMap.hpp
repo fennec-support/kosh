@@ -29,7 +29,11 @@ public:
   StringMap(Allocator allocator, usize first_capacity)
       : m_allocator(allocator),
         m_first_capacity(static_cast<u32>(first_capacity))
-  {}
+  {
+    GUARANTEE(first_capacity >= 2 && first_capacity <= UINT32_MAX &&
+                  (first_capacity & (first_capacity - 1)) == 0,
+              "map initial capacity must be a power of two of at least two");
+  }
 
   cold
   StringMap(const StringMap &other)
@@ -172,7 +176,7 @@ public:
     if (new_capacity > m_capacity) rehash(new_capacity);
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   find(StringView key) const wontthrow -> Maybe<const Value *>
   {
     return find_hashed(key, hash_bytes(key));
@@ -184,7 +188,7 @@ public:
     return find_hashed(key, hash_bytes(key));
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   find_hashed(StringView key, u64 hash) const wontthrow -> Maybe<const Value *>
   {
     if (m_capacity == 0) return None;
@@ -397,14 +401,16 @@ private:
   hot mustuse fn
   probe(StringView key, u64 hash) const wontthrow -> probe_result
   {
-    ASSERT(m_capacity != 0);
+    GUARANTEE(m_capacity != 0 && (m_capacity & (m_capacity - 1)) == 0,
+              "map probe requires a nonempty power-of-two slot array");
 
     let const mask            = m_capacity - 1;
     let       index           = static_cast<usize>(hash) & mask;
     let       first_tombstone = NO_INDEX;
     let const wanted          = Slot::pack(Slot::Occupied, hash);
 
-    ASSERT(m_count + m_tombstones < m_capacity);
+    GUARANTEE(m_count < m_capacity && m_tombstones < m_capacity - m_count,
+              "map probe requires an empty slot");
 
     loop {
       let const &candidate = m_slots[index];

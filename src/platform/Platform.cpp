@@ -220,6 +220,18 @@ kosh_regex_reallocate(void *pointer, size_t length)
 #error Unsupported platform
 #endif
 
+namespace koshka {
+
+cold wontreturn fn
+report_catastrophic_guarantee_failure(const char *message,
+                                      usize       message_byte_count)
+    wontthrow -> void
+{
+  os::exit_process_after_catastrophic_failure(message, message_byte_count, 1);
+}
+
+} /* namespace koshka */
+
 /* the MSVC runtime has no libsupc++ or libc++abi handler variables, so it
    keeps its own terminate handler. */
 #if K_COMPILER_ISNT K_MSVC

@@ -3321,6 +3321,27 @@ run_fatal_exit_hook() wontthrow -> void
   }
 }
 
+wontreturn fn
+exit_process_after_catastrophic_failure(const char *message,
+                                        usize       message_byte_count,
+                                        i32         status) wontthrow -> void
+{
+  sigset_t blocked_signals;
+
+  if (sigemptyset(&blocked_signals) == 0 &&
+      sigaddset(&blocked_signals, SIGPIPE) == 0 &&
+      pthread_sigmask(SIG_BLOCK, &blocked_signals, nullptr) == 0)
+  {
+    run_fatal_exit_hook();
+    let const written_byte_count =
+        message_byte_count < 4096 ? message_byte_count : usize{4096};
+
+    unused(write(KOSH_STDERR, message, written_byte_count));
+  }
+
+  exit_process_immediately(status);
+}
+
 static fn
 handle_fatal_signal(int        signal_number,
                     siginfo_t *siginfo,

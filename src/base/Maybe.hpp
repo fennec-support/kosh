@@ -141,41 +141,41 @@ public:
     return m_has_value;
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   value() wontthrow -> T &
   {
-    ASSERT(m_has_value);
+    GUARANTEE(m_has_value, "access to an empty optional");
 
     return reference();
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   value() const wontthrow -> const T &
   {
-    ASSERT(m_has_value);
+    GUARANTEE(m_has_value, "access to an empty optional");
 
     return reference();
   }
 
-  hot flatten mustuse pure fn
+  hot flatten mustuse fn
   operator*() wontthrow -> T &
   {
     return value();
   }
 
-  hot flatten mustuse pure fn
+  hot flatten mustuse fn
   operator*() const wontthrow -> const T &
   {
     return value();
   }
 
-  hot flatten mustuse pure fn
+  hot flatten mustuse fn
   operator->() wontthrow -> T *
   {
     return &value();
   }
 
-  hot flatten mustuse pure fn
+  hot flatten mustuse fn
   operator->() const wontthrow -> const T *
   {
     return &value();
@@ -184,7 +184,7 @@ public:
   mustuse fn
   take() throws -> T
   {
-    ASSERT(m_has_value);
+    GUARANTEE(m_has_value, "take from an empty optional");
 
     let taken_value = steal(reference());
 
@@ -277,18 +277,18 @@ public:
     return has_value();
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   value() wontthrow -> T *
   {
-    ASSERT(m_value != nullptr);
+    GUARANTEE(m_value != nullptr, "access to an empty pointer optional");
 
     return m_value;
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   value() const wontthrow -> T *
   {
-    ASSERT(m_value != nullptr);
+    GUARANTEE(m_value != nullptr, "access to an empty pointer optional");
 
     return m_value;
   }
@@ -305,13 +305,13 @@ public:
     return m_value;
   }
 
-  hot flatten mustuse pure fn
+  hot flatten mustuse fn
   operator->() wontthrow -> T *
   {
     return value();
   }
 
-  hot flatten mustuse pure fn
+  hot flatten mustuse fn
   operator->() const wontthrow -> T *
   {
     return value();

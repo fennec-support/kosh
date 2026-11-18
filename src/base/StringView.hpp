@@ -206,10 +206,10 @@ public:
     return length == 0;
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   operator[](usize i) const wontthrow -> char
   {
-    ASSERT_INDEX(i < length, "string-view index is past the end");
+    GUARANTEE(i < length, "string-view index is past the end");
 
     return data[i];
   }

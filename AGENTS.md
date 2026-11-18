@@ -263,7 +263,7 @@ completions rebuilds the generated koshkit block of completions/kosh.bash from
 koshkit --list-flags after a koshkit flag changes.
 
 Zig delegates compilation to src/Makefile and installs its resulting binary.
-Its mode, no-toiletline, no-koshkit, hardened, pgo, and pgo-profile options map
+Its mode, no-toiletline, no-koshkit, pgo, and pgo-profile options map
 to the corresponding Make variables. Make owns source selection, compiler
 flags, platform libraries, and generated baked scripts. Linux and macOS CI
 share scripts/verify-test-toolchain.sh. CI regenerates manual pages, baked
@@ -272,10 +272,16 @@ The Zig adapter rejects architecture selections the Make toolchains cannot
 honor. NO_TOILETLINE=1 make test runs the noninteractive history contract through
 the ordinary failure aggregator; editor-only PTY cases are excluded.
 
-NO_TOILETLINE=1 make, NO_KOSHKIT=1 make, and HARDENED=1 make use separate
-object directories. HARDENED=1 makes a release build trap on a container
-index past the end and is off by default because it slows sorting. make
-pgo-profile runs scripts/pgo.sh, which trains an instrumented release build,
+NO_TOILETLINE=1 make and NO_KOSHKIT=1 make use separate object directories.
+GUARANTEE(condition) and GUARANTEE(condition, "literal reason") evaluate the
+condition once. A failed guarantee traps in debug and attempts to write a fatal
+diagnostic before exiting the current process with status 1 in release. Release
+failure handling does not allocate, unwind C++ objects, or run shell EXIT traps.
+The owning interactive process restores its terminal before the diagnostic
+attempt. The diagnostic uses one best-effort write of at most 4096 bytes, and a
+blocking stderr can delay exit. Container and allocator precondition guarantees
+are always enabled in every build mode.
+make pgo-profile runs scripts/pgo.sh, which trains an instrumented release build,
 trains a context-sensitive instrumented build that uses the first profile, and
 merges both into pgo/kosh.profdata. make pgo also builds ./kosh with that
 profile. On macOS both targets require the Homebrew llvm and lld formulae.

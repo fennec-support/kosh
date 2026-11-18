@@ -140,16 +140,34 @@ debug_print_log(FILE       *stream,
 #define ASSERT(...)
 #endif
 
-/* an index check of a container accessor. a debug build asserts it, and a
-   release build with KOSH_HARDENED traps on a failed check. */
+namespace koshka {
+
+cold wontreturn fn
+report_catastrophic_guarantee_failure(const char *message,
+                                      usize       message_byte_count)
+    wontthrow -> void;
+
+} /* namespace koshka */
+
 #if !defined NDEBUG
-#define ASSERT_INDEX(x, ...) ASSERT(x, __VA_ARGS__)
-#elif defined KOSH_HARDENED
-#define ASSERT_INDEX(x, ...)                                                   \
+#define GUARANTEE(x, ...)                                                      \
   do {                                                                         \
-    if (!(x)) rarely                                                           \
-      __builtin_trap();                                                        \
+    if (!(x)) rarely {                                                         \
+      TRACELN("'GUARANTEE(%s)' fail in %s().", #x, __func__);                  \
+      TRACELN("Details: %s", "" __VA_ARGS__);                                  \
+      TRAP();                                                                  \
+    }                                                                          \
   } while (0)
 #else
-#define ASSERT_INDEX(...)
+#define GUARANTEE(x, ...)                                                      \
+  do {                                                                         \
+    if (!(x)) rarely {                                                         \
+      ::koshka::report_catastrophic_guarantee_failure(                         \
+          "fatal: Guarantee failed: " #x " at " __FILE__                       \
+          ":" KOSH_STRINGIFY(__LINE__) ". " __VA_ARGS__ "\n",                  \
+          sizeof("fatal: Guarantee failed: " #x " at " __FILE__                \
+                 ":" KOSH_STRINGIFY(__LINE__) ". " __VA_ARGS__ "\n") -         \
+              1);                                                              \
+    }                                                                          \
+  } while (0)
 #endif

@@ -250,7 +250,7 @@ FlagManyStrings::count() const wontthrow -> usize
   return m_values.count();
 }
 
-pure fn
+fn
 FlagManyStrings::get(usize i) const wontthrow -> StringView
 {
   ASSERT(i < m_values.count());
@@ -258,7 +258,7 @@ FlagManyStrings::get(usize i) const wontthrow -> StringView
   return m_values[i].view();
 }
 
-pure fn
+fn
 FlagManyStrings::get_position(usize i) const wontthrow -> usize
 {
   ASSERT(i < m_positions.count());
@@ -266,7 +266,7 @@ FlagManyStrings::get_position(usize i) const wontthrow -> usize
   return m_positions[i];
 }
 
-pure fn
+fn
 FlagManyStrings::get_location(usize i) const wontthrow -> SourceLocation
 {
   ASSERT(i < m_locations.count());
@@ -274,7 +274,7 @@ FlagManyStrings::get_location(usize i) const wontthrow -> SourceLocation
   return m_locations[i];
 }
 
-pure fn
+fn
 FlagManyStrings::was_given_after_plus(usize i) const wontthrow -> bool
 {
   ASSERT(i < m_plus_markers.count());
@@ -465,7 +465,7 @@ FlagOperandValue::count() const wontthrow -> usize
   return m_values.count();
 }
 
-pure fn
+fn
 FlagOperandValue::get(usize i) const wontthrow -> StringView
 {
   ASSERT(i < m_values.count());
@@ -473,7 +473,7 @@ FlagOperandValue::get(usize i) const wontthrow -> StringView
   return m_values[i].view();
 }
 
-pure fn
+fn
 FlagOperandValue::get_location(usize i) const wontthrow -> SourceLocation
 {
   ASSERT(i < m_locations.count());

@@ -4,8 +4,6 @@ TARGET ?= # Linux/Windows_NT/Darwin
 ARCH ?= $(shell uname -m)
 NO_TOILETLINE ?= 0
 NO_KOSHKIT ?= 0
-# HARDENED=1 makes a release build trap on a container index past the end.
-HARDENED ?= 0
 # PGO=generate builds the instrumented release binary ../kosh-pgo-gen.
 # PGO_PROFILE=file.profdata builds the release binary with that profile.
 # PGO=cs-generate with PGO_PROFILE builds the context-sensitive instrumented
@@ -94,7 +92,7 @@ SHOULD_LINK_STATIC_LINUX := 1
 endif
 endif
 
-BUILD_VARIANT_SUFFIX := $(if $(filter 1,$(NO_TOILETLINE)),-no-toiletline,)$(if $(filter 1,$(NO_KOSHKIT)),-no-koshkit,)$(if $(filter 1,$(HARDENED)),-hardened,)$(if $(filter generate,$(PGO)),-pgo-gen,)$(if $(filter cs-generate,$(PGO)),-pgo-csgen,)$(if $(PGO_PROFILE),-pgo,)
+BUILD_VARIANT_SUFFIX := $(if $(filter 1,$(NO_TOILETLINE)),-no-toiletline,)$(if $(filter 1,$(NO_KOSHKIT)),-no-koshkit,)$(if $(filter generate,$(PGO)),-pgo-gen,)$(if $(filter cs-generate,$(PGO)),-pgo-csgen,)$(if $(PGO_PROFILE),-pgo,)
 
 ifneq ($(PGO)$(PGO_PROFILE),)
 ifneq ($(MODE), rel)
@@ -348,7 +346,6 @@ BUILD_DEFINITIONS := \
 	$(if $(filter tinyrel,$(MODE)),-DKOSH_TINYREL,) \
 	$(if $(filter 1,$(NO_TOILETLINE)),-DKOSH_NO_TOILETLINE,) \
 	$(if $(filter 1,$(NO_KOSHKIT)),-DKOSH_NO_KOSHKIT,) \
-	$(if $(filter 1,$(HARDENED)),-DKOSH_HARDENED,) \
 	$(if $(REGEX_SOURCES),-DKOSH_VENDORED_REGEX,)
 
 CXXFLAGS := \

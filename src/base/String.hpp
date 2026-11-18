@@ -139,10 +139,10 @@ public:
     return m_length == 0;
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   operator[](usize i) const wontthrow -> char
   {
-    ASSERT_INDEX(i < m_length, "string index is past the end");
+    GUARANTEE(i < m_length, "string index is past the end");
 
     return m_data[i];
   }
@@ -304,10 +304,10 @@ public:
     return m_length;
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   back() const wontthrow -> char
   {
-    ASSERT(m_length > 0, "back() on an empty string");
+    GUARANTEE(m_length > 0, "back() on an empty string");
 
     return m_data[m_length - 1];
   }
@@ -318,7 +318,7 @@ public:
   fn
   truncate(usize kept_count) wontthrow -> void
   {
-    ASSERT(kept_count <= m_length, "truncate past the end of the string");
+    GUARANTEE(kept_count <= m_length, "truncate past the end of the string");
     if (kept_count == m_length) return;
 
     m_ascii_state    = AsciiState::Unknown;
@@ -378,10 +378,10 @@ public:
   hot mustuse pure fn
   operator<(const String &other) const wontthrow -> bool;
 
-  mustuse pure fn
+  mustuse fn
   first_character() const wontthrow -> char
   {
-    ASSERT(m_length > 0, "first_character() on an empty string");
+    GUARANTEE(m_length > 0, "first_character() on an empty string");
 
     return m_data[0];
   }

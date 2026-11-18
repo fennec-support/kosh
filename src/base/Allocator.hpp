@@ -140,7 +140,8 @@ public:
     let const recycled = static_cast<pool_node *>(pointer);
 
     /* a block that is already the bin head was freed twice. */
-    if (recycled == m_bins[class_index]) t__debugtrap();
+    GUARANTEE(recycled != m_bins[class_index],
+              "heap pool block was freed twice");
 
     recycled->mangled_next = mangle(recycled, m_bins[class_index]);
     m_bins[class_index]    = recycled;
@@ -179,7 +180,8 @@ private:
     let const next =
         node->mangled_next ^ (reinterpret_cast<uintptr>(node) >> 12) ^ m_secret;
 
-    if ((next & (alignof(max_align_t) - 1)) != 0) t__debugtrap();
+    GUARANTEE((next & (alignof(max_align_t) - 1)) == 0,
+              "heap pool link is not aligned");
 
     return reinterpret_cast<pool_node *>(next);
   }
@@ -295,6 +297,9 @@ public:
   hot flatten fn
   raw_alloc(usize length, usize alignment) const throws -> opaque *
   {
+    GUARANTEE(alignment != 0 && (alignment & (alignment - 1)) == 0,
+              "allocation alignment must be a nonzero power of two");
+
     switch (get_kind()) {
     case Kind::Heap: return allocators::heap_alloc(length, alignment);
     case Kind::Bump: return bump_arena_allocate(get_arena(), length, alignment);
@@ -313,6 +318,9 @@ public:
               usize   new_length,
               usize   alignment) const throws -> opaque *
   {
+    GUARANTEE(alignment != 0 && (alignment & (alignment - 1)) == 0,
+              "allocation alignment must be a nonzero power of two");
+
     if (pointer == nullptr) {
       let const replacement = raw_alloc(new_length, alignment);
 
@@ -363,6 +371,9 @@ public:
   flatten fn
   raw_free(opaque *pointer, usize length, usize alignment) const wontthrow -> void
   {
+    GUARANTEE(alignment != 0 && (alignment & (alignment - 1)) == 0,
+              "allocation alignment must be a nonzero power of two");
+
     switch (get_kind()) {
     case Kind::Heap: allocators::heap_free(pointer, length, alignment); return;
     case Kind::UncachedHeap:

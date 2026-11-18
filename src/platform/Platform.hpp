@@ -3220,6 +3220,11 @@ take_subshell_bootstrap() wontthrow -> SubshellBootstrap;
 wontreturn fn
 exit_process_immediately(i32 status) wontthrow -> void;
 
+wontreturn fn
+exit_process_after_catastrophic_failure(const char *message,
+                                        usize       message_byte_count,
+                                        i32         status) wontthrow -> void;
+
 fn
 replace_process(ExecContext &&ec) throws -> void;
 

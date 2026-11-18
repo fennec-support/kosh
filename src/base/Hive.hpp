@@ -107,7 +107,7 @@ public:
   fn
   erase(T *element) wontthrow -> void
   {
-    ASSERT(element != nullptr);
+    GUARANTEE(element != nullptr, "erase received a null hive element");
 
     erase_at(index_of(element));
   }
@@ -115,7 +115,7 @@ public:
   fn
   erase_at(usize index) wontthrow -> void
   {
-    ASSERT(is_live(index));
+    GUARANTEE(is_live(index), "erase received an inactive hive index");
 
     /* at this point: the slot at index holds a constructed element. */
     let *const element = reinterpret_cast<T *>(slot_storage(index));
@@ -148,18 +148,18 @@ public:
     return (block->live_mask >> (index % BLOCK_SLOT_COUNT)) & 1u;
   }
 
-  mustuse pure fn
+  mustuse fn
   operator[](usize index) wontthrow -> T &
   {
-    ASSERT(is_live(index));
+    GUARANTEE(is_live(index), "access to an inactive hive index");
 
     return *reinterpret_cast<T *>(slot_storage(index));
   }
 
-  mustuse pure fn
+  mustuse fn
   operator[](usize index) const wontthrow -> const T &
   {
-    ASSERT(is_live(index));
+    GUARANTEE(is_live(index), "access to an inactive hive index");
 
     return *reinterpret_cast<const T *>(
         const_cast<Hive *>(this)->slot_storage(index));
@@ -167,22 +167,24 @@ public:
 
   /* the index of element, which must live in this hive.
      time: O(block count). */
-  mustuse pure fn
+  mustuse fn
   index_of(const T *element) const wontthrow -> usize
   {
-    let const *bytes = reinterpret_cast<const unsigned char *>(element);
+    let const address = reinterpret_cast<uintptr>(element);
 
     for (usize block_index = 0; block_index < m_block_count; block_index++) {
-      let const *first =
-          reinterpret_cast<const unsigned char *>(m_blocks[block_index]->slots);
+      let const first = reinterpret_cast<uintptr>(m_blocks[block_index]->slots);
 
-      if (bytes >= first && bytes < first + sizeof(block::slots)) {
+      if (address >= first && address - first < sizeof(block::slots)) {
+        GUARANTEE((address - first) % sizeof(Slot) == 0,
+                  "hive element pointer is not at the start of a slot");
+
         return block_index * BLOCK_SLOT_COUNT +
-               static_cast<usize>(bytes - first) / sizeof(Slot);
+               (address - first) / sizeof(Slot);
       }
     }
 
-    unreachable("Hive::index_of received an element of another hive");
+    GUARANTEE(false, "hive element pointer belongs to another hive");
   }
 
   mustuse pure fn

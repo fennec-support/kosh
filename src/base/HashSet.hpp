@@ -48,7 +48,7 @@ public:
     m_map.erase(key);
   }
 
-  hot mustuse pure fn
+  hot mustuse fn
   contains(StringView key) const wontthrow -> bool
   {
     return m_map.find(key).has_value();

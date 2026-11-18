@@ -90,7 +90,8 @@ BumpArena::BumpArena(usize initial_block_byte_count)
     : m_arena_incarnation{
           __atomic_fetch_add(&NEXT_ARENA_INCARNATION, 1, __ATOMIC_RELAXED)}
 {
-  ASSERT(initial_block_byte_count > 0);
+  GUARANTEE(initial_block_byte_count > 0,
+            "an arena initial block must not be empty");
   register_live();
   try {
     add_block(initial_block_byte_count, initial_block_byte_count);
@@ -243,6 +244,9 @@ BumpArena::add_block(usize minimum_byte_count,
 hot fn
 BumpArena::allocate(usize size, usize alignment) throws -> opaque *
 {
+  GUARANTEE(alignment != 0 && (alignment & (alignment - 1)) == 0,
+            "arena alignment must be a nonzero power of two");
+
   loop {
     while (m_current_index < m_blocks.count()) {
       let      &block   = m_blocks[m_current_index];
@@ -349,7 +353,7 @@ BumpArena::register_lifetime() throws -> lifetime_identity
                            slot.incarnation};
 }
 
-pure fn
+fn
 BumpArena::is_lifetime_valid(lifetime_identity identity) const wontthrow -> bool
 {
   if (identity.arena_incarnation != m_arena_incarnation ||
@@ -369,8 +373,15 @@ BumpArena::is_lifetime_valid(lifetime_identity identity) const wontthrow -> bool
 fn
 BumpArena::release(arena_mark saved) wontthrow -> void
 {
-  ASSERT(saved.block_index <= m_current_index,
-         "mark cannot refer to a block above the current one");
+  GUARANTEE(saved.block_index <= m_current_index &&
+                saved.block_index <= m_blocks.count(),
+            "mark cannot refer to a block above the current one");
+  GUARANTEE(saved.destructor_count <= m_destructor_count,
+            "mark cannot restore destructors that have already run");
+  GUARANTEE(saved.block_index < m_blocks.count()
+                ? saved.used_in_block <= m_blocks[saved.block_index].used
+                : saved.used_in_block == 0,
+            "mark cannot restore bytes that have already been released");
 
   run_destructors_down_to(saved.destructor_count);
   m_reset_generation++;
@@ -399,7 +410,6 @@ BumpArena::release(arena_mark saved) wontthrow -> void
   if (saved.block_index < m_blocks.count()) {
     let &saved_block = m_blocks[saved.block_index];
 
-    ASSERT(saved.used_in_block <= saved_block.size);
     if (saved_block.used > saved.used_in_block)
       poison_arena_bytes(saved_block.base + saved.used_in_block,
                          saved_block.used - saved.used_in_block);

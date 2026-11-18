@@ -29,7 +29,11 @@ public:
   CopyOnWrite(const CopyOnWrite &other) wontthrow
       : m_allocator{other.m_allocator}, m_shared{other.m_shared}
   {
-    if (m_shared != nullptr) m_shared->reference_count++;
+    if (m_shared != nullptr) {
+      GUARANTEE(m_shared->reference_count < UINT32_MAX,
+                "copy-on-write reference count overflow");
+      m_shared->reference_count++;
+    }
   }
 
   CopyOnWrite(CopyOnWrite &&other) wontthrow
@@ -46,7 +50,11 @@ public:
     release();
     m_allocator = other.m_allocator;
     m_shared    = other.m_shared;
-    if (m_shared != nullptr) m_shared->reference_count++;
+    if (m_shared != nullptr) {
+      GUARANTEE(m_shared->reference_count < UINT32_MAX,
+                "copy-on-write reference count overflow");
+      m_shared->reference_count++;
+    }
 
     return *this;
   }
@@ -122,10 +130,10 @@ public:
     m_shared    = copy;
   }
 
-  pure fn
+  fn
   read() const wontthrow -> const T &
   {
-    ASSERT(m_shared != nullptr);
+    GUARANTEE(m_shared != nullptr, "read from an empty copy-on-write value");
 
     return m_shared->value;
   }
@@ -147,7 +155,7 @@ public:
   fn
   write() throws -> T &
   {
-    ASSERT(m_shared != nullptr);
+    GUARANTEE(m_shared != nullptr, "write to an empty copy-on-write value");
     if (m_shared->reference_count > 1) {
       let *const copy = create(m_allocator, clone_value(m_shared->value));
 
