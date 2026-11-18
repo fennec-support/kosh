@@ -426,6 +426,11 @@ EvalContext::set_array_element(StringView name,
     return;
   }
 
+  /* e.g. a=([2]=two [0]=zero [1]=one) first holds index 2 sparsely.
+     writing index 0 gives dense ["zero"] and leaves index 2 sparse.
+     writing index 1 gives ["zero", "one"], then migrates index 2 to
+     give ["zero", "one", "two"]. no sparse entries remain, and the
+     sparse-array record is forgotten. */
   if (index == dense_count) {
     dense->push_managed(value);
 

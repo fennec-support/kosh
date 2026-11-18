@@ -774,6 +774,10 @@ compare_sort_version_parts(StringView left,
   usize left_position  = 0;
   usize right_position = 0;
 
+  /* e.g. left = "a019", right = "a02", is_folding = false.
+     after 'a', both positions are 1. skipping zeros makes both 2.
+     comparing '1' and '2' gives first_difference = -1 and positions 3.
+     the remaining '9' on the left makes the result 1. */
   while (left_position < left.length || right_position < right.length) {
     int first_difference = 0;
 

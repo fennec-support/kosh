@@ -380,9 +380,14 @@ EvalContext::expand_word(const Word &word) throws
           return;
         }
 
-        let       active        = Bitset{scratch};
-        let       break_offsets = ArrayList<usize>{scratch};
-        let       marks         = ArrayList<quoted_empty_mark>{scratch};
+        let active        = Bitset{scratch};
+        let break_offsets = ArrayList<usize>{scratch};
+        let marks         = ArrayList<quoted_empty_mark>{scratch};
+        /* e.g. ${missing:-"$@"} with missing unset and parameters ["", "a b"]
+           produces text "a b", break_offsets [0], active [false, false, false],
+           and marks [{piece=0, offset=0}]. the mark starts an empty field in
+           piece 0. piece 1 flushes it and appends "a b" without splitting.
+           the final fields are ["", "a b"]. */
         let const text =
             expand_modifier_word_fields(word, is_quoted, active, break_offsets,
                                         marks, word_location, reference);

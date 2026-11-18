@@ -193,6 +193,11 @@ struct conditional_tree_builder
                                      : build_term();
     let tail = Node::NO_NODE;
 
+    /* e.g. a && "" && c creates Nonempty nodes 0, 1, and 3 in an empty
+       tree. the first pair creates node 2 as And(0, 1). the second
+       creates node 4 as And(1, 3) and changes node 2 to And(0, 4).
+       eval_node() advances from node 2 to node 4, then the empty operand
+       ends evaluation before c. */
     while (!is_failed() && !at_end() && elements[pos].kind == separator) {
       pos++;
 

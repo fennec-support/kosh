@@ -5316,6 +5316,8 @@ Make::execute(const ExecContext               &ec,
   }
 
   StringMap<bool> active_targets{cxt.scratch_allocator()};
+  /* completed_target_results records whether each target was out of date,
+     including query and dry runs. failures leave through exceptions. */
   StringMap<bool> completed_target_results{cxt.scratch_allocator()};
   let const       options = make_build_options{
       runtime_flags.should_always_make,

@@ -53,6 +53,12 @@ bounded_osa_distance(StringView a, StringView b, usize max_distance) wontthrow
   /* at this point: a_length and b_length are non-zero, and b_length is at
      most 255, so every index into rows is below OSA_ROW_WIDTH. */
 
+  /* e.g. a = "ab", b = "ba", and max_distance = 1. previous starts
+     as [0, 1, 2]. the first row is [1, 1, 1], then rotation preserves
+     [0, 1, 2] in previous_previous. at i = 2 and j = 2, insertion,
+     deletion, and substitution give 2. the transposition gives
+     previous_previous[0] + 1 = 1. the second row is [2, 1, 1],
+     and the returned distance is 1. */
   usize rows[3][OSA_ROW_WIDTH];
   let   previous_previous = rows[0];
   let   previous          = rows[1];

@@ -271,6 +271,13 @@ match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
 {
   usize content_start = 0;
 
+  /* e.g. delimiter is "EOF", both policy flags are true, and state is empty.
+     "\tE\\" loses its tab and continues with text "E". state becomes
+     {1, true, false}, and the result is {1, 2, false}.
+     "\tOF" keeps its tab because logical-line text exists. it differs from
+     the remainder "OF". state resets, and the result is {0, 3, false}.
+     "\tEOF" loses its tab and matches "EOF". state resets, and the result
+     is {1, 3, true}. */
   if (heredoc.should_strip_tabs && !heredoc.join_state.has_logical_line_text) {
     while (content_start < line.length && line[content_start] == '\t') {
       content_start++;

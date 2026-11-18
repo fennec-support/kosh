@@ -586,6 +586,9 @@ fold_constant_arithmetic_in_word(
       LOG(All, "folded the constant arithmetic '%.*s' to %s",
           static_cast<int>(segment.text.view().length),
           segment.text.view().data, result->c_str());
+      /* propagated constants mark the segment as analyzed without caching
+         their value. evaluate_arithmetic_segment_text() evaluates the tree
+         with the current variables when this segment runs again. */
       segment.set_optimizer_arithmetic_result(
           is_direct_constant ? result->view() : StringView{},
           actx.eval_context != nullptr

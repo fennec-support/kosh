@@ -156,6 +156,10 @@ private:
     usize used;
   };
 
+  /* payload_end records the arena position after the registered payload.
+     a live slot points next_free_position to itself. a released slot links
+     into the free list, and incarnation changes when that slot is
+     registered again. */
   struct LifetimeSlot
   {
     Mark payload_end;

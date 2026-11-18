@@ -1425,6 +1425,11 @@ ArithmeticValue::square_root(const ArithmeticValue &value,
 
   multiply_power_of_ten(magnitude, scale_growth);
 
+  /* e.g. sqrt(2, 1) has scale_growth 2 and magnitude [200]. scaled is
+     200, bit_count is 8, and the first estimate is 16 in arena 0.
+     arena 1 gives quotient 12 and next 14, which becomes the estimate.
+     arena 0 then gives quotient 14 and next 14. equality ends the loop
+     with estimate 14. magnitude [14] at decimal_scale 1 gives 1.4. */
   let const scaled = from_magnitude(magnitude.begin(), magnitude.count(), false,
                                     0, scaled_arena);
   let const bit_count = magnitude_bit_length(magnitude);

@@ -437,6 +437,12 @@ extglob_full_match_uncached(StringView      glob,
                extglob_full_match(suffix, str, mask, suffix_offset, charset,
                                   search);
       case '!':
+        /* e.g. glob = "!(a)b", str = "ab", mask_offset = 0, and all bytes
+           are active. the alternative is "a" at offset 2, and suffix is "b"
+           at offset 4.
+           length 0 rejects the suffix against "ab". length 1 matches the
+           forbidden prefix "a". length 2 rejects the suffix against "".
+           the result is false. */
         for (usize length = 0; length <= str.count();
              length       = get_next_split(str, length, charset))
         {

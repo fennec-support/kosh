@@ -25,6 +25,10 @@ StringView::to_lower_ascii(Allocator allocator) const throws -> String
   return result;
 }
 
+/* a nonempty view receives length copied bytes from allocator without a
+   terminator. the returned view does not release them. heap storage
+   requires an explicit free_array() call, and bump storage belongs to its
+   arena. copying takes O(length) time. */
 fn
 StringView::clone_to(Allocator allocator) const throws -> StringView
 {

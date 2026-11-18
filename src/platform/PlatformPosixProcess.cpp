@@ -528,6 +528,10 @@ execute_program(ExecContext                     &ec,
   };
 
   if (should_hand_off_controlling_terminal_before_start) {
+    /* the child waits on start_pipe until the parent hands off the terminal.
+       successful exec closes outcome_pipe through close-on-exec. an allowed
+       script fallback writes 'f' and leaves ec descriptors owned by the
+       caller. */
     let const start_pipe   = os::make_pipe();
     let const outcome_pipe = os::make_pipe();
 
@@ -1455,6 +1459,10 @@ make_pipe() wontthrow -> Maybe<pipe_ends>
   return pipe_ends{p[0], p[1]};
 }
 
+/* each thread handle owns one assignment to a detached worker. the
+   callback borrows context until join_thread() returns the worker to the
+   idle pool. successful workers remain allocated for the process
+   lifetime, and a forked child discards the inherited idle list. */
 struct pooled_worker
 {
   pthread_t       thread_id{};

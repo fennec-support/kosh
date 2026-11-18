@@ -616,6 +616,9 @@ private:
   {
     if (m_unknown_indices.is_empty()) return;
 
+    /* each position pairs a path and status slot with its original child
+       index. the queued operations borrow these objects until execute()
+       returns. */
     m_unknown_batch.clear();
 
     for (usize index = 0; index < m_unknown_indices.count(); index++)

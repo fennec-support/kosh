@@ -958,6 +958,12 @@ public:
       return position;
     }
 
+    /* e.g. normalized_source has bytes 61 f0 9f 98 80 62 on line 0.
+       in UTF-16, character = 2 starts with position = 0 and units = 0.
+       decoding 61 advances position to 1 and units to 1. the next
+       code point needs two units, and 1 + 2 > 2 returns None.
+       character = 3 accepts that code point, advances position to 5
+       and units to 3, and returns byte position 5. */
     usize position = start;
     usize units    = 0;
 

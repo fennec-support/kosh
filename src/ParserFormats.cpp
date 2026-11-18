@@ -720,6 +720,12 @@ parser_format_masked_template_source(
     let const has_newline = construct.find_character('\n').has_value();
     let const placeholder_start = analysis_source.length();
 
+    /* e.g. host_source is echo "{{x}}", and template_syntax is TEMPLATE_CURLY.
+       after echo ", position and analysis_source.length() are 6, and
+       is_in_double_quote is true. "{{x}}" ends at 11 and has length 5.
+       the quoted branch appends "${1#", zero padding bytes, and '}'.
+       masks records "{{x}}" with placeholder "${1#}", and position becomes 11.
+       the closing quote produces echo "${1#}", still twelve bytes. */
     if (is_value && !has_newline && length >= 4) {
       if (is_in_double_quote && length >= 5) {
         analysis_source.append("${1#");

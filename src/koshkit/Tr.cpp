@@ -722,6 +722,12 @@ Tr::execute(const ExecContext               &ec,
     usize offset1 = 0;
     usize offset2 = 0;
 
+    /* e.g. "[a*3]b" and "xy[z*2]" give runs (a,3),(b,1) and
+       (x,1),(y,1),(z,2). each step consumes one byte.
+       (index1,offset1,index2,offset2) starts at (0,0,0,0).
+       a -> x leaves (0,1,1,0), a -> y leaves (0,2,2,0),
+       a -> z leaves (1,0,2,1), b -> z leaves (2,0,3,0).
+       the final table translates "aaab" to "zzzz". */
     while (index1 < set1.runs.count() && index2 < set2.runs.count()) {
       let const &run1       = set1.runs[index1];
       let const &run2       = set2.runs[index2];

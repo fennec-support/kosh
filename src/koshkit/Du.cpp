@@ -84,6 +84,9 @@ struct du_size_result
   bool should_emit;
 };
 
+/* pending_directory_count counts immediate child directories whose results
+   have not reached this frame. a frame completes after enumeration and every
+   child result. a completed non-root frame releases its slot for reuse. */
 struct du_directory_frame
 {
   Path  path;

@@ -677,6 +677,12 @@ append_sed_replacement(String                          &output,
     }
   };
 
+  /* e.g. subject = "b", replacement = "\L\u\1&Q\EZ", group 0
+     spans [0,1), and group 1 is unmatched. output starts empty.
+     \L sets persistent_case to 'L', and \u sets next_byte_case to 'U'.
+     \1 emits nothing and leaves next_byte_case set.
+     & emits "B" and clears next_byte_case. Q gives output "Bq".
+     \E clears persistent_case, and Z gives output "BqZ". */
   for (usize position = 0; position < replacement.length; position++) {
     let const byte = replacement[position];
 
