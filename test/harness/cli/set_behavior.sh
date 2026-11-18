@@ -15,9 +15,9 @@ unset KOSH_FLAGS
 echo "rc=$?"
 
 unset KOSH_FLAGS
-# set -o posix mirrors set -M sh, entering the POSIX mood. set +o posix
-# steps down to bash only when already in POSIX, and is a no-op otherwise since
-# the prior mood is not recoverable.
+# set -o posix selects bash-posix. set +o posix selects bash only when
+# the posix option is on. otherwise it leaves the mood unchanged.
+
 echo "== set -o posix enters posix mood:"
 "$BIN" -c 'set -o posix; set -o | grep posix'
 echo "== set +o posix from bash mood is a no-op:"

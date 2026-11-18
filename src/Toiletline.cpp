@@ -127,26 +127,24 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 
 #define TL_NO_SUSPEND
 #define TL_CTRL_Z_UNDO
-/* only the interactive loop reads lines, so the large editor buffers stay
-   out of the thread-local block that every process and worker clears. */
+/* the large editor buffers stay outside thread-local storage. */
 #define TL_SHARED_EDITOR_BUFFERS
 #if defined KOSH_VENDORED_REGEX
 #define TL_REGEX_HEADER "../../vendor/regex/regex.h"
 #endif
 #define TL_ASSERT           ASSERT
 #define TL_HISTORY_MAX_SIZE (1024 * 4)
-/* a whole shell script fits in one buffer. */
-#define TL_STRING_MAX_LEN 65535
+#define TL_STRING_MAX_LEN   65535
 
 } /* namespace */
 
 #define TOILETLINE_IMPLEMENTATION
-#if defined __clang__ || defined __GNUC__
+#if K_COMPILER_IS(K_CLANG | K_GCC)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 #include "toiletline/toiletline.h"
-#if defined __clang__ || defined __GNUC__
+#if K_COMPILER_IS(K_CLANG | K_GCC)
 #pragma GCC diagnostic pop
 #endif
 
@@ -1407,6 +1405,9 @@ completion_session::complete(const char    *buffer,
     return 1;
   } catch (koshka::completion::documentation_pending &) {
     koshka::arm_message_leading_newline(false);
+    /* defer_idle_load() and adopt_idle_load() produce documentation_pending.
+       itl_complete_gather() consumes TL_COMPLETE_PENDING and retries the
+       listing callback through completion_session::idle(). */
     has_pending_gather = true;
 
     return TL_COMPLETE_PENDING;
@@ -1507,10 +1508,10 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       }
       highlighted_restarts.truncate(kept_restart_count);
 
-      let const *restart = kept_restart_count > 0
-                               ? &highlighted_restarts[kept_restart_count - 1]
-                               : nullptr;
-      let const  begin   = restart != nullptr ? restart->position : 0;
+      let const *restart         = kept_restart_count > 0
+                                       ? &highlighted_restarts[kept_restart_count - 1]
+                                       : nullptr;
+      let const  begin           = restart != nullptr ? restart->position : 0;
       usize      kept_span_count = 0;
 
       while (kept_span_count < highlighted_spans.count() &&
@@ -2833,7 +2834,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   /* at this point: the process lock is held, the history has at least
      one record, and the read buffer is valid. */
   let const buffered  = StringView{::itl_g_history_read_buffer->data,
-                                   ::itl_g_history_read_buffer->size};
+                                  ::itl_g_history_read_buffer->size};
   let       payload   = String{koshka::heap_allocator()};
   let unwritten_slots = koshka::ArrayList<usize>{koshka::heap_allocator()};
   let unwritten_byte_offsets =
@@ -3494,7 +3495,7 @@ set_title(StringView title) -> void
   if (output == KOSH_INVALID_FD) return;
 
   /* memory: sequence reserves at most MAX_TITLE_LENGTH + 5 bytes and is freed
-             on return. LAST_TITLE_SEQUENCE keeps a copy until exit.
+             on return.
      time:   O(title.count()) for the sanitizing loop, because each iteration
              advances position. at most one os::write_all() call writes the
              sequence. */

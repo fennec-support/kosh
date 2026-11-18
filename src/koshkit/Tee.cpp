@@ -103,6 +103,8 @@ Tee::execute(const ExecContext               &ec,
       batch.clear();
       output_positions.clear();
 
+      /* e.g. outputs [a, b, c] are submitted at indices [2, 1, 0]. removing
+         failed index 2 leaves [a, b], then removing index 1 leaves [a]. */
       usize output_index = output_descriptors.count();
 
       while (output_index > 0) {

@@ -33,7 +33,8 @@ throw_if_arithmetic_interrupted() throws -> void
 
 namespace {
 
-/* a power or a shift past this many bits is refused before it allocates. */
+/* power() limits its estimated result bits. shift_left() limits the shift
+   count. */
 static constexpr u64 MAXIMUM_RESULT_BIT_COUNT = u64{1} << 32;
 
 /* 10^19 is the largest power of ten below 2^64, so one chunk fits in a u64. */

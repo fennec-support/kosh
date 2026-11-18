@@ -141,6 +141,18 @@ platform fragments compile through platform/Platform.o. Windows path
 conversion and named-pipe behavior stay behind the platform wrappers.
 Recursive chmod, chown, and chgrp walk through os::walk_tree, which addresses
 each entry through its parent directory descriptor.
+Platform.hpp owns platform, architecture, and compiler detection. Platform
+branches use K_PLATFORM_IS or K_PLATFORM_ISNT with bits such as K_POSIX and
+K_WIN32. Architecture branches use K_ARCH_IS or K_ARCH_ISNT with K_X86_64,
+K_ARM64, K_X86, or K_ARM. Compiler branches use K_COMPILER_IS or
+K_COMPILER_ISNT with K_CLANG, K_GCC, K_MSVC, or K_COSMOCC. Internal guards and
+support vectors use the K_ prefix. Android includes the Linux and POSIX bits,
+and each BSD target includes the BSD and POSIX bits. An unknown architecture
+has an empty support vector. Compiler bits track the frontend, MSVC ABI, and
+Cosmo driver independently. GNU extension branches accept GCC, Clang, or
+Cosmo. Common.hpp includes Platform.hpp with K_PLATFORM_DETECTION_ONLY to
+load detection without operating-system headers. A later full inclusion loads
+the platform API. Libc and API availability checks remain separate.
 
 src/Completion.cpp owns completion scanning and the completion sources.
 Completion, highlighting, diagnostics, and koshkit cat share the tolerant

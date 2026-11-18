@@ -75,6 +75,8 @@ Env::execute(const ExecContext               &ec,
     os::unset_environment_variable(name);
   };
 
+  /* e.g. A=old, then A=one and A=two save [old, one]. reverse restoration
+     sets A=one, then A=old. */
   defer {
     for (usize i = saved_names.count(); i-- > 0;) {
       if (was_present[i])

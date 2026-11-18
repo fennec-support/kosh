@@ -571,9 +571,12 @@ public:
   pure fn
   is_tilde_candidate() const wontthrow -> bool;
 
-  /* memory: the text and eval cache copies come from allocator. with the heap
-             allocator, ~WordSegment() frees them. an arena owns them.
-     time:   O(text length) for memcpy(), plus one fixed-size cache copy. */
+  /* the text and cache allocations come from allocator. ~WordSegment() frees
+     heap allocations, and the destination arena owns arena allocations.
+     clone_to() copies the segment text and any unshared arithmetic tree nodes
+     and stored text. variable references call build_parameter_reference(),
+     including operand parsing when needed, unless the destination arena
+     already owns the record. */
   cold fn
   clone_to(Allocator allocator) const throws -> WordSegment
   {
@@ -731,10 +734,12 @@ public:
   Word() = default;
   ~Word() { release_constant_value(); }
 
-  /* memory: segments.reserve() allocates one slot per segment from
-             heap_allocator(), and each clone() allocates its text there.
-             ~WordSegment() frees the text and the eval cache.
-     time:   O(segment count + total text length), one clone() per segment. */
+  /* segments.reserve() allocates one heap slot per segment, and clone_to()
+     allocates each segment's owned text and cache data on the heap.
+     ~WordSegment() frees those allocations, and segments frees its slots.
+     the copy takes O(segment count + total segment text length), plus the
+     per-segment tree cloning and parameter-record construction in clone_to().
+   */
   cold
   Word(const Word &other) throws
       : segments(heap_allocator()), m_facts(other.m_facts),

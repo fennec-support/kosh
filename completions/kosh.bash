@@ -28,6 +28,10 @@ _kosh_complete ()
   local index word letters value_count=0 is_command_pending=0
   local command_string_index=0 operand_index=0
 
+  # e.g. in kosh -c first -c second name <cursor>, first sets
+  # command_string_index=2. the next -c resets it to 0 and sets
+  # is_command_pending=1. second sets command_string_index=4.
+  # name sets operand_index=5 and ends the scan.
   for ((index = 1; index < COMP_CWORD; index++))
   do
     word=${COMP_WORDS[index]}
@@ -824,7 +828,7 @@ _koshkit_util_flags ()
 }
 # END GENERATED KOSHKIT FLAGS
 
-# Words that a utility reads before its flags are parsed.
+# options parsed outside the registered utility flag lists.
 _koshkit_util_extra_flags ()
 {
   case $1 in

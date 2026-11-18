@@ -141,9 +141,8 @@ run_debug_highlight_driver(StringView   driver_line,
   return 0;
 }
 
-/* prints the number of restart points the highlight scan of driver_text
-   records and the number of spans that a scan from one of them colors
-   differently from the scan from the start. */
+/* prints the number of recorded highlight restart points and the number
+   whose resumed scan differs from the scan from the start. */
 static fn
 run_debug_highlight_restart_driver(StringView   driver_text,
                                    EvalContext &context) throws -> i32

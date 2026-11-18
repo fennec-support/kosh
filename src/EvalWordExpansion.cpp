@@ -76,12 +76,14 @@ get_segment_quoting(const WordSegment &segment) wontthrow
                                      : parameter_word_quoting::Unquoted;
 }
 
-/* memory: fields and their text are bump-allocated in the scratch arena, which
-           a caller releases to a mark taken before the call. tilde expansion
-           clones the segments into the same arena.
-   time:   O(b) for b bytes of segment text, since each byte is appended once
-           and checked against the field separators once. O(p) for each $@ or
-           $* segment, where p is the positional parameter count. */
+/* memory: fields, result text, and segment clones use the scratch arena,
+           which a caller releases to a mark taken before the call. glob masks
+           and rewritten tilde text use heap_allocator() and are freed by
+           their owning fields and segments.
+   time:   visits each segment once. expansion work depends on the dispatched
+           parameter, arithmetic, substitution, and tilde operations.
+           multibyte field splitting scans the separator characters for each
+           candidate character. */
 hot fn
 EvalContext::expand_word(const Word &word) throws
     -> ArrayList<glob_field>
@@ -1197,11 +1199,11 @@ EvalContext::expand_word(const Word &word) throws
   return fields;
 }
 
-/* memory: the result string and any segment clones are bump-allocated in the
-           scratch arena, which a caller releases to a mark taken before the
-           call.
-   time:   O(s + n) for s segments and n bytes of the result, since each
-           segment is visited once and its text is appended once. */
+/* memory: the result string and segment clones use the scratch arena, which
+           a caller releases to a mark taken before the call. rewritten tilde
+           text uses heap_allocator() and is freed by its owning segments.
+   time:   visits each segment once. expansion work depends on the dispatched
+           parameter, arithmetic, substitution, and tilde operations. */
 hot fn
 EvalContext::expand_word_for_assignment(const Word &word,
                                         bool        is_assignment_value) throws

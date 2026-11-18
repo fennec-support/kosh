@@ -19,10 +19,10 @@ namespace os {
 pure fn
 goodcore_tools() wontthrow -> goodcore_platform_tools
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 
   return {"otool", "lldb", goodcore_capture_mode::Lldb, true};
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
 
   return {"ldd", "gcore", goodcore_capture_mode::Gcore, false};
 #else
@@ -34,7 +34,7 @@ goodcore_tools() wontthrow -> goodcore_platform_tools
 pure fn
 evildisk_tools() wontthrow -> evildisk_platform_tools
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 
   return {"diskutil", "info"};
 #else
@@ -97,15 +97,15 @@ get_environment_epoch() wontthrow -> u64
 } /* namespace os */
 } /* namespace koshka */
 
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
+#if K_PLATFORM_IS K_POSIX
 #include <sys/mman.h>
 #endif
 
-#if defined __x86_64__ && !defined __COSMOPOLITAN__
+#if (K_ARCH_IS K_X86_64) && (K_PLATFORM_ISNT K_COSMO)
 #include <immintrin.h>
-#elif defined __aarch64__ || defined __arm64__ || defined _M_ARM64
+#elif K_ARCH_IS K_ARM64
 #include <arm_acle.h>
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 #include <sys/auxv.h>
 #endif
 #endif
@@ -204,7 +204,7 @@ kosh_regex_reallocate(void *pointer, size_t length)
 }
 #endif
 
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
+#if K_PLATFORM_IS K_POSIX
 /* clang-format off */
 #include "PlatformPosixExtra.cpp"
 #include "PlatformPosix.cpp"
@@ -212,7 +212,7 @@ kosh_regex_reallocate(void *pointer, size_t length)
 #include "PlatformPosixFilesystemExtra.cpp"
 #include "PlatformPosixProcess.cpp"
 /* clang-format on */
-#elif KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#elif K_PLATFORM_IS K_WIN32
 #include "PlatformWin32.cpp"
 #include "PlatformWin32Filesystem.cpp"
 #include "PlatformWin32Process.cpp"
@@ -222,7 +222,7 @@ kosh_regex_reallocate(void *pointer, size_t length)
 
 /* the MSVC runtime has no libsupc++ or libc++abi handler variables, so it
    keeps its own terminate handler. */
-#if !defined _MSC_VER
+#if K_COMPILER_ISNT K_MSVC
 extern "C" fn
 __cxa_current_exception_type() wontthrow -> opaque *;
 
@@ -587,12 +587,12 @@ divide_u128_by_u64(u64 high, u64 low, u64 divisor) wontthrow
 {
   ASSERT(high < divisor);
 
-#if defined _MSC_VER && defined _M_X64 && !defined __clang__
+#if (K_COMPILER_IS K_MSVC) && (K_ARCH_IS K_X86_64) && (K_COMPILER_ISNT K_CLANG)
   u64       remainder = 0;
   let const quotient  = _udiv128(high, low, divisor, &remainder);
 
   return {quotient, remainder};
-#elif defined _MSC_VER
+#elif K_COMPILER_IS K_MSVC
   u64 quotient  = 0;
   u64 remainder = high;
 
@@ -792,8 +792,9 @@ position_after_regex_bracket(StringView pattern, usize position) wontthrow
   return position < pattern.length ? position + 1 : pattern.length;
 }
 
-/* position holds the first byte after the opening brace. the result is the
-   largest count of the bound, and position moves past the closing brace. */
+/* position starts after the opening brace. on success, it moves past the
+   closing brace and the result estimates expansion size. parsed counts are
+   clamped to MAX_REPEAT_BOUND, and an open upper bound uses minimum + 1. */
 static fn
 parse_regex_repeat_bound(StringView pattern,
                          usize     &position,
@@ -995,9 +996,12 @@ without_repeated_basic_stars(StringView pattern) throws -> String
   return result;
 }
 
-/* memory: a heap copy of pattern, freed on return. on success, compiled.re
-           holds the regcomp() allocation until free_regex() releases it.
-   time:   one regcomp() call over pattern. */
+/* memory: a heap copy of pattern, freed on return. the expansion guard
+           temporarily stores one size per open group in heap_allocator().
+           on success, compiled.re holds the regcomp() allocation until
+           free_regex() releases it.
+   time:   one expansion-guard pass over pattern, then one regcomp() call if
+           the guard accepts it. */
 fn
 compile_regex(StringView pattern, case_sensitivity sensitivity) throws
     -> Maybe<compiled_regex>
@@ -1203,11 +1207,10 @@ namespace os {
 
 namespace {
 
-#if (defined __x86_64__ && !defined __COSMOPOLITAN__) ||                       \
-    defined __aarch64__ || defined __arm64__ || defined _M_ARM64
-constexpr u32                      CRC32C_POLYNOMIAL         = 0x82f63b78u;
-constexpr usize                    CRC32C_LONG_BLOCK_LENGTH  = 8192;
-constexpr usize                    CRC32C_SHORT_BLOCK_LENGTH = 256;
+#if ((K_ARCH_IS K_X86_64) && (K_PLATFORM_ISNT K_COSMO)) || (K_ARCH_IS K_ARM64)
+constexpr u32   CRC32C_POLYNOMIAL         = 0x82f63b78u;
+constexpr usize CRC32C_LONG_BLOCK_LENGTH  = 8192;
+constexpr usize CRC32C_SHORT_BLOCK_LENGTH = 256;
 
 struct crc32c_shift_operator
 {
@@ -1282,8 +1285,8 @@ shift_crc32c(const crc32c_shift_table &table, u32 crc) wontthrow -> u32
 }
 #endif
 
-#if defined __x86_64__ && !defined __COSMOPOLITAN__
-#if defined __clang__
+#if (K_ARCH_IS K_X86_64) && (K_PLATFORM_ISNT K_COSMO)
+#if K_COMPILER_IS K_CLANG
 #define CRC32C_TARGETISA targetisa("crc32")
 #else
 #define CRC32C_TARGETISA targetisa("sse4.2")
@@ -1322,7 +1325,7 @@ is_x86_sse42_available() wontthrow -> bool
 }
 #endif
 
-#if defined __aarch64__ || defined __arm64__ || defined _M_ARM64
+#if K_ARCH_IS K_ARM64
 #define CRC32C_TARGETISA targetisa("+crc")
 
 struct crc32c_arm_instructions
@@ -1345,11 +1348,11 @@ struct crc32c_arm_instructions
 fn
 is_aarch64_crc32c_available() wontthrow -> bool
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   let const crc32c_hardware_capability = 1UL << 7;
 
   return (getauxval(AT_HWCAP) & crc32c_hardware_capability) != 0;
-#elif defined __APPLE__
+#elif K_PLATFORM_IS K_APPLE
   int   is_available = 0;
   usize value_length = sizeof(is_available);
 
@@ -1358,7 +1361,7 @@ is_aarch64_crc32c_available() wontthrow -> bool
     return false;
 
   return is_available != 0;
-#elif defined _WIN32 && defined PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE
+#elif (K_PLATFORM_IS K_WIN32) && defined PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE
 
   return IsProcessorFeaturePresent(PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE) !=
          FALSE;
@@ -1464,12 +1467,12 @@ crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
 {
   let const bytes = static_cast<const u8 *>(data);
 
-#if defined __x86_64__ && !defined __COSMOPOLITAN__
+#if (K_ARCH_IS K_X86_64) && (K_PLATFORM_ISNT K_COSMO)
   static let const has_sse42 = is_x86_sse42_available();
 
   if (has_sse42)
     return crc32c_update_hardware<crc32c_x86_instructions>(crc, bytes, length);
-#elif defined __aarch64__ || defined __arm64__ || defined _M_ARM64
+#elif K_ARCH_IS K_ARM64
   static let const has_crc32c = is_aarch64_crc32c_available();
 
   if (has_crc32c)
@@ -1479,8 +1482,9 @@ crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
   return crc32c_update_software(crc, bytes, length);
 }
 
-/* memory: the mapping or a 65536-byte stack buffer, and no heap. the mapping
-           is unmapped before return, and defer closes the descriptor.
+/* memory: file data uses a mapping or a 65536-byte stack buffer. opening the
+           file creates temporary path storage. the mapping is unmapped before
+           return, and defer closes the descriptor.
    time:   O(file size) bytes hashed. the mmap path makes one fstat(), one
            mmap(), and one munmap() call. the read path makes at least one
            read() per 65536 bytes, plus one read() that returns 0. */
@@ -1494,7 +1498,7 @@ crc32c_of_file(StringView path) throws -> Maybe<u32>
 
   u32 crc = 0xFFFFFFFF;
 
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
+#if K_PLATFORM_IS K_POSIX
   struct stat info = {};
 
   if (::fstat(*file, &info) == 0 && S_ISREG(info.st_mode) && info.st_size > 0) {

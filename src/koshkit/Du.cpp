@@ -210,6 +210,13 @@ report_too_large_path(const ExecContext &ec,
                                 "': the total size is too large");
 }
 
+/* memory: traversal vectors and output rows use allocator. directory frame
+           paths use the heap and are freed when their frames are cleared or
+           destroyed. local arenas release directory listings and temporary
+           paths.
+   time:   each visited directory is listed once. each child is submitted once
+           for status lookup in batches of at most 512. constructed child paths
+           copy the parent path. */
 static fn
 total_size(const ExecContext        &ec,
            EvalContext              &cxt,

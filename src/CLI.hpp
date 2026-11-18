@@ -83,8 +83,6 @@ inline constexpr StringView CLEAR_PROGRESS_LINE{"\r\x1b[2K"};
 class SynopsisList
 {
 public:
-  /* every help synopsis is built at startup, so the constructor stays inline
-     in sources compiled for size too. */
   alwaysinline
   SynopsisList(std::initializer_list<StringView> lines) wontthrow
   {

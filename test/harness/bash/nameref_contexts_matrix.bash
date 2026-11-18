@@ -84,6 +84,9 @@ run_case() {
 
 item_pattern='^\[([^]]*)\]=("[^"]*"|\$'"'"'[^'"'"']*'"'"') (.*)$'
 
+# e.g. declare -A target=([key]="v al" [0]="1" ) becomes entries
+# '[key]="v al"' and '[0]="1"'. sorting places [0] first, and rebuilding
+# yields declare -A target=([0]="1" [key]="v al" ).
 show_target() {
   local declaration head rest line sorted joined
   local -a items=()

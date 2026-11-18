@@ -128,7 +128,6 @@ byte_is_escaped(StringView line, usize position) wontthrow -> bool
   return lexer::count_backslashes_before(line, position) % 2 == 1;
 }
 
-/* true when position is one of positions, which ascend. */
 static pure fn
 is_sorted_position(const ArrayList<usize> &positions, usize position) wontthrow
     -> bool
@@ -333,8 +332,6 @@ append_highlighted_range(String                          &output,
 {
   if (range_end > text.length) range_end = text.length;
   if (range_start > range_end) range_start = range_end;
-  /* at this point: range_end is at most text.length, and range_start is at
-     most range_end. */
 
   let rendered_position = range_start;
 

@@ -2083,8 +2083,8 @@ sanitize_kubernetes_metadata(StringView text,
   return String{allocator, result.view().trim_blanks()};
 }
 
-/* memory: the path String is released when the function returns. the String
-           returned to the caller is allocated in allocator.
+/* memory: the path and returned String use allocator. their bump storage
+           remains until the owning arena is released.
    time:   one open, one read of at most KUBERNETES_METADATA_BYTE_LIMIT bytes,
            and one close, plus one sanitize_kubernetes_metadata() call. */
 fn
@@ -2112,9 +2112,9 @@ read_kubernetes_metadata(StringView name, Allocator allocator) throws
                                       allocator);
 }
 
-/* memory: rows and the report tables are allocator-backed locals released on
-           return. process_id is released at the end of each detail loop
-           iteration. the report text grows in output.
+/* memory: rows, report tables, and their strings use allocator. execute()
+           supplies its scratch arena, whose storage remains until that arena
+           is released. the report text grows in output.
    time:   read_kubernetes_metadata() costs one open, read, and close. the row
            loop scans the R rows for each of the E evidence entries, O(E * R).
            the detail loop scans earlier entries of each process, O(sum of
@@ -2398,7 +2398,6 @@ EvilIso::execute(const ExecContext               &ec,
     return 1;
   }
 
-  /* at this point: FLAG_HELP is not enabled, and operands is empty. */
   let const has_selector =
       FLAG_EVILISO_NAMESPACES.is_enabled() ||
       FLAG_EVILISO_CGROUPS.is_enabled() || FLAG_EVILISO_SESSIONS.is_enabled() ||

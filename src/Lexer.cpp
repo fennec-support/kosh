@@ -416,8 +416,8 @@ Lexer::register_heredoc(StringView         delimiter,
   let &arena    = m_parse_session.get_arena();
   let  contents = arena.create<heredoc_contents>(
       bump_allocator(arena), tab_policy == heredoc_tab_policy::Preserve
-                                 ? heredoc_source_mapping::Contiguous
-                                 : heredoc_source_mapping::Transformed);
+                                  ? heredoc_source_mapping::Contiguous
+                                  : heredoc_source_mapping::Transformed);
 
   ASSERT(contents != nullptr);
 
@@ -462,7 +462,7 @@ Lexer::walk_heredoc_body(usize              start,
   bool                      has_near_miss      = false;
   lexer::heredoc_join_state join_state{};
   heredoc_terminator_miss   near_miss{0, 0,
-                                      heredoc_miss_kind::IndentedTerminator};
+                                    heredoc_miss_kind::IndentedTerminator};
 
   loop {
     if (position >= m_source.length) break;
@@ -530,9 +530,9 @@ Lexer::walk_heredoc_body(usize              start,
         has_near_miss = true;
         near_miss     = heredoc_terminator_miss{
             content_start, delimiter.length,
-            leading_length == 0  ? heredoc_miss_kind::TrailingBlankTerminator
-            : is_tab_indentation ? heredoc_miss_kind::TabIndentedTerminator
-                                 : heredoc_miss_kind::IndentedTerminator};
+            leading_length == 0 ? heredoc_miss_kind::TrailingBlankTerminator
+                  : is_tab_indentation ? heredoc_miss_kind::TabIndentedTerminator
+                                       : heredoc_miss_kind::IndentedTerminator};
       }
     }
 
@@ -1897,7 +1897,7 @@ Lexer::validate_substitution_body(
   let const is_exact     = body.data == m_source.data + body_position;
   let       nested_lexer = Lexer{
       is_exact ? m_source.substring_of_length(0, body_position + body.length)
-               : body,
+                     : body,
       arena, source_name_at(m_parse_session.source_name_index()), mood(),
       m_parse_session.get_allocation_kind()};
 

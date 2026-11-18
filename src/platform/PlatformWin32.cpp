@@ -38,7 +38,7 @@ static bool HAS_SCANNED_INHERITED_SHELL_FDS = false;
 static constexpr i32 TRACKED_SHELL_FD_COUNT     = 8192;
 static constexpr i32 TRACKED_SHELL_FDS_PER_WORD = 64;
 static u64           CLOSE_ON_EXEC_SHELL_FDS[TRACKED_SHELL_FD_COUNT /
-                                             TRACKED_SHELL_FDS_PER_WORD];
+                                   TRACKED_SHELL_FDS_PER_WORD];
 
 enum class close_on_exec_mode : u8
 {
@@ -157,8 +157,9 @@ utf8_to_wide(StringView text, Allocator allocator) throws
   return wide;
 }
 
-/* memory: utf8 is an ArrayList<char> from allocator that is freed on return.
-           the returned String owns a copy of the converted bytes.
+/* memory: utf8 and the returned String use allocator. the returned String
+           owns a copy of the converted bytes. temporary heap storage is freed
+           on return, while bump storage stays until the arena releases it.
    time:   two WideCharToMultiByte() calls, O(length) in wide units. */
 static fn
 wide_to_utf8(const wchar_t *text,
@@ -1223,7 +1224,7 @@ descriptors_refer_to_same_file(os::descriptor first,
 fn
 descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
 {
-#if defined(_MSC_VER)
+#if K_COMPILER_IS K_MSVC
   let const previous_handler = _set_thread_local_invalid_parameter_handler(
       +[](const wchar_t *, const wchar_t *, const wchar_t *, unsigned int,
           uintptr_t) {});
@@ -1680,7 +1681,7 @@ get_home_directory() -> Maybe<Path>
 fn
 get_system_koshconf_path() throws -> Maybe<Path>
 {
-  PWSTR folder = nullptr;
+  PWSTR     folder = nullptr;
   let const result = SHGetKnownFolderPath(FOLDERID_ProgramData, KF_FLAG_DEFAULT,
                                           nullptr, &folder);
 

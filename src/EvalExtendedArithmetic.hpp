@@ -16,6 +16,10 @@
 
 namespace koshka::arithmetic_internal {
 
+/* promoted values borrow storage from their creating arena. copying a value
+   does not copy that storage. absolute(), integer_part(), and rescale() can
+   return the input unchanged, so their results can retain the input arena's
+   lifetime even when a different output arena is supplied. */
 class ArithmeticValue
 {
 public:

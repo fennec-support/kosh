@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements compact fixed-size bitsets. It stores boolean state
+ * This file implements compact dynamic bitsets. It stores boolean state
  * in integer words and provides indexed tests, updates, and set operations.
  */
 
@@ -84,8 +84,8 @@ public:
   }
 
   /* memory: m_words grows to at least ceil(bit_count / BITS_PER_WORD) words in
-             its allocator. clear() keeps the buffer, and the destructor of
-             m_words frees it.
+             its allocator. clear() keeps the buffer. m_words destruction
+             releases heap storage; arena storage remains owned by the arena.
      time:   O(bit_count / BITS_PER_WORD) to push the words. */
   fn
   reset(usize bit_count) throws -> void

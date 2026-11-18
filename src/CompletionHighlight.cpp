@@ -1838,6 +1838,8 @@ internal::scan_highlight_range(
         /* at this point: decoded.text contains a directory separator, the
            opaque ranges are empty or only the leading tilde, and
            decoded_path_spans holds the path roles of decoded.text. */
+        /* e.g. raw a\ b/c decodes to a b/c. decoded [0,4) maps through
+           raw_positions to raw [0,5), including the backslash. */
         for (let const &decoded_span : decoded_path_spans) {
           ASSERT(decoded_span.end < decoded.raw_positions.count());
 

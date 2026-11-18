@@ -279,7 +279,9 @@ recipe_prefix_source(StringView source) throws -> prefixed_source
            has_oneshell(). recipe_mood() scans back to the previous range's
            line or to the recipe header, so the scans cost O(n) in total.
            header_mood() compares the words of each scanned header with each
-           of T targets, which costs O(H * T * h) for H headers of h bytes. */
+           of T targets, which costs O(H * T * h) for H headers of h bytes.
+           parse_makefile_shell_sources(), makefile_shell_analysis_source(),
+           and fragment source copies add their own work. */
 fn
 parse_makefile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void

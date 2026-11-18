@@ -2809,10 +2809,10 @@ public:
     let const square =
         calculator_fixed_multiply(value, value, work_scale, arena);
     BumpArena iteration_arenas[2];
-    let   term = ArithmeticValue::add(is_cosine ? ArithmeticValue{1} : value,
-                                      ArithmeticValue{}, iteration_arenas[0]);
-    let   sum  = term;
-    usize state_position      = 0;
+    let term = ArithmeticValue::add(is_cosine ? ArithmeticValue{1} : value,
+                                    ArithmeticValue{}, iteration_arenas[0]);
+    let       sum             = term;
+    usize     state_position  = 0;
     let const iteration_count = static_cast<usize>(work_scale) * 2 + 128;
 
     for (usize index = 1; index < iteration_count; index++) {
@@ -2825,7 +2825,7 @@ public:
       let const denominator = ArithmeticValue{static_cast<i64>(first * second)};
       let const next_term   = calculator_fixed_divide(
           calculator_fixed_multiply(term, square, work_scale,
-                                    iteration_arenas[next_position]),
+                                      iteration_arenas[next_position]),
           denominator, work_scale, iteration_arenas[next_position]);
 
       if (next_term.is_zero()) break;
@@ -2942,8 +2942,8 @@ public:
       let const next_position = 1 - state_position;
 
       iteration_arenas[next_position].reset();
-      sum = calculator_fixed_multiply(sum, sum, work_scale,
-                                      iteration_arenas[next_position]);
+      sum            = calculator_fixed_multiply(sum, sum, work_scale,
+                                                 iteration_arenas[next_position]);
       state_position = next_position;
     }
 
@@ -2982,8 +2982,8 @@ public:
       let const next_position = 1 - state_position;
 
       iteration_arenas[next_position].reset();
-      value = ArithmeticValue::square_root(value, work_scale,
-                                           iteration_arenas[next_position]);
+      value          = ArithmeticValue::square_root(value, work_scale,
+                                                    iteration_arenas[next_position]);
       state_position = next_position;
       root_count++;
       if (root_count > 64) throw std::bad_alloc{};
@@ -3504,7 +3504,7 @@ bc_apply_binop(char                   kind,
     let const exponent_count = magnitude.checked_i64();
     let const combined_scale = static_cast<u64>(lhs.get_decimal_scale()) *
                                static_cast<u64>(exponent_count);
-    let       desired_scale =
+    let desired_scale =
         lhs.get_decimal_scale() > scale ? lhs.get_decimal_scale() : scale;
 
     if (combined_scale < desired_scale)
@@ -4039,7 +4039,7 @@ EvalContext::compare_arithmetic(
   let const is_exact = runtime_state().is_extended_arithmetic_enabled();
   let const do_kind  = [](const SourceLocation *source_base) {
     return source_base != nullptr ? arithmetic_text_kind::ShellSource
-                                  : arithmetic_text_kind::Value;
+                                   : arithmetic_text_kind::Value;
   };
   let const left_value = evaluate_arithmetic_value(
       this, left, left_source_base, is_exact, expansion_store().scratch_arena(),

@@ -70,9 +70,9 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Realpath);
 
 namespace koshka::koshkit {
 
-/* memory: candidate, spliced, remaining, and resolved are allocated in
-           allocator and freed when allocator is released. each component other
-           than . and .. allocates one candidate Path.
+/* memory: candidate, spliced, and remaining use allocator. resolved may own
+           a heap-backed canonical path, which its Path destructor frees.
+           each component other than . and .. allocates one candidate Path.
    time:   one canonical_path() call per component until the first missing
            component. at most MAXIMUM_LINK_COUNT link splices, and each splice
            adds the components of its target to the walk. */
@@ -151,6 +151,8 @@ resolve_with_missing_components(StringView          operand,
                 ? os::read_symlink(candidate.view(), allocator)
                 : Maybe<String>{};
 
+      /* e.g. resolved = "/w", remaining = "l/c", position = 1, and l targets
+         "../v/x", whose v component is missing. */
       if (link_target.has_value()) {
         link_count++;
 
@@ -167,8 +169,8 @@ resolve_with_missing_components(StringView          operand,
         }
 
         remaining = steal(spliced);
+        position  = 0;
         /* -> remaining = "../v/x//c", position = 0, resolved = "/w" */
-        position = 0;
         continue;
       }
 

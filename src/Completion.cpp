@@ -420,8 +420,6 @@ public:
       return;
     }
 
-    /* at this point: tier_index equals best_tier, so name is counted and not
-       kept. */
     match_count++;
   }
 
@@ -1505,6 +1503,12 @@ split_hint_extensions(StringView hint_list, Allocator allocator) throws
   return extensions;
 }
 
+/* the hinted extension list and the ordered and rest buffers use the
+   candidates allocator. the returned list owns the moved candidate strings.
+   arena buffers are reclaimed with their arena, and heap buffers are freed
+   by their owners. the work includes scanning hint_list bytes, scanning each
+   candidate name, comparing its extension with the hints, and moving each
+   candidate at most twice. */
 static fn
 partition_by_extension(ArrayList<String> candidates,
                        StringView        hint_list) throws -> ArrayList<String>

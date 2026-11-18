@@ -146,8 +146,6 @@ append_padded(String               &output,
     return;
   }
 
-  /* at this point: pad_length is the number of padding bytes that precede
-     body. */
   let const pad_byte = spec.is_zero_padded && is_numeric ? '0' : ' ';
 
   output.append_repeated(pad_byte, pad_length);
@@ -196,9 +194,6 @@ quote_name(StringView             name,
   let const target = os::read_symlink(name, allocator);
 
   if (!target.has_value()) return text;
-
-  /* at this point: text holds the quoted display form, and target holds
-     the symlink target. */
 
   text += " -> '";
   text += target->view();
@@ -658,7 +653,6 @@ flags_done:
 
   if (position >= format.length) return false;
 
-  /* at this point: position indexes the directive letter in format. */
   spec.letter = format[position];
   position++;
 
@@ -754,8 +748,6 @@ render_format(String                      &output,
       return;
     }
 
-    /* at this point: spec holds a parsed directive, and position is past
-       its letter. */
     if (subject != nullptr) {
       render_file_directive(output, spec, *subject, cxt);
       continue;
@@ -792,8 +784,6 @@ resolve_format(String     &format,
     return;
   }
 
-  /* at this point: --printf, -c, and -t are all unset, and
-     should_append_newline is false. */
   if (target == stat_target::Filesystem) {
     format += DEFAULT_FILESYSTEM_FORMAT;
   }

@@ -16,11 +16,11 @@ cleanup()
 }
 trap cleanup EXIT
 
-# History recall brings back the newest command even when the history file holds
-# more entries than the in-memory ring. A missing parenthesis in
-# TL_HISTORY_MAX_SIZE once parsed the ring modulo as (x % 1024) * 4, so past 4096
-# entries the up arrow recalled a stale older line. The editor needs a tty, so
-# the run fails when script or the target terminal handles cannot provide one.
+# history recall returns the newest entry even when the file exceeds the
+# in-memory ring. the 4200 entries cross its 4096-entry capacity.
+# this check requires script and the target shell to provide a usable tty.
+
+
 script_mode=
 if script -qec true /dev/null >/dev/null 2>&1; then
   script_mode=gnu

@@ -93,9 +93,12 @@ run_command_not_found_handler(EvalContext             &cxt,
 
 /* memory: command is a heap_allocator() String freed on return. the replace
            path quits before command is built.
-   time:   O(args) to build command for a background or foreground job. one
-           fork for a mimicked script, or one os::execute_program() call, and
-           one wait for the child. */
+   time:   command construction scans the argument bytes for background or
+           interactive foreground jobs. spawned external programs use
+           os::execute_program(). foreground children are waited for, while
+           background children are registered without waiting. interactive
+           mimicry attempts a fork. other mimicry paths call
+           run_mimicked_script() directly. */
 fn
 execute_context(ExecContext  &&ec,
                 EvalContext   &cxt,
@@ -306,7 +309,7 @@ execute_context(ExecContext  &&ec,
     let const        status = cxt.run_program_fallback(
         ec, mode,
         should_replace_shell ? script_isolation::Shared
-                             : script_isolation::Isolated);
+                                    : script_isolation::Isolated);
 
     /* the script ran, so a spawn that failed inside it is not a failure to
        run the program. */
@@ -676,8 +679,8 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
         throw ErrorWithLocation{ec.source_location(), "Could not open a pipe"};
       }
 
-      let const has_leading_error_dup  = ec.should_duplicate_error_to_output &&
-                                         ec.did_output_file_follow_error_dup;
+      let const has_leading_error_dup = ec.should_duplicate_error_to_output &&
+                                        ec.did_output_file_follow_error_dup;
       let const has_leading_output_dup = ec.should_duplicate_output_to_error &&
                                          ec.did_error_file_follow_output_dup;
 
@@ -741,13 +744,13 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       let const source_view   = cxt.source_store().current_source_view();
       let const process_group = do_get_stage_group_mode();
       let       forked_child  = os::try_fork_compound_stage(
-          os::fork_compound_stage_options{.in_fd    = ec.in_fd,
-                                          .out_fd   = ec.out_fd,
-                                          .err_fd   = ec.err_fd,
-                                          .location = ec.source_location(),
-                                          .diagnostic_source = source_view,
-                                          .process_group_id  = process_group_id,
-                                          .process_group     = process_group});
+          os::fork_compound_stage_options{.in_fd  = ec.in_fd,
+                                                 .out_fd = ec.out_fd,
+                                                 .err_fd = ec.err_fd,
+                                                 .location = ec.source_location(),
+                                                 .diagnostic_source = source_view,
+                                                 .process_group_id = process_group_id,
+                                                 .process_group = process_group});
       let preflight_status   = Maybe<i32>{};
       let preflight_location = SourceLocation{};
       let preflight_message  = String{cxt.scratch_allocator()};

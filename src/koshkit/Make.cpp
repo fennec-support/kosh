@@ -4505,6 +4505,14 @@ build_target(const ExecContext        &ec,
 
 } /* namespace */
 
+/* memory: logical lines, comment-stripped copies, nesting stack, and returned
+           ranges use allocator. the caller owns the returned ranges. local
+           heap storage is freed on return, while arena storage stays with its
+           arena.
+   time:   source and logical lines are scanned for recipes and shell functions.
+           recipe membership uses binary search, then the R ranges are sorted
+           in O(R log R). nested or unmatched expansions can rescan source
+           suffixes, so their aggregate scan cost can be quadratic. */
 fn
 parse_makefile_shell_sources(StringView source,
                              Allocator  allocator) throws
@@ -4737,11 +4745,10 @@ parse_makefile_shell_sources(StringView source,
 
 /* memory: returns one byte for each source byte in the range, reserved from
            heap_allocator(). the caller owns the returned String.
-   time:   one pass over the range, after a scan back to the start of its
-           first line. a '$(' that closes inside the range is skipped after
-           one make_expansion_end() scan. a '$(' that never closes scans to
-           the end of source, so k such openers cost O(k * n) for n bytes of
-           source. */
+   time:   scans back to the first line start, then advances through the range.
+           each dollar expansion scans for its end and rescans its line prefix.
+           unmatched or out-of-range expansions can scan to the end of source.
+           these repeated suffix and prefix scans can take quadratic work. */
 fn
 makefile_shell_analysis_source(
     StringView source, const make_shell_source_range &range) throws
@@ -4801,6 +4808,9 @@ makefile_shell_analysis_source(
     let const placeholder_length =
         is_expansion ? (is_for_word_list ? usize{3} : usize{2}) : usize{1};
 
+    /* e.g. "for x in $(LIST); do :; done" has positions 9 through 15 replaced
+       with "x y    ". the seven-byte replacement preserves the semicolon's
+       position and gives the parser two loop words. */
     if (is_expansion) {
       analysis_source.append(is_for_word_list     ? "x y"
                              : quote_byte == '\0' ? ": "
@@ -5305,8 +5315,6 @@ Make::execute(const ExecContext               &ec,
     goal_locations.push(ec.source_location());
   }
 
-  /* at this point: goals holds at least one goal, and mk holds the parsed
-     makefile. */
   StringMap<bool> active_targets{cxt.scratch_allocator()};
   StringMap<bool> completed_target_results{cxt.scratch_allocator()};
   let const       options = make_build_options{

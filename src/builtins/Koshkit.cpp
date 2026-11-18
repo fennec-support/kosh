@@ -90,7 +90,9 @@ get_utility_section(koshkit::Utility::Kind kind) wontthrow -> utility_section
 
 /* memory: the help listing and the --list output are allocated in
            scratch_allocator() and are released when the scratch arena is reset.
-   time:   O(utilities) for a listing. */
+   time:   listings can sort utility and alias names and visit every flag;
+           formatting also depends on output bytes. dispatch adds its own
+           cost. */
 fn
 Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

@@ -1,7 +1,7 @@
 #!/bin/sh
-# return, break, and continue crossing dot-source, eval, and loop boundaries,
-# checked against dash. These are the regressions the source-buffer migration
-# exposed, where a return must end a dot-source but propagate through eval.
+# return ends a sourced file and propagates through eval. continue in a
+# sourced file reaches the enclosing loop.
+
 
 # A return at the top of a dot-sourced file ends the source with its status, and
 # execution continues after the dot command.

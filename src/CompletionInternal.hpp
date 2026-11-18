@@ -146,8 +146,7 @@ advance_shell_keyword_state(
     usize                            frame_depth,
     completion::shell_lexical_state &state) throws -> Maybe<bool>;
 
-/* where a top-level highlight scan records its restart points. A point is
-   recorded at least HIGHLIGHT_RESTART_GAP_BYTE_COUNT bytes after the last. */
+/* the minimum byte distance between recorded highlight restart points. */
 constexpr usize HIGHLIGHT_RESTART_GAP_BYTE_COUNT = 4096;
 
 struct highlight_restart_sink

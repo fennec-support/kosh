@@ -420,10 +420,10 @@ get_context_pointing_to(StringView                         source,
 
   static constexpr usize UNBOUNDED_STREAM_LINE_WIDTH = 240;
   let const              is_stderr_a_terminal = colors::stderr_is_a_terminal();
-  let const terminal_dimensions = is_stderr_a_terminal
-                                      ? os::get_terminal_dimensions(KOSH_STDERR)
-                                      : Maybe<os::terminal_dimensions>{};
-  let const should_window_for_terminal =
+  let const              terminal_dimensions  = is_stderr_a_terminal
+                                                    ? os::get_terminal_dimensions(KOSH_STDERR)
+                                                    : Maybe<os::terminal_dimensions>{};
+  let const              should_window_for_terminal =
       display_cells > 24 && is_stderr_a_terminal &&
       terminal_dimensions.has_value() &&
       terminal_dimensions->columns > gutter_width + 24 &&
@@ -446,8 +446,8 @@ get_context_pointing_to(StringView                         source,
     window_end         = window_start + available_line_width;
     has_left_ellipsis  = window_start > 0;
     has_right_ellipsis = window_end < display_cells;
-    window_end = sub_sat(window_end, (has_left_ellipsis ? 3u : 0u) +
-                                         (has_right_ellipsis ? 3u : 0u));
+    window_end         = sub_sat(window_end, (has_left_ellipsis ? 3u : 0u) +
+                                                 (has_right_ellipsis ? 3u : 0u));
     if (window_start > caret_column) window_start = caret_column;
     if (caret_column + caret_display_width > window_end &&
         window_end < display_cells)

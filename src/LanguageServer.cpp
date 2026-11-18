@@ -1301,9 +1301,6 @@ Server::format_document(const JsonValue *id,
   if (formatted->view() == document->normalized_source.view())
     return send_result(id, "[]");
 
-  /* at this point: formatted holds text that differs from
-     normalized_source. */
-
   let response = String{heap_allocator(), "["};
 
   append_text_edit(response, *document, 0, document->normalized_source.count(),
@@ -1953,7 +1950,8 @@ append_word_references(const analysis_symbol_records  &records,
   }
 }
 
-/* text[start] is the dollar of a ${ and end is past its closing brace. */
+/* text[start] opens ${. end follows its closing brace or ends the available
+   text. */
 static fn
 append_braced_references(const analysis_symbol_records  &records,
                          StringView                      text,
@@ -3263,8 +3261,6 @@ Server::dispatch(const JsonValue &message) throws -> bool
     return true;
   }
 
-  /* at this point: the server is initialized and not shut down, and *request
-     is not Initialize, Initialized, Shutdown, or Exit. */
   switch (*request) {
   case request_method::DidOpen: {
     let *document = open_document(params);

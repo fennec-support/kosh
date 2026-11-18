@@ -15,18 +15,13 @@ PASS_COUNT=0
 FAIL_COUNT=0
 WORK_UNITS=0
 
-# Build-style feature toggles, assigned once and never reassigned, the shape a
-# real configure run carries. An optimizing shell can prove every guard that
-# reads them dead at parse time, while dash and bash test each guard on every
-# pass through the hot loops.
+# these configuration values stay unchanged throughout the workload.
 CONFIG_TRACE=0
 CONFIG_PROFILE=0
 CONFIG_PARANOID=0
 CONFIG_RELEASE=1
 
-# ----------------------------------------------------------------------------
 # Character ordinals through a case lookup, since no external tool is allowed.
-# ----------------------------------------------------------------------------
 ordinal() {
     case $1 in
     a) ORD=97 ;; b) ORD=98 ;; c) ORD=99 ;; d) ORD=100 ;; e) ORD=101 ;;
@@ -47,7 +42,6 @@ ordinal() {
     esac
 }
 
-# Length of a string through parameter expansion.
 string_length() {
     STRLEN=${#1}
 }
@@ -60,7 +54,6 @@ first_char() {
     FIRST=${1%"$fc_rest"}
 }
 
-# Reverse a string one character at a time.
 reverse_string() {
     reverse_input=$1
     REVERSED=
@@ -71,7 +64,6 @@ reverse_string() {
     done
 }
 
-# A rolling checksum over the characters of a string.
 checksum_string() {
     checksum_input=$1
     SUM=0
@@ -105,9 +97,7 @@ upper_string() {
     done
 }
 
-# ----------------------------------------------------------------------------
 # Arithmetic kernels.
-# ----------------------------------------------------------------------------
 is_prime() {
     ip_n=$1
     if [ "$ip_n" -lt 2 ]; then
@@ -177,6 +167,8 @@ ackermann() {
     ackermann $(( $1 - 1 )) "$ACK"
 }
 
+# power_mod() with (5, 3, 13) starts at (result, exponent, base)=(1, 3, 5).
+# the iterations produce (5, 1, 12), then (8, 0, 1), giving POWMOD=8.
 power_mod() {
     pm_base=$1
     pm_exponent=$2
@@ -193,9 +185,7 @@ power_mod() {
     POWMOD=$pm_result
 }
 
-# ----------------------------------------------------------------------------
 # Reporting helpers, in the manner of a real configure script.
-# ----------------------------------------------------------------------------
 report_check() {
     printf 'checking for %s... ' "$1"
 }
@@ -214,9 +204,7 @@ note() {
     echo "  -> $*"
 }
 
-# ----------------------------------------------------------------------------
 # Feature probes. Each one does real arithmetic so the evaluator is exercised.
-# ----------------------------------------------------------------------------
 probe_prime_density() {
     report_check "prime density"
     limit=$(( SCALE * 5 ))
@@ -225,9 +213,7 @@ probe_prime_density() {
     while [ "$k" -le "$limit" ]; do
         is_prime "$k"
         found=$(( found + PRIME ))
-        # A trace hook a release build never takes. The guard reads a constant,
-        # so it folds away under an optimizer and costs a test per prime under
-        # dash and bash.
+        # the trace branch stays inactive with CONFIG_TRACE=0.
         if [ "$CONFIG_TRACE" -eq 1 ]; then
             note "trace: $k scored $PRIME"
         fi
@@ -250,9 +236,7 @@ probe_gcd_field() {
             if [ "$GCD" -eq 1 ]; then
                 coprime=$(( coprime + 1 ))
             fi
-            # Dead diagnostics in the quadratic core, one constant guard and
-            # one statically false test, both folded by an optimizer and both
-            # paid per pair by dash and bash.
+            # the profile branch and literal-false branch stay inactive.
             if [ "$CONFIG_PROFILE" -eq 1 ]; then
                 note "profile: pair $a $b"
             fi
@@ -414,7 +398,8 @@ probe_ackermann() {
 probe_sieve() {
     report_check "positional sieve"
     limit=$(( SCALE + 30 ))
-    # Build a marker string of zeros, one per number, then strike multiples.
+    # positional parameters exercise argument-vector growth.
+    # prime counts come from is_prime().
     set --
     i=0
     while [ "$i" -le "$limit" ]; do
@@ -470,11 +455,8 @@ probe_dead_configuration() {
     dc_limit=$(( SCALE * SCALE / 2 ))
     dc_i=1
     while [ "$dc_i" -le "$dc_limit" ]; do
-        # The guards below never fire in a release configuration. The verdicts
-        # are provable at parse time, a constant variable, a literal test, a
-        # bare false, and a never-entered loop, so an optimizing shell picks
-        # the live path once while dash and bash re-test every guard on every
-        # pass.
+        # configuration guards, literal tests, false, and a never-entered
+        # loop exercise inactive paths on each workload iteration.
         if [ "$CONFIG_TRACE" -eq 1 ]; then
             note "trace: iteration $dc_i"
             dc_live=$(( dc_live + 1000 ))
@@ -492,9 +474,7 @@ probe_dead_configuration() {
         while [ 0 -ne 0 ]; do
             dc_live=$(( dc_live + 1 ))
         done
-        # A chain whose first heads are statically false, so the live tail is
-        # the chosen branch, and constant arithmetic dash and bash fold on
-        # every visit while an optimizer folds it once.
+        # the release configuration selects the arithmetic tail.
         if [ "$CONFIG_RELEASE" -eq 0 ]; then
             dc_live=$(( dc_live - 1 ))
         elif [ "$CONFIG_PROFILE" -eq 1 ]; then
@@ -585,9 +565,6 @@ probe_param_defaults() {
     report_result "$pd_sum"
 }
 
-# ----------------------------------------------------------------------------
-# Driver.
-# ----------------------------------------------------------------------------
 main() {
     echo "configuring build with work scale $SCALE"
     echo

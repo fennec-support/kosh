@@ -388,8 +388,8 @@ colored(colors::color_style code, bool should_color) wontthrow -> StringView
   return should_color ? colors::color_to_sv(code) : StringView{};
 }
 
-/* time: O(n) for two passes over n samples, with one accessor() call per
-         sample in each pass. no allocation. */
+/* time: two passes over n samples plus two initial accessor() calls for
+         nonempty input. this function allocates no storage. */
 template <typename Accessor>
 fn
 compute_stats(const ArrayList<bench_sample> &samples,
@@ -434,8 +434,8 @@ compute_stats(const ArrayList<bench_sample> &samples,
   return stats;
 }
 
-/* memory: the returned String is allocated in allocator and lives until
-           allocator is reset or destroyed.
+/* memory: the caller owns the returned String. destruction releases heap
+           storage; arena storage remains owned by the arena.
    time:   O(1), one snprintf() into a 64 byte buffer. */
 cold fn
 format_metric(double      value,
@@ -755,11 +755,10 @@ detect_outliers(const ArrayList<bench_sample> &samples,
   }
 }
 
-/* memory: child_argv, samples, and the per-metric present lists are
-           allocated in allocator and live until it is reset or destroyed.
-   time:   O(n * METRIC_COUNT) for n samples, where n is at most MAX_SAMPLES.
-           each sample is one os::run_measured() call, which spawns the
-           command. */
+/* memory: local lists use allocator and release heap storage on return;
+           arena storage remains owned by the arena. result owns its label.
+   time:   O(n * METRIC_COUNT + n log n) postprocessing for n samples, at most
+           MAX_SAMPLES, plus warmup and measured runs and optional tracing. */
 fn
 sample_command(StringView shell_binary,
                StringView command,

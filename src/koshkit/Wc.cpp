@@ -168,6 +168,9 @@ count_words(wc_source_state       &state,
   u32 is_in_word = state.is_in_word ? 1 : 0;
   u64 word_count = 0;
 
+  /* e.g. starting outside a word, entries [1, 2, 0, 1] give is_in_word
+     [1, 1, 0, 1] and word_count [1, 1, 1, 2]. the final state carries into
+     the next chunk. */
   for (usize byte_position = 0; byte_position < content.length; byte_position++)
   {
     let const entry = static_cast<u32>(

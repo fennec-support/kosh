@@ -353,12 +353,12 @@ Cat::execute(const ExecContext               &ec,
                                  FLAG_CAT_SHOW_ALL.is_enabled() ||
                                  FLAG_CAT_SHOW_ENDS_NONPRINTING.is_enabled() ||
                                  FLAG_CAT_SHOW_TABS_NONPRINTING.is_enabled(),
-      .should_show_ends        = FLAG_CAT_SHOW_ENDS.is_enabled() ||
-                                 FLAG_CAT_SHOW_ALL.is_enabled() ||
-                                 FLAG_CAT_SHOW_ENDS_NONPRINTING.is_enabled(),
-      .should_show_tabs        = FLAG_CAT_SHOW_TABS.is_enabled() ||
-                                 FLAG_CAT_SHOW_ALL.is_enabled() ||
-                                 FLAG_CAT_SHOW_TABS_NONPRINTING.is_enabled(),
+      .should_show_ends = FLAG_CAT_SHOW_ENDS.is_enabled() ||
+                          FLAG_CAT_SHOW_ALL.is_enabled() ||
+                          FLAG_CAT_SHOW_ENDS_NONPRINTING.is_enabled(),
+      .should_show_tabs = FLAG_CAT_SHOW_TABS.is_enabled() ||
+                          FLAG_CAT_SHOW_ALL.is_enabled() ||
+                          FLAG_CAT_SHOW_TABS_NONPRINTING.is_enabled(),
   };
   let const is_formatted = format.should_number ||
                            format.should_squeeze_blank ||

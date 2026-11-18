@@ -1217,8 +1217,8 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
       continue;
     }
 
-    /* at this point: publish_simple_command() returned true, and stage_args
-       is non-empty after alias expansion, so stage_args[0] is the command. */
+    /* publish_simple_command() returned true, and argument expansion produced
+       at least one word. stage_args[0] is the command. */
     cxt.write_xtrace(stage_args);
 
     Maybe<ExecContext> stage_ec;

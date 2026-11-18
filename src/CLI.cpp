@@ -1933,8 +1933,6 @@ append_report_grid(String                                        &output,
 
   if (column_count == 0) return;
 
-  /* at this point: column_count is nonzero, so the grid has a column. */
-
   let widths = ArrayList<usize>{columns.allocator()};
 
   widths.reserve(column_count);
@@ -2218,7 +2216,7 @@ write_screen_frame(const ExecContext &ec,
 fn
 enable_mouse_reporting(const ExecContext &ec) wontthrow -> bool
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#if K_PLATFORM_IS K_WIN32
   unused(ec);
 
   return false;
@@ -2230,7 +2228,7 @@ enable_mouse_reporting(const ExecContext &ec) wontthrow -> bool
 fn
 disable_mouse_reporting(const ExecContext &ec) wontthrow -> void
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#if K_PLATFORM_IS K_WIN32
   unused(ec);
 #else
   unused(write_alternate_screen_sequence(ec, "\x1b[?1006l\x1b[?1000l"));

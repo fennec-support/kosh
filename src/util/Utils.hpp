@@ -609,6 +609,8 @@ struct source_line_position
   usize line_end;
 };
 
+/* the cache identifies source by its address and length. owners call
+   invalidate_line_number_cache_for() before changing or releasing its bytes. */
 fn
 source_line_position_at(StringView source, usize position) throws
     -> source_line_position;

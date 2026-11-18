@@ -192,8 +192,8 @@ fi
 [[ ab =~ a(b) && ab == ab ]] && echo 'and-boundary'
 [[ ab == ab && ( ab =~ a(b) ) ]] && echo 'paren-boundary'
 
-# Edge cases found by code review, checked byte-for-byte against bash. The [[ ]]
-# operators short-circuit so a bad dead branch does not error.
+# the [[ ]] operators short-circuit, and a bad dead branch does not error.
+
 [[ 0 -eq 0 || x -eq y ]] && echo or-shortcircuit
 [[ 1 -eq 2 && x -eq y ]] || echo and-shortcircuit
 [[ -n "" && bad =~ "(" ]] || echo regex-dead-branch

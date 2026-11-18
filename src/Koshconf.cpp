@@ -423,11 +423,11 @@ reject_special_koshconf_target(const Path &target) throws -> void
 
 /* memory: the existing contents of the target, M bytes in a heap string freed
            on return, and two temporary path strings.
-   time:   O(N + M) bytes for N new bytes and M existing bytes. syscalls: one
-           stat() and one replace_file_beside() call, which writes, sets the
-           mode, syncs, renames, and syncs the directory. when the target
-           exists, one read and a replace_file_beside() call for the backup
-           come first. */
+   time:   O(N + M) bytes for N new bytes and M existing bytes. filesystem work
+           includes a status check, an existence check, and
+   replace_file_beside() for the target. replacement writes, sets mode, syncs,
+   renames, and syncs the directory. an existing target is read and backed up
+   through another replace_file_beside() call first. */
 fn
 replace_koshconf_target(const Path &target, StringView contents) throws
     -> void
@@ -460,7 +460,7 @@ replace_koshconf_target(const Path &target, StringView contents) throws
 static fn
 get_user_kosh_directory() throws -> Maybe<Path>
 {
-#if !defined _WIN32
+#if K_PLATFORM_ISNT K_WIN32
   if (os::get_effective_user_id() == 0) {
     LOG(Info, "skipping the user configuration file for the superuser");
 
@@ -1019,6 +1019,8 @@ read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
     decoded.push(koshconf_setting{option, steal(*value)});
   }
 
+  /* all record framing is valid. decoded settings and warnings become visible
+     to reading only after the complete blob passes validation. */
   for (let &setting : decoded)
     reading.settings.push(steal(setting));
 
@@ -1418,7 +1420,8 @@ persist_koshconf_snapshot(const Path        &path,
            and the rewritten text, all freed on return.
    time:   O(N) for an N-byte file: one scan for the setting line, one rewrite
            pass, and one replace_koshconf_target() call that writes N bytes.
-           the directory lock is held for the whole call. */
+           the directory lock covers the existing-file read, rewrite, backup,
+           and replacement. */
 fn
 persist_koshconf_setting(const Path              &path,
                          const option_descriptor &option,

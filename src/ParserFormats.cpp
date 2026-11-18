@@ -408,7 +408,8 @@ detect_format_kind(const parser_format_input &input) throws
 /* memory: shell_source copies host_end - host_start bytes. analysis_source is
            prepared_analysis_source when it has a value, and otherwise another
            copy of those bytes. both are freed with document.fragments.
-   time:   O(host_end - host_start). no loops over the document. */
+   time:   O(host_end - host_start) copying plus fragment-list growth, which
+           can relocate existing fragments when capacity is exhausted. */
 fn
 parser_format_add_fragment(parsed_format_document &document,
                            StringView              host_source,
@@ -1431,8 +1432,8 @@ heredoc_delimiter_at(StringView line, usize &position) throws
 
 /* memory: a copy of source is returned when no line is rewritten. otherwise
            rewritten, which reserves source.length bytes, is returned.
-   time:   O(source.length). each line in [start, end) is scanned once, either
-           for heredoc operators or for a pending terminator. */
+   time:   line scanning plus heredoc classification, which can rescan a line
+           prefix per operator. copying also depends on source.length. */
 static fn
 align_indented_heredoc_terminators(StringView source,
                                    usize      start,
@@ -1694,7 +1695,7 @@ read_yaml_scalar(StringView        source,
 
   if (end <= value_position) return false;
 
-  /* at this point: value is a plain scalar, and item.start < item.end. */
+  /* at this point: value is a plain scalar, and end > value_position. */
   item = yaml_scalar_item{line_start + value_position, line_start + end};
 
   return true;
@@ -3082,7 +3083,7 @@ parse_format_document(const parser_format_input &input) throws
 
   switch (document.kind) {
   case parser_format_kind::Shell:
-  case parser_format_kind::UnknownHost:        break;
+  case parser_format_kind::UnknownHost: break;
   case parser_format_kind::GithubActions:
   case parser_format_kind::GiteaActions:
   case parser_format_kind::ForgejoActions:

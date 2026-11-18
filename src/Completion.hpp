@@ -81,6 +81,9 @@ enum class completion_filesystem_mode : u8
   Directories,
 };
 
+/* complete() resets completion-arena storage from the previous gather.
+   callers consume or copy arena-backed candidates, descriptions, and prefix
+   text before the next call. */
 struct completion_result
 {
   ArrayList<String> candidates;
@@ -254,6 +257,8 @@ public:
   fn
   prepare_source(StringView source, EvalContext &context) throws
       -> void;
+  /* the returned list belongs to this cache. its contents are overwritten by
+     the next spans_for_line() or spans_for() call. */
   fn
   spans_for_line(usize line_start, usize line_end) throws
       -> const ArrayList<highlight_span> *;

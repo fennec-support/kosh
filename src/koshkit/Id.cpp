@@ -133,8 +133,9 @@ Id::execute(const ExecContext               &ec,
     group_id = *primary_group;
   }
 
-  /* at this point: user_id holds the selected user, group_id holds the real or
-     effective group, and at most one selector flag is set. */
+  /* at this point: user_id identifies the selected user, group_id is the
+     operand user's primary group or the caller's selected group, and at most
+     one selector flag is set. */
   let const name_mode =
       FLAG_ID_NAME.is_enabled() ? id_name_mode::Name : id_name_mode::Numeric;
 

@@ -352,6 +352,9 @@ save_buffer(const char *text, const char **out_message) -> int
   return 0;
 }
 
+/* memory: prepared owns the loaded heap text on success; local temporary
+           storage is released on return.
+   time:   input reads and linear text validation and line-ending scans. */
 fn
 prepare_document(StringView     operand,
                  bool           is_stdin,
@@ -528,11 +531,10 @@ parse_start_line(StringView operand) wontthrow -> Maybe<usize>
   return static_cast<usize>(parsed.value());
 }
 
-/* edits one file in the line editor and returns the builtin status.
-   memory: the file contents, the title, and the session Strings on
-           heap_allocator(), released when the session ends.
-   time:   O(file size) to load, check, and split the file, then one editor
-           session. */
+/* edits a prepared document in one line-editor session.
+   memory: the title uses heap_allocator() and is released on return. session
+           owns document text and callback Strings until the session ends.
+   time:   title and callback setup, then one delegated editor session. */
 static fn
 edit_file(EvalContext                 &cxt,
           slurp_session               &session,

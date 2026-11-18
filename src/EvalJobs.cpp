@@ -310,10 +310,11 @@ JobTable::append_status_line(String                &out,
 }
 
 /* memory: none allocated. exited entries are removed from processes.
-   time:   one poll_process() call per entry, so O(processes). the loop walks
-           from the back, so a removal does not shift an entry that is still
-           unvisited. stopped_status ends with the status of the lowest-index
-           stopped entry. */
+   time:   one poll_process() call per entry, plus suffix shifts for removed
+           entries, which can take O(processes^2) total movement. the loop
+           walks from the back, so a removal does not shift an entry that is
+           still unvisited. stopped_status ends with the status of the
+           lowest-index stopped entry. */
 static fn
 poll_owned_processes(ArrayList<os::process> &processes) wontthrow -> Maybe<i32>
 {

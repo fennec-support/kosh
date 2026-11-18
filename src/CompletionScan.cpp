@@ -131,8 +131,6 @@ make_target_is_artifact(StringView name, const Path &directory) throws
 
   if (MAKEFILE_NAMES.contains(name)) return true;
 
-  /* at this point: name has no directory separator and is not GNUmakefile,
-     makefile, or Makefile. */
   let candidate = directory.clone();
 
   candidate.append(name);
@@ -302,8 +300,8 @@ parse_package_json_scripts(StringView text) throws -> ArrayList<String>
            return. the config and known_hosts contents are each freed at the
            end of their block.
    time:   O(B) for B total bytes of ~/.ssh/config and ~/.ssh/known_hosts, both
-           read whole with read_entire_file(). each host costs one expected O(1)
-           seen.add(). */
+           read with read_data_file() after its type and size checks. each host
+           costs one expected O(1) seen.add(). */
 static fn
 collect_ssh_hosts() throws -> ArrayList<String>
 {
@@ -2002,8 +2000,6 @@ internal::complete_from_spec(StringView         line,
       spec != nullptr ? spec->function_name.c_str() : "",
       spec != nullptr ? spec->word_list.length() : 0);
   if (spec == nullptr) return None;
-  /* at this point: Progcomp is enabled, command is not empty, and spec is
-     non-null. */
 
   i32 function_status = 0;
   let active_spec     = spec->clone_to(completion_allocator());
@@ -2072,8 +2068,6 @@ internal::complete_from_initial_word_spec(StringView         line,
   if (!is_for_listing && !spec_has_ghost_generators(*spec)) {
     return None;
   }
-  /* at this point: Progcomp is enabled, spec is non-null, and spec has
-     ghost generators or the call is for listing. */
 
   LOG(Debug, "completing the command word from the %.*s spec",
       static_cast<int>(command_name.length), command_name.data);

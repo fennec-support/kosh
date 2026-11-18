@@ -96,10 +96,11 @@ public:
     return clone_to(m_allocator);
   }
 
-  /* memory: reserve() allocates m_length elements in allocator. an element
-             type with clone_to() also places its own storage there. the
-             destructor of the returned list frees them.
-     time:   O(m_length) element copies. */
+  /* memory: allocator supplies list capacity that can exceed m_length.
+             element clone_to() calls can allocate additional storage there.
+             the returned list destroys its elements and releases heap storage;
+             arena storage remains owned by the arena.
+     time:   m_length element clone_to() or copy-constructor calls. */
   mustuse cold fn
   clone_to(Allocator allocator) const throws -> ArrayList
   {
@@ -274,7 +275,7 @@ public:
       return None;
     }
 
-#if T__HAS_GCC_EXTENSIONS
+#if K_COMPILER_IS(K_GCC | K_CLANG | K_COSMOCC)
     if constexpr (is_same_v<value_type, wanted_type> &&
                   is_arithmetic_v<
                       typename array_list_find_scalar<value_type>::type> &&
@@ -433,8 +434,8 @@ public:
   }
 
   /* memory: alloc_array() of new_capacity elements in m_allocator replaces
-             m_data. the old buffer is freed here, and the new buffer is freed
-             by destroy_all().
+             m_data. heap buffers are released here and by destroy_all();
+             arena buffers remain owned by the arena.
      time:   O(m_length) to relocate the elements, plus O(log needed) growth
              steps. */
   cold fn
@@ -547,7 +548,8 @@ public:
     m_capacity = m_length;
   }
 
-  /* memory: none. the elements are sorted in place.
+  /* memory: the algorithm allocates no buffer; element and comparator
+             operations can allocate. the elements are sorted in place.
      time:   O(n log n) comparisons. intro_sort_range() recurses only into the
              smaller partition, so the recursion depth is O(log n), and
              heap_sort_range() caps the worst case at O(n log n). */

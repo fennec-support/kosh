@@ -1274,15 +1274,15 @@ get_command_processor_path() throws -> Maybe<String>
   return path;
 }
 
+/* the status of the last spawn that failed, taken by
+   take_spawn_failure_status(). */
+static Maybe<i32> SPAWN_FAILURE_STATUS{};
+
 /* memory: the returned process handle belongs to the caller, which closes it.
            ec file descriptors close on return unless the script fallback takes
            them. command line and path strings are heap_allocator() storage.
    time:   O(argument bytes) to build and convert the command line. one
            create_process_utf8() call, which takes launch_lock. */
-/* the status of the last spawn that failed, taken by
-   take_spawn_failure_status(). */
-static Maybe<i32> SPAWN_FAILURE_STATUS{};
-
 fn
 execute_program(ExecContext                     &ec,
                 const program_execution_options &options) throws
@@ -1600,9 +1600,10 @@ make_subshell_transport(const subshell_bootstrap &bootstrap,
 }
 
 /* memory: wide_path is heap_allocator() storage released on return.
-   time:   polls until 5000 ms pass or the child exits. a pass that finds no
-           pipe sleeps 1 ms. a pass that finds a pipe with every instance busy
-           waits up to 50 ms in WaitNamedPipeW(). */
+   time:   connection polling checks a 5000 ms deadline and child exit.
+           WaitNamedPipeW() waits up to 50 ms per attempt, and failed attempts
+           sleep 1 ms. after connecting, write_all() sends content synchronously
+           without a deadline. */
 static fn
 send_internal_pipe(StringView path,
                    StringView content,
@@ -2669,6 +2670,10 @@ launch_process_substitution(
   return launch;
 }
 
+/* this call consumes cleanup. the worker retains relay storage and destroys it
+   after finishing. closing its thread handle does not join it. with an event
+   and a posted finish request, the caller waits up to 5000 ms for listener
+   closure, not worker completion. */
 fn
 finish_process_substitution(opaque *cleanup) wontthrow -> void
 {
@@ -3711,10 +3716,10 @@ ostype_name() wontthrow -> StringView
 fn
 executable_machine_name() throws -> String
 {
-#if defined _M_ARM64 || defined __aarch64__
+#if K_ARCH_IS K_ARM64
 
   return String{heap_allocator(), "arm64"};
-#elif defined _M_X64 || defined __x86_64__
+#elif K_ARCH_IS K_X86_64
 
   return String{heap_allocator(), "x86_64"};
 #else

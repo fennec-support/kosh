@@ -956,8 +956,6 @@ public:
 
     if (!m_options.is_utf8) return true;
 
-    /* at this point: is_utf8 is set, so the regex compiled below is
-       m_utf8_regex. */
     let const scope = os::RegexUtf8Scope{true};
 
     return compile_regex_into(m_utf8_regex, sensitivity);

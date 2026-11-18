@@ -9,6 +9,14 @@
 
 #pragma once
 
+#if defined K_PLATFORM_DETECTION_ONLY
+#include "../platform/Platform.hpp"
+#else
+#define K_PLATFORM_DETECTION_ONLY
+#include "../platform/Platform.hpp"
+#undef K_PLATFORM_DETECTION_ONLY
+#endif
+
 #if defined __SANITIZE_ADDRESS__
 #define KOSH_HAS_ADDRESS_SANITIZER 1
 #elif defined __has_feature
@@ -120,10 +128,9 @@ using uintptr = uintptr_t;
 
 using opaque = void;
 
-#if defined __GNUC__ || defined __clang__ || defined __COSMOCC__
-#define T__HAS_GCC_EXTENSIONS 1
-#define t__used               __attribute__((used))
-#define t__pure               __attribute__((pure))
+#if K_COMPILER_IS(K_GCC | K_CLANG | K_COSMOCC)
+#define t__used __attribute__((used))
+#define t__pure __attribute__((pure))
 #if defined KOSH_TINYREL
 #define t__forceinline inline
 #else
@@ -134,7 +141,6 @@ using opaque = void;
 #else
 #error Oh no! Segmentation fault. Please download a better compiler that \
        supports GNU extensions!
-#define T__HAS_GCC_EXTENSIONS 0
 #define t__used
 #define t__pure
 #define t__forceinline
@@ -210,7 +216,7 @@ public:
 #define donteliminate t__used
 #define alwaysinline  t__forceinline
 
-#if T__HAS_GCC_EXTENSIONS
+#if K_COMPILER_IS(K_GCC | K_CLANG | K_COSMOCC)
 #define pure t__pure
 #define cold [[gnu::cold]]
 #if defined KOSH_PROFILE_USE
@@ -220,7 +226,7 @@ public:
 #endif
 #if defined KOSH_TINYREL
 #define flatten
-#elif defined __clang__
+#elif K_COMPILER_IS K_CLANG
 #define flatten [[gnu::flatten]]
 #else
 #define flatten

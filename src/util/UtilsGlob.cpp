@@ -216,7 +216,8 @@ extglob_full_match(StringView      glob,
                    glob_charset    charset,
                    extglob_search &search) throws -> bool;
 
-/* do_match runs when the memo has no answer for key. */
+/* do_match() runs before memoization starts or when the memo has no answer
+   for key. */
 template <typename DoMatch>
 fn
 extglob_with_memo(extglob_search         &search,

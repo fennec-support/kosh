@@ -871,10 +871,10 @@ EvalContext::publish_pipe_statuses(ArrayList<String> values) throws
 fn
 EvalContext::publish_single_pipe_status(i32 status) throws -> void
 {
-  let const entry = variable_store().variables().find_pipestatus();
-  let existing    = entry.has_value() && (*entry)->is_indexed_array
-                        ? Maybe<const ArrayList<String> *>{&(*entry)->elements}
-                        : Maybe<const ArrayList<String> *>{None};
+  let const entry    = variable_store().variables().find_pipestatus();
+  let       existing = entry.has_value() && (*entry)->is_indexed_array
+                           ? Maybe<const ArrayList<String> *>{&(*entry)->elements}
+                           : Maybe<const ArrayList<String> *>{None};
 
   if (!existing.has_value() && is_readonly("PIPESTATUS")) {
     return;
@@ -1884,14 +1884,14 @@ EvalContext::line_number_at_location(const SourceLocation &location,
                                      Maybe<usize> fallback_call_depth) const
     throws -> usize
 {
-  let const &line_bases  = source_store().embedded_sources();
-  let        site        = location;
-  let        site_source = fallback_source != nullptr
-                               ? fallback_source
-                               : source_store().current_source();
-  let site_depth = fallback_source != nullptr
-                       ? fallback_call_depth
-                       : Maybe<usize>{function_store().call_frames().count()};
+  let const   &line_bases           = source_store().embedded_sources();
+  let          site                 = location;
+  let          site_source          = fallback_source != nullptr
+                                          ? fallback_source
+                                          : source_store().current_source();
+  let          site_depth           = fallback_source != nullptr
+                                          ? fallback_call_depth
+                                          : Maybe<usize>{function_store().call_frames().count()};
   Maybe<usize> site_depth_floor     = None;
   usize        preceding_line_count = 0;
   usize        search_limit         = line_bases.count();

@@ -13,7 +13,7 @@
 #include "../base/Trace.hpp"
 #include "../util/Utils.hpp"
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 #include <grp.h>
 #include <pwd.h>
 #define st_mtim st_mtimespec
@@ -21,14 +21,14 @@
 #define st_ctim st_ctimespec
 #endif
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 #include <sys/inotify.h>
 #include <sys/sysmacros.h>
-#elif defined __APPLE__ || defined __FreeBSD__
+#elif K_PLATFORM_IS(K_APPLE | K_FREEBSD)
 #include <sys/event.h>
 #endif
 
-#if !defined __linux__
+#if K_PLATFORM_ISNT K_LINUX
 #include <utmpx.h>
 #endif
 
@@ -66,8 +66,7 @@ install_descriptor(int fd, int target) wontthrow -> int
 fn
 create_private_pipe(int descriptors[2]) wontthrow -> int
 {
-#if defined __linux__ || defined __FreeBSD__ || defined __NetBSD__ ||          \
-    defined __OpenBSD__ || defined __DragonFly__
+#if K_PLATFORM_IS(K_LINUX | K_FREEBSD | K_NETBSD | K_OPENBSD | K_DRAGONFLY)
 
   return ::pipe2(descriptors, O_CLOEXEC);
 #else
@@ -92,7 +91,7 @@ create_private_pipe(int descriptors[2]) wontthrow -> int
 fn
 open_current_directory_reference() wontthrow -> descriptor
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
   return ::open(".", O_PATH | O_DIRECTORY | O_CLOEXEC);
 #else
@@ -101,7 +100,7 @@ open_current_directory_reference() wontthrow -> descriptor
 #endif
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
 class PlatformPerfSession
 {
@@ -336,7 +335,7 @@ public:
   }
 };
 
-#elif defined __APPLE__ && defined __aarch64__
+#elif (K_PLATFORM_IS K_APPLE) && (K_ARCH_IS K_ARM64)
 
 struct kpep_db;
 struct kpep_event;
@@ -759,7 +758,7 @@ public:
 fn
 platform_peak_rss_bytes(long peak_rss) wontthrow -> u64
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
   /* linux reports ru_maxrss in kibibytes, so the value scales by 1024. */
   return static_cast<u64>(peak_rss) * 1024ULL;
@@ -791,7 +790,7 @@ passwd_field(StringView line, usize index) wontthrow -> StringView
   return StringView{};
 }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 fn
 uid_to_username(u32 uid) throws -> Maybe<String>
 {
@@ -1159,7 +1158,7 @@ get_user_group_ids(u32 user_id, Allocator allocator) throws
 }
 #endif
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 fn
 logged_in_users() throws -> ArrayList<user_session>
 {
@@ -1256,7 +1255,7 @@ fn
 affinity_processor_count(usize online_count, usize configured_count) wontthrow
     -> usize
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   usize affinity_capacity = configured_count;
 
   if (affinity_capacity < CPU_SETSIZE) affinity_capacity = CPU_SETSIZE;
@@ -1293,7 +1292,7 @@ affinity_processor_count(usize online_count, usize configured_count) wontthrow
 fn
 current_executable_path() wontthrow -> Maybe<String>
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   u32 capacity = 0;
 
   _NSGetExecutablePath(nullptr, &capacity);
@@ -1324,7 +1323,7 @@ current_executable_path() wontthrow -> Maybe<String>
 #endif
 }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 
 static fn
 process_state_letter(char state) wontthrow -> char
@@ -1431,7 +1430,7 @@ enumerate_processes(process_detail detail) throws
   return processes;
 }
 
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
 
 static fn
 format_proc_pid_path(char (&path)[64],
@@ -1696,7 +1695,7 @@ enumerate_processes(process_detail) throws -> ArrayList<process_entry>
 
 #endif
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
 /* memory: described is heap_allocator() memory owned by the caller. the
            strings in each entry move out of their /proc read buffers.
@@ -1776,7 +1775,7 @@ describe_processes(const ArrayList<u32> &pids) throws
 
 #endif
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 static fn
 cached_stat_at(int directory_fd, const char *path, struct stat &status)
     wontthrow
@@ -1811,7 +1810,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
                         ArrayList<process_file_user>        &users,
                         Allocator scratch) throws -> Maybe<u32>
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   unused(scratch);
 
   let const do_matches_vnode = [](const process_file_query &query,
@@ -1965,7 +1964,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
   }
 
   return None;
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   DIR *proc_directory = ::opendir("/proc");
 
   if (proc_directory == nullptr) return queries[0].query_position;
@@ -2218,7 +2217,7 @@ read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
   }
 
   return true;
-#elif defined __APPLE__
+#elif K_PLATFORM_IS K_APPLE
   malloc_statistics_t default_zone_stats{};
 
   malloc_zone_statistics(malloc_default_zone(), &default_zone_stats);
@@ -2234,7 +2233,7 @@ read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
 #endif
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
 static fn
 read_small_file(const char *path, char *buffer, usize capacity)
@@ -2433,7 +2432,7 @@ read_pressure_totals(const char *path,
 fn
 read_system_activity_status(system_activity_status &status) wontthrow -> bool
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   let const                 host_port = mach_host_self();
   host_cpu_load_info_data_t cpu{};
   mach_msg_type_number_t    cpu_count = HOST_CPU_LOAD_INFO_COUNT;
@@ -2472,7 +2471,7 @@ read_system_activity_status(system_activity_status &status) wontthrow -> bool
   }
 
   return status.available_fields != 0;
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   status.has_isolation_probes = true;
 
   char      stat_buffer[65536];
@@ -2783,7 +2782,7 @@ read_network_interface_statistics() throws
     -> ArrayList<network_interface_statistics_entry>
 {
   let result = ArrayList<network_interface_statistics_entry>{heap_allocator()};
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   int   name_mib[6] = {CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST2, 0};
   usize byte_count  = 0;
 
@@ -2859,7 +2858,7 @@ read_network_interface_statistics() throws
     position += header->ifm_msglen;
   }
 
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   let const contents = Path{"/proc/net/dev"}.read_entire_file();
 
   if (!contents.has_value()) return result;
@@ -2914,7 +2913,7 @@ read_network_interface_statistics() throws
   return result;
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
 static fn
 append_kernel_socket_table(
@@ -2960,7 +2959,7 @@ fn
 kernel_sockets() throws -> ArrayList<kernel_socket_entry>
 {
   let result = ArrayList<kernel_socket_entry>{heap_allocator()};
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   append_kernel_socket_table("/proc/net/netlink", kernel_socket_kind::Netlink,
                              result);
   append_kernel_socket_table("/proc/net/packet", kernel_socket_kind::Packet,
@@ -2973,7 +2972,7 @@ kernel_sockets() throws -> ArrayList<kernel_socket_entry>
 fn
 read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   int            name_mib[4] = {CTL_NET, PF_INET, IPPROTO_TCP, TCPCTL_STATS};
   struct tcpstat native{};
   usize          native_length = sizeof(native);
@@ -3009,7 +3008,7 @@ read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
       static_cast<u32>(tcp_statistics_field::RetransmitTimeouts);
 
   return true;
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   char      buffer[32768];
   let const length = read_small_file("/proc/net/snmp", buffer, sizeof(buffer));
 
@@ -3088,7 +3087,7 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
 {
   disk_io_snapshot snapshot{ArrayList<disk_io_status>{allocator},
                             monotonic_nanos()};
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   let const *matching = IOServiceMatching(kIOBlockStorageDriverClass);
 
   if (matching == nullptr) return snapshot;
@@ -3219,7 +3218,7 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
     if (status.available_fields != 0) snapshot.disks.push(steal(status));
   }
 
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   let const contents = Path{"/proc/diskstats"}.read_entire_file();
 
   if (!contents.has_value()) return snapshot;
@@ -3303,7 +3302,7 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
 fn
 system_uptime_seconds() wontthrow -> Maybe<u64>
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   struct timeval boot_time{};
   usize          boot_time_byte_count = sizeof(boot_time);
   int            name_mib[2]          = {CTL_KERN, KERN_BOOTTIME};
@@ -3317,7 +3316,7 @@ system_uptime_seconds() wontthrow -> Maybe<u64>
   if (now <= boot_time.tv_sec) return None;
 
   return static_cast<u64>(now - boot_time.tv_sec);
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   char buffer[128];
 
   if (read_small_file("/proc/uptime", buffer, sizeof(buffer)) == 0) return None;
@@ -3332,7 +3331,7 @@ system_uptime_seconds() wontthrow -> Maybe<u64>
 fn
 read_memory_status(memory_status &status) wontthrow -> bool
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   u64   memory_byte_count        = 0;
   usize memory_result_byte_count = sizeof(memory_byte_count);
 
@@ -3381,7 +3380,7 @@ read_memory_status(memory_status &status) wontthrow -> bool
   }
 
   return true;
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   struct meminfo_field
   {
     StringView name;
@@ -3464,7 +3463,7 @@ read_memory_status(memory_status &status) wontthrow -> bool
 fn
 read_swap_status(swap_status &status) wontthrow -> bool
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   struct xsw_usage swap{};
   usize            swap_length = sizeof(swap);
 
@@ -3498,7 +3497,7 @@ read_swap_status(swap_status &status) wontthrow -> bool
   }
 
   return true;
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   memory_status memory{};
 
   if (!read_memory_status(memory)) return false;
@@ -3559,7 +3558,7 @@ read_swap_status(swap_status &status) wontthrow -> bool
 #endif
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 static fn
 parse_linux_process_io_status(StringView         text,
                               process_io_status &status) wontthrow -> void
@@ -3599,7 +3598,7 @@ parse_linux_process_io_status(StringView         text,
 fn
 read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   rusage_info_v2 usage{};
 
   if (::proc_pid_rusage(static_cast<int>(pid), RUSAGE_INFO_V2,
@@ -3612,7 +3611,7 @@ read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
   status.written_byte_count = usage.ri_diskio_byteswritten;
 
   return true;
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   char path[64];
 
   if (!format_proc_pid_path(path, pid, "/io")) return false;
@@ -3658,7 +3657,7 @@ read_process_io_statuses(const ArrayList<i64>         &process_ids,
     availability.push(0);
   }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   constexpr usize PROCESS_IO_BATCH_COUNT = 64;
   struct process_io_probe
   {
@@ -3735,7 +3734,7 @@ read_process_io_statuses(const ArrayList<i64>         &process_ids,
 fn
 processor_model_name(Allocator allocator) throws -> Maybe<String>
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   usize name_length = 0;
 
   if (::sysctlbyname("machdep.cpu.brand_string", nullptr, &name_length, nullptr,
@@ -3755,7 +3754,7 @@ processor_model_name(Allocator allocator) throws -> Maybe<String>
   buffer.begin()[name_length] = '\0';
 
   return String{allocator, StringView{buffer.begin()}};
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   static constexpr StringView KNOWN_KEYS[] = {
       "model name", "Model name", "Hardware", "cpu model", "Processor"};
   char      buffer[16384];
@@ -3810,7 +3809,7 @@ processor_model_name(Allocator allocator) throws -> Maybe<String>
 #endif
 }
 
-#if defined __APPLE__ || defined __linux__
+#if K_PLATFORM_IS(K_APPLE | K_LINUX)
 
 static pure fn
 open_flags_access(int open_flags) wontthrow -> char
@@ -3829,7 +3828,7 @@ open_flags_access(int open_flags) wontthrow -> char
 fn
 has_process_open_file_listing() wontthrow -> bool
 {
-#if defined __APPLE__ || defined __linux__
+#if K_PLATFORM_IS(K_APPLE | K_LINUX)
 
   return true;
 #else
@@ -3860,7 +3859,7 @@ list_process_open_files(i64                      pid,
     });
   };
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   if (detail == process_open_file_detail::IncludeMappings) {
     files.push(process_open_file{
         String{allocator, "[inaccessible]"},
@@ -3949,7 +3948,7 @@ list_process_open_files(i64                      pid,
   }
 
   return files;
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   char process_path[64];
 
   if (!format_proc_pid_path(process_path, pid, "")) return files;
@@ -4215,7 +4214,7 @@ constexpr f64 FILE_WATCHER_SLICE_SECONDS = 0.1;
 static fn
 list_child_process_ids(ArrayList<pid_t> &child_ids) throws -> bool
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   let path = String{heap_allocator(), "/proc/self/task/"};
 
   path.append(String::from(static_cast<i64>(getpid()), heap_allocator()));
@@ -4249,7 +4248,7 @@ list_child_process_ids(ArrayList<pid_t> &child_ids) throws -> bool
 fn
 FileWatcher::reports_child_changes() const wontthrow -> bool
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   return m_descriptor != KOSH_INVALID_FD && !m_has_failed_watch;
 #else
   return false;
@@ -4258,9 +4257,9 @@ FileWatcher::reports_child_changes() const wontthrow -> bool
 
 FileWatcher::FileWatcher() wontthrow
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   m_descriptor = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
-#elif defined __APPLE__ || defined __FreeBSD__
+#elif K_PLATFORM_IS(K_APPLE | K_FREEBSD)
   m_descriptor = kqueue();
   if (m_descriptor != KOSH_INVALID_FD) fcntl(m_descriptor, F_SETFD, FD_CLOEXEC);
 #endif
@@ -4284,7 +4283,7 @@ FileWatcher::~FileWatcher()
 fn
 FileWatcher::watch(StringView path) wontthrow -> void
 {
-#if defined __linux__ || defined __APPLE__ || defined __FreeBSD__
+#if K_PLATFORM_IS(K_LINUX | K_APPLE | K_FREEBSD)
   if (m_descriptor == KOSH_INVALID_FD || path.length == 0 ||
       path.length >= PATH_MAX)
   {
@@ -4312,7 +4311,7 @@ FileWatcher::watch(StringView path) wontthrow -> void
     directory_path[directory_length] = '\0';
   }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   if (inotify_add_watch(m_descriptor, file_path,
                         IN_MASK_ADD | IN_MODIFY | IN_ATTRIB | IN_DELETE_SELF |
                             IN_MOVE_SELF | IN_CREATE | IN_DELETE |
@@ -4354,7 +4353,7 @@ FileWatcher::watch(StringView path) wontthrow -> void
       stored = KOSH_INVALID_FD;
     }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
     let const watched = open(watched_paths[side], O_EVTONLY | O_CLOEXEC);
 #else
     let const watched = open(watched_paths[side], O_RDONLY | O_CLOEXEC);
@@ -4385,9 +4384,10 @@ FileWatcher::watch(StringView path) wontthrow -> void
 
 /* memory: no heap allocation. the Linux read buffer is a 4096 byte stack
            array.
-   time:   one poll(), kevent(), or sleep per slice of at most
-           FILE_WATCHER_SLICE_SECONDS, so about timeout_seconds / 0.1 calls
-           without events. returns after one readable event. no locks. */
+   time:   waits in slices of at most FILE_WATCHER_SLICE_SECONDS. Linux
+           delegates polling to wait_for_fd_readable() and drains queued events
+           with repeated 4096-byte read() calls before returning true. BSD and
+           macOS return after kevent() reports an event. */
 fn
 FileWatcher::wait(f64 timeout_seconds) wontthrow -> bool
 {
@@ -4407,7 +4407,7 @@ FileWatcher::wait(f64 timeout_seconds) wontthrow -> bool
     /* at this point: m_descriptor is valid, and slice_seconds is positive and
        at most FILE_WATCHER_SLICE_SECONDS, since remaining_seconds was positive
        when the loop condition held. */
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
     if (wait_for_fd_readable(m_descriptor,
                              static_cast<i64>(slice_seconds * 1e9) + 1) <= 0)
     {
@@ -4419,7 +4419,7 @@ FileWatcher::wait(f64 timeout_seconds) wontthrow -> bool
     while (read(m_descriptor, events, sizeof(events)) > 0) {}
 
     return true;
-#elif defined __APPLE__ || defined __FreeBSD__
+#elif K_PLATFORM_IS(K_APPLE | K_FREEBSD)
     struct timespec timeout;
 
     timeout.tv_sec  = static_cast<time_t>(slice_seconds);

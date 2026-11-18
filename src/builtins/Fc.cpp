@@ -147,9 +147,9 @@ report_fc_selection_error(const ExecContext    &ec,
 }
 
 /* memory: result String in allocator, owned by the caller.
-   time:   O(source.length * pattern.length) in the worst case, since each
-           position compares at most pattern.length bytes. an empty pattern
-           appends replacement once per byte of source. */
+   time:   O(source.length * max(1, pattern.length) + output bytes). each
+           position compares at most pattern.length bytes; an empty pattern
+           appends replacement once per source byte. */
 static fn
 replace_all(StringView source,
             StringView pattern,
@@ -517,9 +517,9 @@ edit_fc_commands(const ExecContext                          &ec,
 
 /* memory: every history event and its command string in
            cxt.scratch_allocator(), freed when the scratch arena resets.
-   time:   O(H) to decode the H entries of the history file, plus the file
-           load on first use. each text specification scans the events in
-           resolve_fc_selection(), which is O(H) per specification. */
+   time:   decoding depends on record bytes, plus the initial file load.
+           resolve_fc_selection() scans command prefixes per specification.
+           editing and execution add their own costs. */
 fn
 Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

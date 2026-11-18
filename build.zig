@@ -73,9 +73,9 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
 }
 
-/// Each mood becomes a relative link to the executable beside it in bin, or a
-/// copy named MOOD.exe on Windows. A file that is not such a link stays and
-/// fails the install.
+/// each mood becomes a relative link beside the executable on non-Windows
+/// targets, where scripts/link-moods.sh rejects unrelated existing files.
+/// Windows installs a copy named MOOD.exe.
 fn addMoodLinks(b: *std.Build, install_exe: *std.Build.Step.InstallFile, executable: std.Build.LazyPath, exe_name: []const u8, list: []const u8, is_windows: bool) void {
     var moods: std.ArrayList([]const u8) = .empty;
     var names = std.mem.splitScalar(u8, list, ',');

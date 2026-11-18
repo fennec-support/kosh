@@ -28,8 +28,7 @@ fn
 allocate_aligned(usize length, usize alignment) wontthrow -> opaque *;
 fn
 free_aligned(opaque *pointer) wontthrow -> void;
-/* 64 bits from the kernel's startup random bytes or the platform random
-   source, mixed with a stack address. */
+/* a stack address mixed with platform random bytes where available. */
 fn
 get_startup_random() wontthrow -> u64;
 } /* namespace os */
@@ -155,9 +154,8 @@ private:
   static constexpr usize MAX_BLOCKS_PER_CLASS         = 512;
   static constexpr usize MAX_RETAINED_BYTES_PER_CLASS = 64 * 1024;
 
-  /* a freed block holds the next block of its bin as glibc safe-linking
-     stores it: xored with its own address shifted right by 12 and with a
-     startup secret. */
+  /* a freed block stores its next pointer xored with its own address shifted
+     right by 12 and with a startup secret. */
   struct Node
   {
     uintptr mangled_next;
@@ -174,8 +172,7 @@ private:
            (reinterpret_cast<uintptr>(node) >> 12) ^ m_secret;
   }
 
-  /* traps on a link that does not decode to a malloc-aligned block, which a
-     write after free leaves behind. */
+  /* traps when a decoded link is not malloc-aligned. */
   hot fn
   unmangle(const Node *node) const wontthrow -> Node *
   {

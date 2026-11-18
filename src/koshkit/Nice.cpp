@@ -56,8 +56,6 @@ Nice::execute(const ExecContext               &ec,
     increment = parsed.value();
   }
 
-  /* at this point: operands is not empty, and increment fits in i32. */
-
   cxt.prepare_child_environment();
 
   let const result = os::run_nice(operands, static_cast<i32>(increment));

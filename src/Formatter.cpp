@@ -1872,8 +1872,8 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
             opener.has_value())
         {
           switch (*opener) {
-          case block_opener::JoinedLoop: loop_do_join_states.push(true); break;
-          case block_opener::SplitLoop:  loop_do_join_states.push(false); break;
+          case block_opener::JoinedLoop:  loop_do_join_states.push(true); break;
+          case block_opener::SplitLoop:   loop_do_join_states.push(false); break;
           case block_opener::Conditional: pending_fi_counts.push(0); break;
           }
         }
@@ -2186,8 +2186,8 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         writer.append_token(rendered_operator);
       should_attach_redirection_operand = true;
       should_space_redirection_operand  = is_bash && text != "<<" &&
-                                          text != "<<-" &&
-                                          text[text.length - 1] != '&';
+                                         text != "<<-" &&
+                                         text[text.length - 1] != '&';
       continue;
     }
 
@@ -2311,8 +2311,9 @@ format_bash_function_source(StringView source) throws -> String
 /* memory: steal(candidates) moves the list into sorted_candidates, which is
            freed on return. unique and nonconflicting are heap_allocator()
            lists. nonconflicting is returned, and the caller owns it.
-   time:   O(k log k) for the sort of k candidates in make_sorted(), then O(k)
-           for the dedupe and group scans. */
+   sorting k candidates takes O(k log k) comparisons, followed by O(k)
+   deduplication and grouping checks. comparisons of expected and replacement
+   text also scan their shared prefixes. */
 fn
 select_nonconflicting_source_edits(
     ArrayList<const source_edit *> &&candidates) throws
@@ -2363,6 +2364,10 @@ select_nonconflicting_source_edits(
            candidate.start_position == candidate.end_position;
   };
 
+  /* e.g. the sorted spans are [0, 2), [1, 4), [3, 5), and [6, 7).
+     the first overlap extends overlap_end_position from 2 to 4, and the next
+     extends it to 5. the three-edit group is discarded, and the singleton
+     [6, 7) is retained. */
   while (candidate_index < unique.count()) {
     usize     group_end_position   = candidate_index + 1;
     let const group_start_position = unique[candidate_index]->start_position;
@@ -2468,11 +2473,10 @@ apply_source_fixes(StringView                   source,
   return output;
 }
 
-/* memory: original_positions holds at most source.count() + 1 entries and is
-           freed on return. the returned fixes own a String copy of each
-           original span.
-   time:   O(source length) to build original_positions, then O(total length
-           of the edit spans) for the copies. */
+/* original_positions holds at most source.count() + 1 entries and is freed on
+   return. the returned fixes own copies of original spans, replacements, and
+   titles. the work takes O(source length + fix count + edit count + copied
+   span, replacement, and title bytes). */
 fn
 source_fixes_for_original_line_endings(
     StringView                   source,

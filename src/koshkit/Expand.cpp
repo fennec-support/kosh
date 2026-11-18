@@ -38,8 +38,9 @@ Expand::execute(const ExecContext               &ec,
   /* memory: output holds converted text until it reaches
              OUTPUT_FLUSH_BYTE_COUNT. the flush check runs after each line, so
              output can hold one line past that length.
-     time:   O(b + k * t) for b input bytes, k tabs, and t tab stops, from the
-             scan in get_next_tab_column() for each tab. */
+     time:   O(b + k * t + o) for b input bytes, k tabs, t tab stops, and o
+             output bytes. get_next_tab_column() scans the stops for each tab.
+   */
   let tab_stops =
       utils::tab_stop_list{ArrayList<usize>{cxt.scratch_allocator()}};
 

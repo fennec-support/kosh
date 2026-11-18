@@ -322,10 +322,10 @@ is_idle_process_io(const os::process_io_status &status) wontthrow -> bool
                                            status.write_operation_count == 0));
 }
 
-/* memory: the local lists process_ids, process_positions, statuses, and
-           availability, and the list returned by os::enumerate_processes(),
-           are freed on return. the rows are allocated in allocator, and the
-           returned list owns them.
+/* memory: process_ids, process_positions, statuses, availability, and returned
+           rows use allocator. heap storage is freed by their owners. bump
+           storage remains until the owning arena is released. the process
+           enumeration is freed on return.
    time:   O(P) for the loop over P listed processes, plus the work of
            os::enumerate_processes(). one status probe for each of S selected
            processes. O(R log R) for the pid sort of R rows kept. */
@@ -353,8 +353,6 @@ read_process_io_rows(Allocator        allocator,
       continue;
     }
 
-    /* at this point: process.pid is positive, and when selected_pid has a
-       value, process.pid equals *selected_pid. */
     process_ids.push(process.pid);
     process_positions.push(process_position);
   }

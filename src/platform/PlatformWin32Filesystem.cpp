@@ -71,9 +71,9 @@ static fn
 fill_file_identity(const BY_HANDLE_FILE_INFORMATION &identity,
                    file_status                      &status) wontthrow -> void
 {
-  status.device_id         = identity.dwVolumeSerialNumber;
-  status.file_id           = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
-                             identity.nFileIndexLow;
+  status.device_id = identity.dwVolumeSerialNumber;
+  status.file_id   = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
+                   identity.nFileIndexLow;
   status.has_file_identity = true;
 }
 
@@ -1176,12 +1176,12 @@ open_file_descriptor_until_signal(StringView     path,
   return open_file_descriptor(path, mode);
 }
 
-/* memory: one ArrayList<wchar_t> for the absolute lock path, freed on return.
-           the returned descriptor belongs to the caller.
-   time:   a Blocking wait has no deadline and sleeps 10 milliseconds per
-           retry while CreateFileW() fails with a sharing or lock violation.
-           an Immediate wait returns None on the first violation. other errors
-           and an interrupt request return None. */
+/* memory: wide_path and absolute_path use heap_allocator() and are freed on
+           return. the caller releases the descriptor with
+   release_process_lock(). time:   regular files retry LockFileEx(). directories
+   retry an exclusive CreateFileW(). blocking retries sleep 10 ms without a
+   deadline. immediate waits return on the first lock conflict. other errors and
+           pending interrupts also end a failed attempt. */
 fn
 acquire_process_lock(StringView       path,
                      lock_inheritance inheritance,
@@ -1193,7 +1193,7 @@ acquire_process_lock(StringView       path,
 
   let const path_attributes = GetFileAttributesW(wide_path->begin());
   let const is_directory    = path_attributes != INVALID_FILE_ATTRIBUTES &&
-                              (path_attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+                           (path_attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
   constexpr wchar_t LOCK_NAME[]      = L".kosh-flock.lock";
   constexpr usize   LOCK_NAME_LENGTH = countof(LOCK_NAME) - 1;
@@ -2252,7 +2252,8 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     return koshka::None;
   }
 
-  /* both reparse layouts share the fields before path_buffer. */
+  /* both reparse layouts share the fields through print_name_length.
+       path_buffer_position accounts for the symlink flags field. */
   let const *data = reinterpret_cast<const mount_point_reparse_data *>(buffer);
 
   if (!do_select_target(path_buffer_position, data->data_length,
@@ -2574,9 +2575,9 @@ sync_filesystems() wontthrow -> bool
     if (GetDriveTypeW(drives + position) == DRIVE_FIXED && drive_length >= 2) {
       wchar_t   volume_path[8] = {L'\\', L'\\', L'.', L'\\', drives[position],
                                   L':',  L'\0'};
-      let const volume = CreateFileW(volume_path, GENERIC_WRITE,
-                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                     nullptr, OPEN_EXISTING, 0, nullptr);
+      let const volume         = CreateFileW(volume_path, GENERIC_WRITE,
+                                             FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                             nullptr, OPEN_EXISTING, 0, nullptr);
 
       if (volume != INVALID_HANDLE_VALUE) {
         if (FlushFileBuffers(volume) != 0) was_any_flushed = true;
@@ -2629,7 +2630,7 @@ current_executable_path() wontthrow -> Maybe<String>
     if (module_path_length == 0) return None;
     if (module_path_length < capacity)
       return wide_to_utf8(module_path.begin(), module_path_length,
-                          heap_allocator());
+                                       heap_allocator());
     if (capacity >= 32768) return None;
     capacity = capacity > 16384 ? 32768 : capacity * 2;
   }

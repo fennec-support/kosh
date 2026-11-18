@@ -3693,11 +3693,13 @@ EvalContext::compute_list_slice_bounds(
   }
 }
 
-/* memory: subscripts holds one String per element of a sparse array, and the
-           call frees it on return.
-   time:   O(1) for an associative array. for a sparse array, O(n) to collect
-           the subscripts and O(n) parses in the scan, with n =
-           element_count. */
+/* memory: subscripts holds heap-owned strings for the dense and sparse
+           indices and frees them on return. sparse index collection uses
+           the caller's scratch arena.
+   time:   evaluates the offset and optional length as arithmetic.
+           associative bounds then take constant work. sparse bounds scan all
+           stored sparse entries, sort the selected sparse indices, build the
+           dense and sparse subscript strings, and scan those strings. */
 fn
 EvalContext::compute_array_slice_bounds(
     StringView            name,

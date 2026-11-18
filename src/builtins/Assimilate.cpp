@@ -245,9 +245,9 @@ struct captured_program_result
 
 /* memory: the output String grows by appending each read of at most 4096
            bytes; the caller owns it through captured_program_result.
-   time:   each pass drains at most 16 reads (at most 64 KiB), then blocks in
-           wait() until output is ready or the 600 s deadline passes. the loop
-           ends on Finished or Failed. */
+   time:   each pass drains at most 16 reads (64 KiB). wait() uses readiness
+           waiting on POSIX and 1 ms polling on Windows. capture has a 600 s
+           deadline; the loop ends on Finished or Failed. */
 fn
 run_captured_program(const ArrayList<String> &arguments,
                      const ExecContext       &ec,

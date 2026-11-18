@@ -8,24 +8,24 @@
  * platform sync behavior, and native batched I/O.
  */
 
-#if defined __linux__ && !defined __ANDROID__
+#if (K_PLATFORM_IS K_LINUX) && (K_PLATFORM_ISNT K_ANDROID)
 #include <linux/io_uring.h>
 #include <sys/mman.h>
-#elif defined __APPLE__
+#elif K_PLATFORM_IS K_APPLE
 #include <aio.h>
 #include <sys/attr.h>
 #include <sys/fsgetpath.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <uuid/uuid.h>
-#elif defined BSD
+#elif K_PLATFORM_IS K_BSD
 #include <sys/mount.h>
 #endif
 
 namespace koshka {
 namespace os {
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 
 template <class Value>
 static fn
@@ -413,7 +413,7 @@ copy_type_name(filesystem_status &status, StringView name) wontthrow -> void
   status.type_name[copied_length] = '\0';
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
 static pure fn
 linux_filesystem_type_name(u64 type_id) wontthrow -> StringView
@@ -472,7 +472,7 @@ fill_native_filesystem_identity(const String      &path,
   copy_type_name(status, linux_filesystem_type_name(status.type_id));
 }
 
-#elif defined __APPLE__ || defined BSD
+#elif K_PLATFORM_IS(K_APPLE | K_BSD)
 
 static fn
 fill_native_filesystem_identity(const String      &path,
@@ -516,7 +516,7 @@ stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
   return true;
 }
 
-#if defined __APPLE__ || defined BSD
+#if K_PLATFORM_IS(K_APPLE | K_BSD)
 
 static fn
 describe_mount_flags(u64 flags) throws -> String
@@ -556,7 +556,7 @@ describe_mount_flags(u64 flags) throws -> String
   return options;
 }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 
 static fn
 read_volume_identity(mounted_filesystem &filesystem) throws -> void
@@ -629,7 +629,7 @@ read_volume_identity(mounted_filesystem &filesystem) wontthrow -> void
 
 #endif
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
 static fn
 decode_udev_filename(StringView filename, Allocator allocator) throws
@@ -729,7 +729,7 @@ static fn
 append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws
     -> void
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   let table = Path{"/proc/self/mounts"}.read_entire_file();
 
   if (!table.has_value()) table = Path{"/etc/mtab"}.read_entire_file();
@@ -808,7 +808,7 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws
                                  volume_identity_kind::Label);
   populate_linux_volume_identity(result, canonical_sources, "/dev/disk/by-uuid",
                                  volume_identity_kind::Uuid);
-#elif defined __APPLE__ || defined BSD
+#elif K_PLATFORM_IS(K_APPLE | K_BSD)
   struct statfs *entries     = nullptr;
   let const      entry_count = getmntinfo(&entries, MNT_NOWAIT);
 
@@ -878,7 +878,7 @@ find_mounted_filesystem(
   return selected_index;
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
 static fn
 read_native_filesystem_error_counters(
@@ -1096,7 +1096,7 @@ verify_filesystem_integrity(StringView path,
                             u64        timeout_nanoseconds) throws
     -> filesystem_verification_result
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   let const filesystems    = mounted_filesystems();
   let const selected_index = find_mounted_filesystem(path, filesystems);
 
@@ -1202,7 +1202,7 @@ verify_filesystem_integrity(StringView path,
 #endif
 }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 
 static fn
 sync_native_descriptor(descriptor fd, sync_mode mode) wontthrow -> bool
@@ -1360,7 +1360,7 @@ execute_batched_syscall_direct(const batched_syscall  &operation,
 
     return;
   case batched_syscall_id::LstatAt:
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   {
     struct stat info{};
 
@@ -1394,7 +1394,7 @@ execute_batched_syscall_direct(const batched_syscall  &operation,
   }
 }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 
 static pure fn
 find_directory_status_entry(const ArrayList<directory_status_entry> &entries,
@@ -1760,7 +1760,7 @@ execute_native_batch(const batched_syscall  *operations,
   return execute_suspended_aio_batch(operations, operation_count, results);
 }
 
-#elif defined __linux__ && !defined __ANDROID__
+#elif (K_PLATFORM_IS K_LINUX) && (K_PLATFORM_ISNT K_ANDROID)
 
 static fn
 fill_file_status(const struct statx &info, file_status &status)
@@ -2073,10 +2073,10 @@ io_uring_batch_supports_operations(const io_uring_batch  &ring,
            IO_URING_ENTRY_COUNT entries per chunk. the mappings belong to the
            static thread_local ring, closed when the owning process changes or
            the thread exits.
-   time:   O(operation_count) for validation, queueing, and completion, with
-           one io_uring_enter() per submit or wait round. an operation that
-           the ring reports as unsupported costs one direct syscall. no
-   locks. */
+   time:   validation takes O(operation_count^2) in the worst case for
+           WriteCurrent requests. queueing and completion scan each operation,
+           with one io_uring_enter() per submit or wait round. an unsupported
+           operation falls back to a direct syscall. no locks. */
 static fn
 execute_native_batch(const batched_syscall  *operations,
                      usize                   operation_count,

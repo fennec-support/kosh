@@ -26,11 +26,11 @@
 #include <syslog.h>
 #include <wctype.h>
 
-#if defined __APPLE__ || defined __FreeBSD__
+#if K_PLATFORM_IS(K_APPLE | K_FREEBSD)
 #include <xlocale.h>
 #endif
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/sock_diag.h>
@@ -40,7 +40,7 @@
 namespace koshka {
 namespace os {
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
 static pure fn
 linux_socket_state(u64 value) wontthrow -> network_socket_state
@@ -72,9 +72,9 @@ linux_socket_address(StringView             encoded,
 
     u8 bytes[16]{};
 
-    /* e.g. encoded = "00000000000000000000000001000000" for ::1. word 3 parses
-       to the host-order value the kernel printed, so memcpy() restores
-       bytes[12] through bytes[15] as 00 00 00 01 on either byte order. */
+    /* e.g. ::1 is "00000000000000000000000001000000" on little-endian hosts.
+       on big-endian hosts the final word is "00000001". parsing the kernel's
+       host-order word and memcpy() restore bytes[12..16) as 00 00 00 01. */
     for (usize word_index = 0; word_index < 4; word_index++) {
       let const word = utils::parse_integer_in_base_u64(
           encoded.substring_of_length(word_index * 8, 8), int_base::hex);
@@ -1444,7 +1444,7 @@ network_interface_addresses() throws
 fn
 default_network_interface(Allocator allocator) throws -> Maybe<String>
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   let const contents = Path{"/proc/net/route"}.read_entire_file();
 
   if (!contents.has_value()) return None;
@@ -1510,7 +1510,7 @@ default_network_interface(Allocator allocator) throws -> Maybe<String>
   return None;
 }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 
 enum class socket_address_side : u8
 {
@@ -1581,7 +1581,7 @@ socket_address(const struct in_sockinfo &info,
 fn
 has_network_socket_listing() wontthrow -> bool
 {
-#if defined __APPLE__ || defined __linux__
+#if K_PLATFORM_IS(K_APPLE | K_LINUX)
 
   return true;
 #else
@@ -1596,7 +1596,7 @@ network_sockets(network_socket_process_mode process_mode) throws
 {
   let result = ArrayList<network_socket_entry>{heap_allocator()};
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   let const processes = enumerate_processes();
 
   for (let const &process : processes) {
@@ -1660,15 +1660,15 @@ network_sockets(network_socket_process_mode process_mode) throws
           info.soi_snd.sbi_cc,
           0,
           process_mode == network_socket_process_mode::WithProcesses
-              ? static_cast<u32>(process.pid)
-              : 0,
+                        ? static_cast<u32>(process.pid)
+                        : 0,
           ntohs(static_cast<u16>(internet.insi_lport)),
           ntohs(static_cast<u16>(internet.insi_fport)),
           protocol,
           family,
           protocol == network_socket_protocol::Tcp
-              ? socket_state_of(info.soi_proto.pri_tcp.tcpsi_state)
-              : network_socket_state::Unconnected,
+                        ? socket_state_of(info.soi_proto.pri_tcp.tcpsi_state)
+                        : network_socket_state::Unconnected,
           network_unix_socket_type::Stream,
       };
 
@@ -1680,7 +1680,7 @@ network_sockets(network_socket_process_mode process_mode) throws
     }
   }
 
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   let const allocator = heap_allocator();
   let       owners    = ArrayList<linux_socket_owner>{allocator};
 
@@ -1705,7 +1705,7 @@ network_sockets(network_socket_process_mode process_mode) throws
     let       entries = linux_network_sockets_from_file(
         path.view(), source.protocol,
         process_mode == network_socket_process_mode::WithProcesses ? &owners
-                                                                   : nullptr,
+                                                                         : nullptr,
         allocator, source.family, process_mode);
 
     for (let &entry : entries)
@@ -1889,7 +1889,8 @@ TerminalEchoGuard::~TerminalEchoGuard()
   if (m_should_restore) unused(tcsetattr(m_input, TCSANOW, &m_original_mode));
 }
 
-/* the raw input mode clears ECHO and ICANON and keeps ISIG. */
+/* the raw input mode clears ECHO and ICANON and preserves the original ISIG
+   setting. */
 static fn
 get_raw_input_mode(const termios &original) wontthrow -> termios
 {
@@ -2836,7 +2837,7 @@ make_fd_inheritable(descriptor fd) wontthrow -> void
   if (flags != -1) fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
 }
 
-#if KOSH_PLATFORM_ISNT KOSH_PLATFORM_COSMO
+#if K_PLATFORM_ISNT K_COSMO
 const ProgramSuffixList PROGRAM_SUFFIXES{POSIX_PROGRAM_SUFFIXES};
 
 fn
@@ -3201,7 +3202,7 @@ probe_stack_floor() wontthrow -> uintptr_t
   usize stack_byte_count = 0;
   let   stack_low        = uintptr_t{0};
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   pthread_attr_t attributes;
   void          *stack_address = nullptr;
 
@@ -3230,7 +3231,7 @@ probe_stack_floor() wontthrow -> uintptr_t
       }
     }
   }
-#elif defined __APPLE__
+#elif K_PLATFORM_IS K_APPLE
   stack_byte_count = pthread_get_stacksize_np(pthread_self());
   stack_low =
       reinterpret_cast<uintptr_t>(pthread_get_stackaddr_np(pthread_self())) -
@@ -3981,7 +3982,7 @@ sleep_for_seconds(double seconds) wontthrow -> void
 
 } /* namespace koshka */
 
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
+#if K_PLATFORM_IS K_COSMO
 
 namespace koshka {
 
@@ -4025,7 +4026,7 @@ get_current_session_id() wontthrow -> i64
 fn
 register_platform_flags(FlagList &flags) throws -> void
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
+#if K_PLATFORM_IS K_COSMO
   static FlagBool ftrace{'\0', "ftrace", flag_section::Debug,
                          "Trace functions under Cosmopolitan."};
   static FlagBool strace{'\0', "strace", flag_section::Debug,
@@ -4041,7 +4042,7 @@ register_platform_flags(FlagList &flags) throws -> void
 fn
 initialize_platform_runtime() wontthrow -> void
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
+#if K_PLATFORM_IS K_COSMO
   ShowCrashReports();
 #endif
   capture_entry_ignored_signals();

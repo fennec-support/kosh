@@ -1251,8 +1251,8 @@ take_inherited_shell() throws -> inherited_shell
   inherited.should_use_command_string_status = should_use_command_string_status;
   inherited.source_origin = steal(inherited.bootstrap.source_origin);
   /* windows cannot fork an evaluator (os::can_fork_evaluator() returns false
-     in src/PlatformWin32Process.cpp), so the shell state arrives through the
-     environment. */
+     in src/platform/PlatformWin32Process.cpp), so the shell state arrives
+     through the environment. */
   if (!os::can_fork_evaluator() && !inherited.bootstrap.payload.is_empty()) {
     inherited.state = os::inherited_subshell_state::take_from_environment();
     if (!inherited.state.has_value()) {

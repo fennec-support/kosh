@@ -201,6 +201,13 @@ public:
     }
   }
 
+  /* memory: directory listings and temporary paths use the evaluator scratch
+             arena and are released at their enclosing walk or child mark.
+             unknown-type probes reuse heap buffers owned by this walker.
+             batched exec paths remain heap-owned until run_batch().
+     time:   each visited directory lists and sorts its children. unknown child
+             types require one lstat() each. matching, output, and exec actions
+             add their own work for each selected entry. */
   fn
   walk(StringView path_text,
        StringView display,
@@ -242,7 +249,6 @@ public:
       return;
     }
 
-    /* at this point: children holds the entries of the directory path_text. */
     let const child_depth = depth + 1;
     let const is_terminal_depth =
         m_options.max_depth >= 0 &&

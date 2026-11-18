@@ -454,6 +454,8 @@ while [ -n "$REMAINING_MOODS" ]; do
     printf '%s\n' "$LINK_NAME" >> "$LOCK/links"
   fi
 done
+# recover_stale_lock() uses the durable committed marker to keep the installed
+# target after interruption. the marker precedes removal of rollback data.
 trap '' HUP INT TERM
 if ! : > "$LOCK/committed"; then
   cleanup 1

@@ -596,7 +596,7 @@ private:
   u8                m_flags{0};
   reporting_state   m_reporting{};
   u16               m_wrap_width{80};
-  u64 m_shell_options{option_mask(shell_option_id::ExtendedArithmetic) |
+  u64         m_shell_options{option_mask(shell_option_id::ExtendedArithmetic) |
                       option_mask(shell_option_id::Failglob) |
                       option_mask(shell_option_id::Hashall) |
                       option_mask(shell_option_id::HistoryPrefixSearch) |

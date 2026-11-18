@@ -13,7 +13,7 @@
 # the golden stays the same on any checkout. A warning caret is left alone,
 # because it spans the reported word and its width is the finding.
 #
-# Usage: ... | normalize-trace.sh "$BIN"
+# usage: ... | invoke-normalize-trace "$BIN"
 BIN=$1
 BIN_FORWARD=$(printf '%s\n' "$BIN" | tr '\\' '/')
 BIN_BACKWARD=$(printf '%s\n' "$BIN_FORWARD" | tr '/' '\\')

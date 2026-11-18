@@ -208,9 +208,9 @@ masked_section_source(StringView source, usize start, usize end) throws
 
 /* memory: none held by the loop. each masked_section_source() String is
            owned by the document after parser_format_add_fragment() takes it.
-   time:   O(N) to scan the lines once, plus one masked_section_source() call
-           per script section with a known interpreter. each call costs
-           O(shell_end - shell_start), so the file costs O(N). */
+   time:   O(N) line scanning plus masked_section_source() per known script
+           section. malformed repeated openers can rescan a line for each
+           opener, as described by masked_section_source(). */
 fn
 parse_rpm_spec_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void

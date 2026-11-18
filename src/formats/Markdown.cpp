@@ -201,8 +201,8 @@ session_heredoc(StringView line) throws -> Maybe<lexer::pending_heredoc>
 /* memory: String of end - start bytes from heap_allocator(), reserved up
            front and owned by the document after
            parser_format_add_indented_fragment() takes it.
-   time:   O(end - start), since the pass over [start, end) touches each byte
-           once. */
+   time:   direct line scanning plus prompt, placeholder, and heredoc helpers.
+           heredoc classification can rescan a line prefix per operator. */
 static fn
 markdown_analysis_source(StringView        source,
                          usize             start,

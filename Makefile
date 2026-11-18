@@ -107,7 +107,6 @@ fuzz:
 			"fuzz/corpus/$$name" || exit 1; \
 	done
 
-# docs renders each docs/NAME_SECTION.md into man/NAME.SECTION with pandoc.
 PANDOC ?= pandoc
 
 docs:

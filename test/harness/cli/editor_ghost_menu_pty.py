@@ -23,9 +23,9 @@
 # inserted before a word with the caret at its start and replaces a word with
 # the caret inside it. With the space-after option on, a spec completion takes
 # a space unless the spec has nospace, and a nosort reply keeps its order in
-# the menu. A sole completion stops after its word, space, or slash without a
-# menu, only a second Tab lists a directory, and one Ctrl-Z undoes a
-# completion with its space. It also covers word-wise ghost
+# the menu. a sole completion keeps the menu open after its word, space, or
+# slash. a second Tab accepts a directory entry, and Ctrl-Z undoes a completion
+# with its space. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, a Ctrl-R menu that flags a miss and cuts
 # a long entry with an ellipsis, and the inline synopsis rows for a command and
@@ -230,6 +230,9 @@ class Screen:
             self.row = self.get_top_row()
             self.column = 0
 
+    # e.g. feed(b"ab\x1b[") draws "ab" at column 2 and keeps b"\x1b[" pending.
+    # feed(b"1DX") completes cursor-left and replaces "b" with "X".
+    # the row becomes "aX", and the column is 2.
     def feed(self, data):
         data = self.pending + data
         index = 0

@@ -186,6 +186,8 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
     assignment_update_mode update_mode;
     bool                   has_fixed_end;
   };
+  /* e.g. "x=x+1" queues the target x at 0, records the x at 2 as a reference,
+     then records the queued assignment during the final drain. */
   let   pending_writes    = ArrayList<arithmetic_write>{heap_allocator()};
   usize parenthesis_depth = 0;
   usize bracket_depth     = 0;

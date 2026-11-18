@@ -2,9 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file fuzzes the lexer, the parser, and the formatter through
- * format_shell_source. The first input byte selects the mood and a file
- * name, so the embedded format parsers also receive input.
+ * This file fuzzes shell parsing and formatting through format_shell_source().
+ * The first input byte selects the mood and diagnostic filename.
  */
 
 #include "Formatter.hpp"

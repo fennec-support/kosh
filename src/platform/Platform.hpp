@@ -7,17 +7,112 @@
  * keeps platform headers and value conventions out of shell subsystems.
  */
 
-#pragma once
+#ifndef K_PLATFORM_DETECTION_HPP
+#define K_PLATFORM_DETECTION_HPP
+
+#define K_X86_64 0b1
+#define K_ARM64  0b10
+#define K_X86    0b100
+#define K_ARM    0b1000
+
+#if defined __x86_64__ || defined __amd64__ || defined _M_X64
+#define K_ARCH_SUPPORT_VECTOR K_X86_64
+#elif defined __aarch64__ || defined __arm64__ || defined _M_ARM64
+#define K_ARCH_SUPPORT_VECTOR K_ARM64
+#elif defined __i386__ || defined _M_IX86
+#define K_ARCH_SUPPORT_VECTOR K_X86
+#elif defined __arm__ || defined _M_ARM
+#define K_ARCH_SUPPORT_VECTOR K_ARM
+#else
+#define K_ARCH_SUPPORT_VECTOR 0
+#endif
+
+#define K_ARCH_IS   (K_ARCH_SUPPORT_VECTOR) &
+#define K_ARCH_ISNT (~K_ARCH_SUPPORT_VECTOR) &
+
+#define K_CLANG   0b1
+#define K_GCC     0b10
+#define K_MSVC    0b100
+#define K_COSMOCC 0b1000
+
+#if defined __clang__
+#define K_COMPILER_FRONTEND_VECTOR K_CLANG
+#elif defined __GNUC__
+#define K_COMPILER_FRONTEND_VECTOR K_GCC
+#else
+#define K_COMPILER_FRONTEND_VECTOR 0
+#endif
+
+#if defined _MSC_VER
+#define K_COMPILER_ABI_VECTOR K_MSVC
+#else
+#define K_COMPILER_ABI_VECTOR 0
+#endif
+
+#if defined __COSMOCC__
+#define K_COMPILER_DRIVER_VECTOR K_COSMOCC
+#else
+#define K_COMPILER_DRIVER_VECTOR 0
+#endif
+
+#define K_COMPILER_SUPPORT_VECTOR                                              \
+  (K_COMPILER_FRONTEND_VECTOR | K_COMPILER_ABI_VECTOR |                        \
+   K_COMPILER_DRIVER_VECTOR)
+#define K_COMPILER_IS   (K_COMPILER_SUPPORT_VECTOR) &
+#define K_COMPILER_ISNT (~K_COMPILER_SUPPORT_VECTOR) &
+
+#define K_POSIX     0b1
+#define K_WIN32     0b10
+#define K_COSMO     0b100
+#define K_LINUX     0b1000
+#define K_ANDROID   0b10000
+#define K_APPLE     0b100000
+#define K_BSD       0b1000000
+#define K_FREEBSD   0b10000000
+#define K_OPENBSD   0b100000000
+#define K_NETBSD    0b1000000000
+#define K_DRAGONFLY 0b10000000000
+
+#if defined __COSMOPOLITAN__
+#if defined __linux__
+#define K_PLATFORM_SUPPORT_VECTOR (K_POSIX | K_COSMO | K_LINUX)
+#else
+#define K_PLATFORM_SUPPORT_VECTOR (K_POSIX | K_COSMO)
+#endif
+#elif defined __ANDROID__
+#define K_PLATFORM_SUPPORT_VECTOR (K_POSIX | K_LINUX | K_ANDROID)
+#elif defined __linux__
+#define K_PLATFORM_SUPPORT_VECTOR (K_POSIX | K_LINUX)
+#elif defined __APPLE__
+#define K_PLATFORM_SUPPORT_VECTOR (K_POSIX | K_APPLE)
+#elif defined __FreeBSD__
+#define K_PLATFORM_SUPPORT_VECTOR (K_POSIX | K_BSD | K_FREEBSD)
+#elif defined __OpenBSD__
+#define K_PLATFORM_SUPPORT_VECTOR (K_POSIX | K_BSD | K_OPENBSD)
+#elif defined __NetBSD__
+#define K_PLATFORM_SUPPORT_VECTOR (K_POSIX | K_BSD | K_NETBSD)
+#elif defined __DragonFly__
+#define K_PLATFORM_SUPPORT_VECTOR (K_POSIX | K_BSD | K_DRAGONFLY)
+#elif defined BSD
+#define K_PLATFORM_SUPPORT_VECTOR (K_POSIX | K_BSD)
+#elif defined _WIN32
+#define K_PLATFORM_SUPPORT_VECTOR (K_WIN32)
+#else
+#error Unsupported platform
+#endif
+
+#define K_PLATFORM_IS   (K_PLATFORM_SUPPORT_VECTOR) &
+#define K_PLATFORM_ISNT (~K_PLATFORM_SUPPORT_VECTOR) &
+
+#endif
+
+#if !defined K_PLATFORM_DETECTION_ONLY && !defined K_PLATFORM_HPP
+#define K_PLATFORM_HPP
 
 #include "../base/Common.hpp"
 
-#define KOSH_PLATFORM_POSIX 0b1
-#define KOSH_PLATFORM_WIN32 0b10
-#define KOSH_PLATFORM_COSMO 0b100
-
 /* clang-format off */
-#if defined __linux__ || defined BSD || defined __APPLE__ ||                   \
-    defined __COSMOPOLITAN__
+#if K_PLATFORM_IS K_POSIX
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -47,7 +142,7 @@
 #if defined CEOF
 #undef CEOF
 #endif
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 #include <linux/perf_event.h>
 #include <sched.h>
 #include <sys/ptrace.h>
@@ -58,7 +153,7 @@
 #if defined __GLIBC__
 #include <malloc.h>
 #endif
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 #pragma push_macro("cold")
 #undef cold
 #include <CoreFoundation/CoreFoundation.h>
@@ -85,14 +180,11 @@
 extern "C" void __lsan_disable(void);
 extern "C" void __lsan_enable(void);
 #endif
-#if defined __COSMOPOLITAN__
+#if K_PLATFORM_IS K_COSMO
 #include <libc/dce.h>
 #include <libc/runtime/runtime.h>
-#define KOSH_SUPPORT_VECTOR (KOSH_PLATFORM_COSMO | KOSH_PLATFORM_POSIX)
-#else
-#define KOSH_SUPPORT_VECTOR (KOSH_PLATFORM_POSIX)
 #endif
-#elif defined _WIN32
+#elif K_PLATFORM_IS K_WIN32
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -146,12 +238,8 @@ extern "C" void __lsan_enable(void);
 #include <sys/stat.h>
 #include <tlhelp32.h>
 #include "../../vendor/regex/regex.h"
-#define KOSH_SUPPORT_VECTOR (KOSH_PLATFORM_WIN32)
 #endif
 /* clang-format on */
-
-#define KOSH_PLATFORM_IS   (KOSH_SUPPORT_VECTOR) &
-#define KOSH_PLATFORM_ISNT (~KOSH_SUPPORT_VECTOR) &
 
 #if defined SIGPIPE
 #define KOSH_BROKEN_PIPE_EXIT_STATUS (128 + SIGPIPE)
@@ -159,7 +247,7 @@ extern "C" void __lsan_enable(void);
 #define KOSH_BROKEN_PIPE_EXIT_STATUS 141
 #endif
 
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
+#if K_PLATFORM_IS K_POSIX
 extern char **environ;
 #endif
 
@@ -287,7 +375,7 @@ pure constexpr fn
 background_process_group_mode(i64 process_group_id) wontthrow
     -> process_group_mode
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#if K_PLATFORM_IS K_WIN32
   unused(process_group_id);
 
   return process_group_mode::NewBackground;
@@ -304,7 +392,7 @@ enum class terminal_handoff : u8
   BeforeStart,
 };
 
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#if K_PLATFORM_IS K_WIN32
 constexpr char PATH_DELIMITER                        = ';';
 constexpr bool IS_EMPTY_PATH_ENTRY_CURRENT_DIRECTORY = false;
 constexpr char DIRECTORY_SEPARATOR                   = '\\';
@@ -331,7 +419,7 @@ using os_args    = String;
 #define KOSH_STDOUT GetStdHandle(STD_OUTPUT_HANDLE)
 #define KOSH_STDERR GetStdHandle(STD_ERROR_HANDLE)
 
-#elif KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
+#elif K_PLATFORM_IS K_POSIX
 constexpr char  PATH_DELIMITER                        = ':';
 constexpr bool  IS_EMPTY_PATH_ENTRY_CURRENT_DIRECTORY = true;
 constexpr char  DIRECTORY_SEPARATOR                   = '/';
@@ -343,7 +431,7 @@ constexpr bool  IS_ENVIRONMENT_CASE_SENSITIVE         = true;
 constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT      = SIZE_MAX;
 constexpr bool  IS_FILESYSTEM_CASE_SENSITIVE          = true;
 constexpr bool  HAS_CHILD_STATE_CHANGE_WAIT           = true;
-#if defined __linux__ && !defined __GLIBC__
+#if (K_PLATFORM_IS K_LINUX) && !defined __GLIBC__
 constexpr bool IS_DEFAULT_LOCALE_UTF8 = true;
 #else
 constexpr bool IS_DEFAULT_LOCALE_UTF8 = false;
@@ -382,7 +470,7 @@ public:
 
 private:
   descriptor m_input{KOSH_INVALID_FD};
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#if K_PLATFORM_IS K_WIN32
   DWORD m_original_mode{0};
 #else
   termios m_original_mode{};
@@ -410,7 +498,7 @@ public:
 
 private:
   descriptor m_input{KOSH_INVALID_FD};
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#if K_PLATFORM_IS K_WIN32
   DWORD m_original_mode{0};
 #else
   termios m_original_mode{};
@@ -539,9 +627,9 @@ make_pipe() wontthrow -> Maybe<pipe_ends>;
 
 struct thread
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#if K_PLATFORM_IS K_WIN32
   HANDLE handle{nullptr};
-#elif KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
+#elif K_PLATFORM_IS K_POSIX
   void *handle{nullptr};
 #endif
 };
@@ -603,9 +691,10 @@ write_to_named_temp_file(const Path &directory,
 /* writes contents to a new file beside target, gives it group_id when one is
    given and POSIX supports it, gives it mode, flushes it, and renames it over
    target, then flushes the directory. POSIX keeps the file descriptor and the
-   directory descriptor until the rename. throws on failure and removes the
-   new file. a group that cannot be set is a failure only when the group and
-   other bits of mode differ. */
+   directory descriptor until the rename. failures before a successful rename
+   throw and discard the temporary file. a directory flush failure after the
+   rename is logged without throwing. a group that cannot be set is a failure
+   only when the group and other bits of mode differ. */
 fn
 replace_file_beside(const Path &target,
                     StringView  name_prefix,
@@ -2017,7 +2106,7 @@ list_directory_typed(StringView dir, Allocator allocator) throws
 cold fn
 list_directory_for_batch(StringView dir, Allocator allocator) throws
     -> directory_batch_listing;
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 cold fn
 list_directory_typed(descriptor directory, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>;
@@ -2236,7 +2325,7 @@ is_directory_separator(char c) wontthrow -> bool;
 pure inline fn
 has_directory_separator(StringView path) wontthrow -> bool
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#if K_PLATFORM_IS K_WIN32
 
   return path.find_character('/').has_value() ||
          path.find_character('\\').has_value();
@@ -2573,8 +2662,10 @@ is_stack_nearly_exhausted() wontthrow -> bool;
 fn
 clear_trap_handler(i32 signal_number) throws -> void;
 
-/* holds each untrapped fatal signal in this process, so the EXIT trap runs
-   before the signal ends the shell. a wait for a child stops at once. */
+/* on POSIX, SIGHUP, SIGTERM, SIGQUIT, SIGALRM, SIGUSR1, and SIGUSR2 are
+   deferred when their disposition is SIG_DFL, so the EXIT trap can run before
+   termination. a held termination signal ends a child wait. Windows makes no
+   change. */
 fn
 hold_fatal_signals_for_exit_trap() throws -> void;
 
@@ -3140,3 +3231,5 @@ redirect_self(const ExecContext &ec) throws -> void;
 } /* namespace koshka */
 
 #include "PlatformBatch.hpp"
+
+#endif

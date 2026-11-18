@@ -814,7 +814,7 @@ Cp::execute(const ExecContext               &ec,
     };
   }
 
-  /* at this point: operands holds at least two entries, and destination is a
+  /* at this point: at least one source is present, and destination is a
      directory whenever more than one source is given. */
   /* the list may grow inside a child scratch mark, so it uses the heap. */
   ArrayList<cp_directory_identity> active_directories{heap_allocator()};

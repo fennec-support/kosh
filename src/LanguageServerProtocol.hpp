@@ -243,7 +243,8 @@ private:
             low = (low << 4) | *digit;
           }
 
-          /* e.g. the pair 0xd83d 0xde00: low = 0xde00 */
+          /* e.g. d83d de00 gives 10000 + (3d << 10) + 200 = 1f600.
+             append_utf8() emits f0 9f 98 80. */
           if (low < 0xdc00 || low > 0xdfff) {
             return None;
           }

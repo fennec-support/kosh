@@ -603,8 +603,8 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
     }
 
     let const was_command_position = is_command_position;
-    let const is_paren             = token->kind() == Token::Kind::LeftParen ||
-                                     token->kind() == Token::Kind::RightParen;
+    let const is_paren = token->kind() == Token::Kind::LeftParen ||
+                         token->kind() == Token::Kind::RightParen;
     let const is_inside_case =
         !open_closers.is_empty() && open_closers.back() == Token::Kind::Esac;
 
@@ -641,9 +641,9 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
        reported. The list stops before the closer, which the skip consumes. */
     let const body_mask =
         open_closers.is_empty()
-            ? u64{0}
-            : get_skipped_body_mask(open_closers.back(), token->kind(),
-                                    was_command_position);
+                 ? u64{0}
+                 : get_skipped_body_mask(open_closers.back(), token->kind(),
+                                         was_command_position);
 
     if (body_mask != 0) {
       m_lexer.advance_past_last_peek();
@@ -2349,7 +2349,7 @@ Parser::finish_function_body(const SourceLocation &location,
   defer {
     if (!is_body_retained)
       m_lexer.drop_pending_heredocs_in(*body_storage.get_arena(),
-                                       heredoc_checkpoint);
+                                               heredoc_checkpoint);
   };
 
   {
@@ -2397,12 +2397,12 @@ Parser::parse_function_definition(const Token *name_token) throws
   LOG(Debug, "parsing a function definition for '%s'", name.c_str());
 
   m_lexer.advance_past_last_peek();
-  let const close = next_token_of_kind(Token::Kind::RightParen,
-                                       "Expected ')' in a function definition");
+  let const close              = next_token_of_kind(Token::Kind::RightParen,
+                                                    "Expected ')' in a function definition");
   let       signature_location = location;
   signature_location.length    = close->source_location().position +
-                                 close->source_location().length -
-                                 location.position;
+                              close->source_location().length -
+                              location.position;
 
   return finish_function_body(location, name.view(), signature_location);
 }

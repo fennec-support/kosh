@@ -170,10 +170,10 @@ WordSegment::reset_copied_eval_cache(segment_eval_cache &cache,
   cache.exact_constant_text     = {};
   cache.has_exact_constant_text = false;
 
-  let const tree        = cache.arithmetic_tree;
-  let const is_shared   = tree != nullptr && !tree->is_heap &&
-                          allocator.get_kind() == Allocator::Kind::Bump &&
-                          allocator.owns(tree);
+  let const tree      = cache.arithmetic_tree;
+  let const is_shared = tree != nullptr && !tree->is_heap &&
+                        allocator.get_kind() == Allocator::Kind::Bump &&
+                        allocator.owns(tree);
   cache.arithmetic_tree = nullptr;
   if (is_shared) {
     cache.arithmetic_tree = tree;
@@ -1053,8 +1053,8 @@ SegmentText::append(StringView other) throws -> void
     let const source_address  = reinterpret_cast<uintptr>(other.data);
     let const storage_address = reinterpret_cast<uintptr>(m_data);
     let const is_aliased      = m_data != nullptr &&
-                                source_address >= storage_address &&
-                                source_address - storage_address < m_length;
+                           source_address >= storage_address &&
+                           source_address - storage_address < m_length;
     let const source_offset =
         is_aliased ? source_address - storage_address : usize{0};
 

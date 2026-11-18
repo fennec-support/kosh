@@ -330,7 +330,6 @@ make_entry(const Path                       &path,
     return entry;
   }
 
-  /* at this point: known_entry is nullptr, so status is read from path. */
   os::file_status status{};
 
   if (os::stat_path(path.view(), status)) set_entry_status(entry, status);
@@ -448,9 +447,6 @@ collect_directory(const Path            &directory,
   let const children = Path::read_directory_typed(directory, allocator);
 
   if (!children.has_value()) return None;
-
-  /* at this point: children holds the entries of directory, and entries is
-     empty. */
 
   do_push_dot_entries(children->count());
 
@@ -737,8 +733,6 @@ is_on_operand_device(const Path          &path,
 
   if (!os::stat_path(path.view(), status)) return true;
 
-  /* at this point: operand_device_id is not nullptr, and status holds the
-     stat of path, because os::stat_path() succeeded. */
   return status.device_id == *operand_device_id;
 }
 
@@ -758,7 +752,6 @@ render_tree_level(StringView             directory,
 
   if (!entries.has_value()) return;
 
-  /* at this point: entries holds the listing of directory. */
   for (usize index = 0; index < entries->count(); index++) {
     if (os::INTERRUPT_REQUESTED) return;
 
@@ -833,7 +826,6 @@ render_directory_block(StringView             directory,
     return;
   }
 
-  /* at this point: entries holds the listing of directory. */
   if (should_print_header) {
     if (run.has_printed_block) run.output += '\n';
     run.output += directory;
@@ -886,7 +878,6 @@ resolve_depth_limit(const ExecContext &ec,
     return false;
   }
 
-  /* at this point: parsed holds a level of at least 1. */
   options.has_depth_limit = true;
   options.max_depth       = static_cast<usize>(parsed.value());
 

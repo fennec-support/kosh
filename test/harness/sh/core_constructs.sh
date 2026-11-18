@@ -112,7 +112,7 @@ last_status() {
 last_status
 echo "implicit rc $?"
 
-# while, until, for-in, C-style for, and break N / continue N over nested loops.
+# while, until, for-in, and break N / continue N over nested loops.
 
 i=0
 while [ "$i" -lt 4 ]; do

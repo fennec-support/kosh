@@ -19,7 +19,7 @@
 #include "../util/Utils.hpp"
 #include "Platform.hpp"
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 #include <linux/capability.h>
 #include <sys/auxv.h>
 #include <sys/prctl.h>
@@ -68,7 +68,7 @@ note_reaped_child_usage(const struct rusage &usage) wontthrow -> void
     COMMAND_PEAK_RSS_BYTE_COUNT = byte_count;
 }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 static fn
 mach_ticks_to_nanos(u64 ticks) wontthrow -> u64
 {
@@ -187,10 +187,9 @@ is_running_setuid() wontthrow -> bool
 fn
 is_running_secure() wontthrow -> bool
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   return is_running_setuid() || getauxval(AT_SECURE) != 0;
-#elif defined __APPLE__ || defined __FreeBSD__ || defined __OpenBSD__ ||       \
-    defined __NetBSD__
+#elif K_PLATFORM_IS(K_APPLE | K_FREEBSD | K_OPENBSD | K_NETBSD)
   return is_running_setuid() || issetugid() != 0;
 #else
   return is_running_setuid();
@@ -202,12 +201,11 @@ get_startup_random() wontthrow -> u64
 {
   u64 value = 0;
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   let const bytes = reinterpret_cast<const u8 *>(getauxval(AT_RANDOM));
 
   if (bytes != nullptr) memcpy(&value, bytes, sizeof(value));
-#elif defined __APPLE__ || defined __FreeBSD__ || defined __OpenBSD__ ||       \
-    defined __NetBSD__
+#elif K_PLATFORM_IS(K_APPLE | K_FREEBSD | K_OPENBSD | K_NETBSD)
   arc4random_buf(&value, sizeof(value));
 #endif
 
@@ -220,7 +218,7 @@ drop_elevated_identity() wontthrow -> bool
   let const real_group_id = getgid();
   let const real_user_id  = getuid();
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   if (setresgid(real_group_id, real_group_id, real_group_id) != 0) return false;
   if (setresuid(real_user_id, real_user_id, real_user_id) != 0) return false;
   if (real_user_id == 0) return true;
@@ -240,7 +238,7 @@ drop_elevated_identity() wontthrow -> bool
   if (setuid(0) == 0) abort();
 
   return true;
-#elif defined __FreeBSD__ || defined __OpenBSD__
+#elif K_PLATFORM_IS(K_FREEBSD | K_OPENBSD)
   if (setresgid(real_group_id, real_group_id, real_group_id) != 0) return false;
 
   return setresuid(real_user_id, real_user_id, real_user_id) == 0;
@@ -1867,7 +1865,7 @@ is_parent_outside_session() wontthrow -> bool
   return parent == 1 || getsid(parent) != getsid(0);
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 static fn
 read_process_stat_after_command(i64 process_id,
                                 char (&buffer)[512],
@@ -1919,7 +1917,7 @@ process_is_running(process p) wontthrow -> bool
     return false;
   }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   if (p > 0 && is_zombie_process(p)) {
     return false;
   }
@@ -1928,7 +1926,7 @@ process_is_running(process p) wontthrow -> bool
   return true;
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 static pid_t LAST_RUNNING_GROUP_ID  = 0;
 static i64   LAST_RUNNING_MEMBER_ID = 0;
 
@@ -2023,7 +2021,7 @@ process_group_has_members(process group) wontthrow -> bool
 {
   if (kill(group, 0) != 0) return errno == EPERM;
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
   return process_group_has_running_member(static_cast<pid_t>(-group));
 #else
@@ -2281,7 +2279,7 @@ machine_type() throws -> String
 
     if (uname(&info) != 0) return String{heap_allocator(), "unknown"};
     let const machine = StringView{info.machine, strlen(info.machine)};
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
     if (machine == "arm64") return String{heap_allocator(), "aarch64"};
 #endif
 
@@ -2294,13 +2292,13 @@ machine_type() throws -> String
 fn
 executable_system_name() throws -> String
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
+#if K_PLATFORM_IS K_COSMO
 
   return String{heap_allocator(), "any"};
-#elif defined __APPLE__
+#elif K_PLATFORM_IS K_APPLE
 
   return String{heap_allocator(), "Darwin"};
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
 
   return String{heap_allocator(), "Linux"};
 #else
@@ -2337,7 +2335,7 @@ system_version_name() throws -> String
 fn
 machine_target_name() throws -> String
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 
   return machine_type() + "-apple-darwin" + system_release_name();
 #else
@@ -2349,7 +2347,7 @@ machine_target_name() throws -> String
 fn
 ostype_name() wontthrow -> StringView
 {
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 
   return "darwin";
 #elif defined __GLIBC__
@@ -2364,13 +2362,13 @@ ostype_name() wontthrow -> StringView
 fn
 executable_machine_name() throws -> String
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
+#if K_PLATFORM_IS K_COSMO
 
   return String{heap_allocator(), "any"};
-#elif defined __aarch64__ || defined __arm64__
+#elif K_ARCH_IS K_ARM64
 
   return String{heap_allocator(), "arm64"};
-#elif defined __x86_64__ || defined __amd64__
+#elif K_ARCH_IS K_X86_64
 
   return String{heap_allocator(), "x86_64"};
 #else
@@ -2467,7 +2465,7 @@ fn
 mark_own_memory() wontthrow -> own_memory_mark
 {
   own_memory_mark mark{};
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   rusage_info_v4 usage{};
 
   if (::proc_pid_rusage(getpid(), RUSAGE_INFO_V4,
@@ -2480,7 +2478,7 @@ mark_own_memory() wontthrow -> own_memory_mark
 
   if (getrusage(RUSAGE_SELF, &own_usage) == 0)
     mark.peak_byte_count = platform_peak_rss_bytes(own_usage.ru_maxrss);
-#elif defined __linux__
+#elif K_PLATFORM_IS K_LINUX
   char      buffer[16384];
   let const length =
       read_small_file("/proc/self/status", buffer, sizeof(buffer));
@@ -2650,7 +2648,7 @@ fill_usage_from_rusage(const struct rusage    &usage,
   resources.block_output_count = static_cast<u64>(usage.ru_oublock);
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 fn
 open_proc_io_descriptor(pid_t pid) wontthrow -> int
 {
@@ -2840,7 +2838,7 @@ wait_for_measured_child(pid_t                   child_pid,
                         u64                    &exit_nanos) wontthrow -> bool
 {
   exit_nanos = 0;
-#if defined __linux__ || defined __APPLE__
+#if K_PLATFORM_IS(K_LINUX | K_APPLE)
   if (resources != nullptr) {
     siginfo_t info{};
     /* waitid() uses WNOWAIT, so the child stays an unreaped zombie. its /proc
@@ -2852,7 +2850,7 @@ wait_for_measured_child(pid_t                   child_pid,
 
     exit_nanos = monotonic_nanos();
     if (wait_result == 0) {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
       fill_usage_from_proc_io(io_descriptor, *resources);
       fill_usage_from_proc_schedstat(child_pid, *resources);
       fill_usage_from_proc_sched(child_pid, *resources);
@@ -2862,7 +2860,7 @@ wait_for_measured_child(pid_t                   child_pid,
     }
   }
 #endif
-#if !defined __linux__
+#if K_PLATFORM_ISNT K_LINUX
   unused(io_descriptor);
 #endif
 
@@ -2904,7 +2902,7 @@ read_own_resource_usage() wontthrow -> process_resource_usage
 
   if (getrusage(RUSAGE_SELF, &usage) == 0)
     fill_usage_from_rusage(usage, resources);
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   let const io_descriptor = open_proc_io_descriptor(getpid());
 
   fill_usage_from_proc_io(io_descriptor, resources);
@@ -2931,7 +2929,7 @@ run_measured(const ArrayList<String> &argv,
   if (!spawn_measured_child(argv, output, child)) return None;
 
   int io_descriptor = -1;
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   if (should_collect_resources)
     io_descriptor = open_proc_io_descriptor(child.pid);
 #endif
@@ -2956,7 +2954,7 @@ run_measured(const ArrayList<String> &argv,
     return None;
   }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   let const should_read_usage = true;
 #else
   let const should_read_usage = should_collect_resources;
@@ -2991,7 +2989,7 @@ run_measured(const ArrayList<String> &argv,
   return result;
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 namespace {
 
 constexpr long  PTRACE_GET_SYSCALL_INFO_REQUEST   = 0x420e;
@@ -3220,7 +3218,7 @@ fn
 run_traced(const ArrayList<String> &argv, measured_output output) throws
     -> Maybe<traced_counts>
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   if (argv.is_empty()) return None;
 
   let const raw_argv = make_os_args(argv);
@@ -3299,8 +3297,9 @@ set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
                      priority) == 0;
 }
 
-/* memory: no heap allocation in the parent. the child keeps its copy of the
-           parent's memory until exec() or _exit().
+/* memory: the parent uses stack storage apart from PID 1 child tracking,
+           which can grow the heap-allocated spawned-child list. the child
+           keeps its copy of the parent's memory until exec() or _exit().
    time:   blocks on read() until the child calls exec() or exits, then blocks
            on waitpid() until the child exits. */
 template <typename PrepareChild>

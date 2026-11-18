@@ -621,6 +621,8 @@ parse_timeout_seconds_to_nanos(StringView text) throws -> ErrorOr<i64>
   bool has_overflowed = false;
   bool has_digits     = false;
 
+  /* e.g. text = "1.2345678909" */
+
   while (offset < text.length && text.data[offset] >= '0' &&
          text.data[offset] <= '9')
   {
@@ -633,6 +635,7 @@ parse_timeout_seconds_to_nanos(StringView text) throws -> ErrorOr<i64>
     has_digits = true;
     offset++;
   }
+  /* -> whole_seconds = 1 */
 
   i64 fractional_nanos = 0;
 
@@ -644,7 +647,9 @@ parse_timeout_seconds_to_nanos(StringView text) throws -> ErrorOr<i64>
            text.data[offset] <= '9')
     {
       fractional_nanos += (text.data[offset] - '0') * digit_scale;
+      /* -> after nine digits fractional_nanos = 234567890 */
       digit_scale /= 10;
+      /* -> digit_scale = 0 after nine digits. the tenth adds zero. */
       has_digits = true;
       offset++;
     }
@@ -667,6 +672,7 @@ parse_timeout_seconds_to_nanos(StringView text) throws -> ErrorOr<i64>
 
   /* at this point: the text is a valid timeout, has_overflowed is false,
      and whole_seconds * 1'000'000'000 + fractional_nanos fits in i64. */
+  /* -> the returned timeout is 1234567890 nanoseconds */
   return static_cast<i64>(whole_seconds) * 1'000'000'000 + fractional_nanos;
 }
 
@@ -1202,14 +1208,20 @@ parse_calendar_date(StringView text,
   if (is_utc) {
     /* days since 1970-01-01 in the proleptic Gregorian calendar. the shift of
        one 400 year cycle keeps the year positive for the divisions. */
+    /* e.g. 1969-01-01 at midnight */
     let const shifted_year =
         static_cast<i64>(month <= 2 ? full_year - 1 : full_year) + 400;
+    /* -> shifted_year = 2368 */
     let const shifted_month =
         static_cast<i64>(month > 2 ? month - 3 : month + 9);
+    /* -> shifted_month = 10 */
     let const day_of_year = (153 * shifted_month + 2) / 5 + day - 1;
+    /* -> day_of_year = 306 */
     let const leap_days =
         shifted_year / 4 - shifted_year / 100 + shifted_year / 400;
+    /* -> leap_days = 592 - 23 + 5 = 574 */
     let const day_count = shifted_year * 365 + leap_days + day_of_year - 865565;
+    /* -> day_count = -365, so the result is -31536000 seconds */
 
     return day_count * 86400 + hour * 3600 + minute * 60 + second;
   }

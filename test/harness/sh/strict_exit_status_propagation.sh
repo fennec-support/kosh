@@ -22,7 +22,7 @@ echo "pipe_last_false=$?"
 echo hi | cat | cat
 echo "pipe_three_stage=$?"
 
-# A command substitution does not by itself change the caller status.
+# an assignment takes the status of its command substitution.
 false
 output=$(echo captured)
 echo "after_substitution=$? out=$output"

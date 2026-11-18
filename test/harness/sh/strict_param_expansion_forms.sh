@@ -131,8 +131,8 @@ left:right:extra
 HD
 echo "[$p][$q]"
 
-# IFS is back to its whitespace default after the prefixed commands, so a later
-# read splits on spaces rather than the prior separators.
+# the prefixed reads restore the colon IFS, and the later read keeps spaces.
+
 printf 'one two three\n' | { read first rest; echo "[$first][$rest]"; }
 
 # A trim of an unset parameter under set -u stops the shell like a bare read.

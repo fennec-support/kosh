@@ -556,9 +556,8 @@ scan_balanced_shell_region(StringView          source,
     return None;
   }
 
-  /* at this point: nesting_depth is at most MAX_SUBSTITUTION_NESTING_DEPTH,
-     so recursion for a substitution inside double quotes is at most 65 frames
-     deep. */
+  /* at this point: nesting_depth is at most MAX_SUBSTITUTION_NESTING_DEPTH.
+     helper calls can add native stack frames within each nesting level. */
   let       pending_heredocs    = ArrayList<pending_heredoc>{heap_allocator()};
   let       case_pattern_depths = ArrayList<usize>{heap_allocator()};
   usize     depth               = 1;

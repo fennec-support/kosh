@@ -379,7 +379,6 @@ append_core_dump_report(String   &output,
 
     if (dumps.is_empty()) continue;
 
-    /* at this point: directory is a directory, and dumps is not empty. */
     total_dump_count += dumps.count();
 
     u64 total_byte_count = 0;
@@ -732,7 +731,6 @@ append_log_report(String   &output,
 
     if (entries.is_empty()) continue;
 
-    /* at this point: directory is a directory, and entries is not empty. */
     directory_count++;
 
     u64 total_byte_count = 0;

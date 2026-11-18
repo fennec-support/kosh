@@ -482,6 +482,11 @@ VariableOccurrenceStateMap::merge(
 {
   if (this == &other) return;
 
+  /* e.g. left x has assignment_indices [2], right x has [5], and both have
+     is_definitely_set set. the merge stores [2, 5] and keeps
+     is_definitely_set set. if right has no x, the merge keeps [2], clears
+     is_definitely_set and is_definitely_unset, and sets has_unset_path and
+     has_inherited_path. */
   let do_merge_name = [&](VariableOccurrenceStateMap &result, StringView name) {
     let const *left_state  = find(name);
     let const *right_state = other.find(name);

@@ -698,7 +698,7 @@ append_colored_hostname(String    &out,
   let const is_color_rising =
       start_color == 0 || (is_hue_rising && start_color + 1 < color_count);
   let const next_color = is_color_rising ? start_color + 1 : start_color - 1;
-  let const step_span = HUE_STEP_DEGREES *
+  let const step_span  = HUE_STEP_DEGREES *
                         static_cast<u32>(host.length > 1 ? host.length - 1 : 0);
   let const hue_span =
       step_span < MAX_HUE_SPAN_DEGREES ? step_span : MAX_HUE_SPAN_DEGREES;

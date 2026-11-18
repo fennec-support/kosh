@@ -47,8 +47,6 @@ Unlink::execute(const ExecContext               &ec,
     return 1;
   }
 
-  /* at this point: operands holds one entry, and target is not a real
-     directory. */
   if (!remove_path(target.view(), cxt.scratch_allocator(),
                    removal_mode::SinglePath))
   {

@@ -1,9 +1,9 @@
 # The make completion drops a target that denotes a build artifact, a name that
 # exists on disk, repeats a makefile name, or carries a slash, and skips a :=
 # assignment, so a tab offers the phony goals rather than the artifacts. The
-# bundled make parser also resolves a $(VAR) target name to its real text. PATH
-# is emptied for the completing invocation so the parser answers rather than a
-# system make.
+# bundled make parser also resolves a $(VAR) target name to its real text.
+
+
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 mkdir -p "$dir/src"

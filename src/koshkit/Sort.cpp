@@ -1273,8 +1273,6 @@ Sort::execute(const ExecContext               &ec,
                                           settings.global.is_end_blank_skipping;
   }
 
-  /* a check or a merge compares each line with one neighbour, so parsing
-     every -g and -h key up front costs more than it saves. */
   let const should_parse_values = !FLAG_SORT_CHECK.is_enabled() &&
                                   !FLAG_SORT_CHECK_QUIET.is_enabled() &&
                                   !FLAG_SORT_MERGE.is_enabled();

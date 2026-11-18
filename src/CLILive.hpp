@@ -119,9 +119,8 @@ struct live_view_input
   usize                  key_count{0};
 };
 
-/* appends the keys encoded in bytes to input. Escape sequences for arrows,
-   paging keys, Home, End, and the mouse wheel become special keys, and other
-   bytes become characters. */
+/* ordinary bytes and supported escape-sequence keys are appended to input.
+   unsupported sequences are discarded. an incomplete sequence ends decoding. */
 fn
 decode_live_view_keys(const char      *bytes,
                       usize            byte_count,
@@ -440,6 +439,10 @@ struct no_retained_update
   {}
 };
 
+/* the temporary sorted index uses index_allocator and covers rows present
+   at entry. heap-backed index storage is freed on return, and arena-backed
+   storage is reclaimed with its arena. storage supplied by do_make_row()
+   must remain valid for the lifetime of the retained row. */
 template <class Row,
           class Items,
           class DoGetKey,

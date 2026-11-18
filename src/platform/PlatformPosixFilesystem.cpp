@@ -16,7 +16,7 @@
 #include "../util/Utils.hpp"
 #include "Platform.hpp"
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 #include <sys/sysmacros.h>
 #endif
 
@@ -396,7 +396,7 @@ cold fn
 list_directory_for_batch(StringView dir, Allocator allocator) throws
     -> directory_batch_listing
 {
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
   const String dir_string{allocator, dir};
   int          opened = -1;
 
@@ -423,7 +423,7 @@ list_directory_for_batch(StringView dir, Allocator allocator) throws
 #endif
 }
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
 
 cold fn
 list_directory_typed(descriptor directory, Allocator allocator) throws
@@ -448,8 +448,9 @@ list_directory_typed(descriptor directory, Allocator allocator) throws
 
 /* memory: children, entries, paths, and batch use allocator. paths and batch
            are destroyed on return, and entries is returned to the caller.
-   time:   one readdir() pass over n children, then one lstat() per child
-           through batch. O(n) syscalls and O(n * path length) bytes copied. */
+   time:   one readdir() pass over n children, then one batched Lstat request
+           per child. syscall costs depend on the batch backend. path
+           construction copies O(n * path length) bytes. */
 cold static fn
 list_directory_status_fallback(StringView dir,
                                Allocator  allocator) throws
@@ -509,9 +510,9 @@ find_ownership_problem(const struct stat &status,
 
 /* memory: read_fd_to_string() allocates the contents in heap_allocator(), and
            the caller frees them. the descriptor is closed on return.
-   time:   open(), fstat(), and stat() on the directory, then one read() per
-           16384 bytes of contents plus a final read() that returns 0, which
-           gives ceil(size / 16384) + 1 read() calls. */
+   time:   open(), fstat(), and stat() on the directory, followed by read_fd()
+           calls requesting up to 16384 bytes until EOF. short reads and EINTR
+           can increase the read() syscall count. */
 fn
 read_system_owned_file(const Path &path) throws -> system_file_reading
 {
@@ -646,7 +647,7 @@ directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
 
   /* Homebrew makes its directories writable by the macOS admin group, whose
      members can already act as root. */
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   static constexpr gid_t ADMIN_GROUP_ID = 80;
 
   let const is_group_write_trusted = directory_stat.st_gid == ADMIN_GROUP_ID;
@@ -671,7 +672,7 @@ directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
   return true;
 }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
 /* The descriptor that /dev/stdin, /dev/stdout, /dev/stderr, or /dev/fd/N
    refers to. */
 static pure fn
@@ -761,7 +762,7 @@ open_with_flags(StringView     path,
       errno = EEXIST;
     }
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
     /* macOS refuses a read-write open of /dev/fd/N when N was opened for one
        direction, as a pipe end is, while Linux reopens the pipe. */
     if (fd < 0 && errno == EACCES && mode == file_open_mode::ReadWrite) {
@@ -852,7 +853,7 @@ acquire_process_lock(StringView       path,
   unused(::fcntl(lock, F_SETFL, ::fcntl(lock, F_GETFL) & ~O_NONBLOCK));
   if (::flock(lock, lock_flags) == 0) return lock;
 
-#if defined __APPLE__
+#if K_PLATFORM_IS K_APPLE
   /* macOS has no advisory lock on a FIFO, so a FIFO is locked through a file
      in the private temporary directory of the user, and the device and inode
      of the FIFO identify that file. Only kosh processes of the same user
@@ -1159,7 +1160,7 @@ make_device_node(StringView path,
   {
     const String path_string{heap_allocator(), path};
 
-#if defined __linux__
+#if K_PLATFORM_IS K_LINUX
     did_succeed = ::mknod(path_string.c_str(), static_cast<mode_t>(mode),
                           makedev(major_number, minor_number)) == 0;
 #else

@@ -139,7 +139,7 @@ BumpArena::unregister_live() wontthrow -> void
 }
 
 /* memory: none.
-   time:   O(B) in the total block count B of all live arenas, scanned
+   time:   O(A + B) for A live arenas and their B blocks, scanned
            while IS_LIVE_ARENAS_LOCKED is held. the lock spins until it is
            acquired. */
 fn

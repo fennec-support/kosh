@@ -33,7 +33,6 @@ start()
   pause 1.2
 }
 
-# scale SECONDS DIVISOR: prints SECONDS divided by DIVISOR.
 scale()
 {
   awk -v seconds="$1" -v divisor="$2" 'BEGIN { print seconds / divisor }'
@@ -75,7 +74,6 @@ keys_slow()
   done
 }
 
-# wait_for TEXT [SECONDS]: waits until the pane shows TEXT.
 wait_for()
 {
   local text=$1 limit=${2:-20} step

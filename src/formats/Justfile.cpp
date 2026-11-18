@@ -389,11 +389,10 @@ add_recipe_fragment(const parser_format_input &input,
 /* memory: global_names and exported_names are heap ArrayList<String> freed on
            return. each recipe body fragment stores clones of the exported
            variables in document.
-   time:   O(n) for the set scan and the main pass over n source bytes, plus
-           one collect_justfile_variables() pass when export is set. each recipe
-           header clones G global variables, and each body line clones up to V
-           exported variables, so the total is O(n + H * G + L * V) for H
-           headers and L body lines. */
+   time:   source scanning and collect_justfile_variables(), plus the bytes
+           cloned from global names per header and exported names per body
+           line. parser_format_masked_template_source() adds its own scans,
+           including rescans for unterminated template openers. */
 fn
 parse_justfile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void

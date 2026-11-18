@@ -2,8 +2,8 @@
 
 # Every subshell reseeds RANDOM, so a substitution, a nested subshell, and a
 # pipeline stage each draw numbers of their own. The parent's sequence is left
-# where its seed put it, and a seed set inside a subshell repeats there. Two
-# draws per subshell keep an accidental match out of reach.
+# where its seed put it, and a seed set inside a subshell repeats there. two
+# draws per subshell reduce the chance of an accidental match.
 
 RANDOM=7
 first=$(echo "$RANDOM $RANDOM")

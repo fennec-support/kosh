@@ -179,7 +179,7 @@ parse_od_byte_count(StringView text, bool has_unit_suffix) throws
            freed one at a time. chunk is a 64 KiB stack array. output is
            printed and cleared once it holds at least 64 KiB.
    time:   O(skip_count + byte_limit) bytes read, capped at the end of input.
-           each emitted row costs O(formats * 16). */
+           each emitted row costs O(formats.count() * row_byte_count). */
 fn
 Od::execute(const ExecContext               &ec,
             EvalContext                     &cxt,

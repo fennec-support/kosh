@@ -15,10 +15,6 @@ set -u
 # runs it.
 shopt -s extglob
 
-# An optimizing shell's default mood arrives with failglob strict, which a
-# sparse array literal like ([2]=a b) trips, so the script relaxes it the way
-# a configure run negotiates any feature. bash spells failglob as a shopt, so
-# its set rejects the name quietly here and the run continues unchanged.
 set +o failglob 2>/dev/null || true
 
 # The work multiplier. A larger value lengthens every loop.
@@ -28,16 +24,12 @@ PASS_COUNT=0
 FAIL_COUNT=0
 WORK_UNITS=0
 
-# Build-style feature toggles, assigned once and never reassigned, the shape a
-# real configure run carries. An optimizing shell can prove every guard that
-# reads them dead at parse time, while bash tests each guard on every pass
-# through the hot loops.
+# these configuration values stay unchanged throughout the workload.
 CONFIG_TRACE=0
 CONFIG_PROFILE=0
 CONFIG_PARANOID=0
 CONFIG_RELEASE=1
 
-# Record a probe result, comparing an actual value to an expected one.
 check() {
     local label="$1" actual="$2" expected="$3"
     if [[ $actual == "$expected" ]]; then
@@ -56,11 +48,9 @@ announce() {
     printf 'configuring %s\n' "$1"
 }
 
-# ----------------------------------------------------------------------------
 # A coprime field, the heavy quadratic core. For every pair (i, j) up to SCALE
 # it computes the greatest common divisor through the euclidean loop, counts the
 # coprime pairs, and folds a rolling checksum, all in arithmetic and arrays.
-# ----------------------------------------------------------------------------
 probe_coprime_field() {
     announce "the coprime field"
     local i j a b t coprime=0 checksum=0
@@ -77,9 +67,7 @@ probe_coprime_field() {
             if ((a == 1)); then
                 coprime=$((coprime + 1))
             fi
-            # Dead diagnostics in the quadratic core, a constant guard and a
-            # literal test, both provable at parse time and both re-tested
-            # per pair by bash.
+            # the trace branch and literal-false branch stay inactive.
             if [ "$CONFIG_TRACE" -eq 1 ]; then
                 printf 'trace: pair %d %d\n' "$i" "$j"
             fi
@@ -96,12 +84,10 @@ probe_coprime_field() {
     check "coprime column length" "${#column[@]}" "$SCALE"
 }
 
-# ----------------------------------------------------------------------------
 # A string forge, the per-character heavy loop. Each round reverses a word,
 # folds an ordinal checksum, and runs a chain of parameter expansions over a
 # pool of words, exercising removal, replacement, case modification, the tilde
 # toggle, substring, and length.
-# ----------------------------------------------------------------------------
 ordinal_sum() {
     local s="$1" i ch acc=0
     for ((i = 0; i < ${#s}; i++)); do
@@ -123,13 +109,11 @@ probe_string_forge() {
     local round word rev i ch checksum=0 expansions=0
     for ((round = 0; round < SCALE; round++)); do
         for word in "${pool[@]}"; do
-            # Reverse the word one character at a time.
             rev=""
             for ((i = 0; i < ${#word}; i++)); do
                 ch=${word:i:1}
                 rev=$ch$rev
             done
-            # A chain of parameter expansions over the word.
             local head=${word%%[-_]*}
             local tail=${word##*[-_]}
             local under=${word//-/_}
@@ -148,10 +132,8 @@ probe_string_forge() {
     check "ordinal helper" "$(ordinal_sum abc)" "291"
 }
 
-# ----------------------------------------------------------------------------
 # A regex scanner, matching version-like tags against an extended regular
 # expression and folding the captured groups from BASH_REMATCH.
-# ----------------------------------------------------------------------------
 probe_regex_scan() {
     announce "the regex scanner"
     local re='^v([0-9]+)\.([0-9]+)(-([a-z]+))?$'
@@ -178,10 +160,8 @@ probe_regex_scan() {
     check "rematch suffix" "${BASH_REMATCH[4]}" "beta"
 }
 
-# ----------------------------------------------------------------------------
 # Array churn, building indexed and associative arrays, slicing, listing the
 # subscripts, and folding a checksum over the elements.
-# ----------------------------------------------------------------------------
 probe_array_churn() {
     announce "the array churn"
     local round i checksum=0
@@ -197,7 +177,6 @@ probe_array_churn() {
     done
     check "churn item total" "$checksum" "$((SCALE * 24))"
 
-    # Feature coverage, exercised once.
     local -a base=(zero one two three four five)
     check "slice middle" "${base[*]:2:3}" "two three four"
     check "slice negative" "${base[*]: -2}" "four five"
@@ -212,9 +191,7 @@ probe_array_churn() {
     check "dense unset" "${removable[*]}" "p q s t"
 }
 
-# ----------------------------------------------------------------------------
 # Arithmetic, exponent, bases, C-style for, let, and the (( )) status.
-# ----------------------------------------------------------------------------
 probe_arithmetic() {
     announce "the arithmetic mill"
     local round i acc=0
@@ -252,10 +229,8 @@ probe_arithmetic() {
     check "post increment" "$((post++)) $post" "4 5"
 }
 
-# ----------------------------------------------------------------------------
 # A case state machine with alternatives, fall-through ;&, and continue-match
 # ;;&, driven over a SCALE loop.
-# ----------------------------------------------------------------------------
 probe_case_machine() {
     announce "the case machine"
     local round k state=0 trail_len=0
@@ -293,10 +268,8 @@ probe_case_machine() {
     check "fall through" "$fall" "onetwo"
 }
 
-# ----------------------------------------------------------------------------
 # printf with the q quoting, the b escapes, several conversions, width, and
 # assignment into a variable, folded over a SCALE loop.
-# ----------------------------------------------------------------------------
 probe_printf() {
     local round cell acc_len=0
     for ((round = 0; round < SCALE; round++)); do
@@ -315,10 +288,8 @@ probe_printf() {
     check "printf signed" "$(printf '%+d' 7)" "+7"
 }
 
-# ----------------------------------------------------------------------------
 # ANSI-C quoting, measured by length and value so no raw control byte lands in
 # the output and the comparison stays on printable text.
-# ----------------------------------------------------------------------------
 probe_ansi_c() {
     local tab=$'\t' newline=$'\n' esc=$'\e' ctrl=$'\cA'
     local hex=$'\x41\x42\x43' oct=$'\101\102' uni=$'A' mixed=$'A\x42C'
@@ -332,10 +303,8 @@ probe_ansi_c() {
     check "mixed escape" "$mixed" "ABC"
 }
 
-# ----------------------------------------------------------------------------
 # Parameter expansion feature coverage, the default and alternate forms,
 # indirection, and the name listing, exercised once.
-# ----------------------------------------------------------------------------
 probe_param_features() {
     local word="configure-script-runner" empty=
     check "prefix removal" "${word%%-*}" "configure"
@@ -363,9 +332,7 @@ probe_param_features() {
     check "assign took" "$unassigned" "seeded"
 }
 
-# ----------------------------------------------------------------------------
 # Associative arrays, keys, values, and the -v existence test.
-# ----------------------------------------------------------------------------
 probe_assoc() {
     local -A capital=()
     local -a names=(france japan italy spain germany norway)
@@ -386,10 +353,8 @@ probe_assoc() {
     check "assoc lacks nowhere" "$missing" "yes"
 }
 
-# ----------------------------------------------------------------------------
 # The [[ ]] conditional operators, string ordering, pattern matching, and
 # grouping, exercised once.
-# ----------------------------------------------------------------------------
 probe_conditional() {
     local glob=no
     [[ "configure.bash" == *.bash ]] && glob=yes
@@ -419,10 +384,8 @@ probe_conditional() {
     check "extglob negate case" "$neg" "not-bar"
 }
 
-# ----------------------------------------------------------------------------
 # Brace expansion into arrays, then a count of the expanded fields, folded over
 # a SCALE loop.
-# ----------------------------------------------------------------------------
 probe_brace() {
     local round total=0
     for ((round = 0; round < SCALE; round++)); do
@@ -440,9 +403,7 @@ probe_brace() {
     check "padded range" "$(echo {01..03})" "01 02 03"
 }
 
-# ----------------------------------------------------------------------------
 # Functions, local scope, recursion, and return codes.
-# ----------------------------------------------------------------------------
 fib() {
     local n="$1"
     if ((n < 2)); then
@@ -471,9 +432,7 @@ probe_functions() {
     check "even count" "$evens" "$(((SCALE + 1) / 2))"
 }
 
-# ----------------------------------------------------------------------------
 # getopts over a fixed argument list.
-# ----------------------------------------------------------------------------
 probe_getopts() {
     local OPTIND=1 opt summary=""
     set -- -a -b -c value
@@ -487,9 +446,7 @@ probe_getopts() {
     check "getopts summary" "$summary" "ABC(value)"
 }
 
-# ----------------------------------------------------------------------------
 # One-shot probes that fork lightly, run once so they do not skew the timing.
-# ----------------------------------------------------------------------------
 probe_oneshot() {
     local -a lines=()
     mapfile -t lines <<< $'alpha\nbeta\ngamma'
@@ -509,13 +466,8 @@ EOF
     check "here string" "$hs" "here string"
 }
 
-# ----------------------------------------------------------------------------
-# Dead configuration branches. Every guard in the hot loop reads a constant
-# toggle, a literal test, a bare false, or a never-entered while, all provable
-# at parse time, so an optimizing shell picks the live path once while bash
-# re-tests every guard on every pass. The live tail carries constant
-# arithmetic the optimizer folds the same way.
-# ----------------------------------------------------------------------------
+# configuration guards, literal tests, false, and a never-entered loop
+# exercise inactive paths. the release path adds one per iteration.
 probe_dead_configuration() {
     announce "the dead branches"
     local i live=0 limit=$((SCALE * SCALE / 2))
@@ -550,10 +502,8 @@ probe_dead_configuration() {
     check "trace toggle held" "$CONFIG_TRACE" "0"
 }
 
-# ----------------------------------------------------------------------------
 # Expansion extras, the wider parameter and array surface with one check per
 # form, so the suite asserts more of the dialect per run.
-# ----------------------------------------------------------------------------
 probe_expansion_extras() {
     announce "the expansion extras"
     local word="configure-me-gently" ref=word

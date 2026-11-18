@@ -187,8 +187,8 @@ EvalContext::register_function(StringView                name,
       info.signature_location =
           SourceLocation{position - first_line.line_start, length,
                          signature_site.location.source_name_index};
-      info.signature_line_offset  = static_cast<isize>(first_line.line_number) +
-                                    signature_site.line_offset;
+      info.signature_line_offset = static_cast<isize>(first_line.line_number) +
+                                   signature_site.line_offset;
       info.has_signature_location = true;
     }
   }
@@ -475,7 +475,8 @@ EvalContext::variable_names(Allocator result_allocator) const throws
 }
 
 /* memory: a miss creates a FunctionBodyHandle sized for the action length, and
-           cached_bodies() holds that handle until set() replaces the condition.
+           cached_bodies() holds that handle until a later cache miss replaces
+           that condition's cached body or the trap store is destroyed.
            a hit returns the cached handle.
    time:   a hit costs one hash lookup and an O(action length) byte compare. a
            miss adds one parse of the action. */
@@ -751,7 +752,7 @@ EvalContext::capture_trap_definition(const SourceLocation &location,
       position - line_position.line_start,
       location.length < available_length ? location.length : available_length,
       resolved_source.is_windowed ? resolved_source.source_name_index
-                                  : location.source_name_index};
+                                     : location.source_name_index};
   definition.line_offset = static_cast<isize>(line_position.line_number) +
                            resolved_source.line_offset;
 

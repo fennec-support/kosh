@@ -1972,8 +1972,8 @@ public:
       return fallback;
     }
 
-    /* at this point: value is a set scalar, and parsed holds a
-       non-negative value. */
+    /* at this point: text comes from a stored scalar or the inherited
+       environment, and parsed holds a non-negative value. */
     return static_cast<usize>(parsed.value());
   }
 

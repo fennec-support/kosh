@@ -88,7 +88,7 @@ def run_pty(binary, command, keys=()):
     _, status = os.waitpid(pid, 0)
     # Each frame row starts with an erase to the end of the line.
     all_parts = bytes(output).replace(LINE_ERASE, b"").split(FRAME_MARKER)
-    # The final part contains terminal cleanup after the last frame, not a frame.
+    # the final part includes the last frame and terminal cleanup, so it is excluded.
     frame_parts = all_parts[1:-1]
     blank_counts = [part.count(b"\r\n\r\n") for part in frame_parts]
     tree_frames = [tree_rows(part) for part in frame_parts if tree_rows(part)]

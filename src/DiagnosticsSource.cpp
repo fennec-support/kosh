@@ -349,9 +349,9 @@ line_above_continues(StringView source, usize line_start) wontthrow -> bool
 /* memory: quoted_substitution_ends holds one end position per open
            double-quoted substitution and is freed on return. each
            scan_balanced_shell_region() call frees its own lists on return.
-   time:   O((source.length - start_position) * D), where D is the number of
-           enclosing double-quoted substitutions. the main loop visits each
-           byte from start_position once.
+   time:   O((source.length - start_position) * (D + 1)), where D is the number
+           of enclosing double-quoted substitutions. the main loop advances
+           forward from start_position.
            each double-quoted "$(" starts a balanced scan of its body. each
            enclosing scan also covers the bytes of the inner bodies. */
 fn

@@ -188,7 +188,8 @@ ps_state_style(char state) wontthrow -> colors::color_style
 }
 
 /* memory: the table and the cell texts are allocated in allocator.
-   time:   one user_name_or_id() call per process with a user column. */
+   time:   one user_name_or_id() call per user-column occurrence in each
+           selected process row. */
 static fn
 render_ps_columns(const ArrayList<os::process_entry>      &processes,
                   const ArrayList<const ps_column_spec *> &columns,

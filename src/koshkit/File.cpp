@@ -382,8 +382,6 @@ parse_magic_rule(StringView       line,
     }
   }
 
-  /* at this point: rule.offset and rule.kind hold the parsed test, and
-     rule.message is not set yet. */
   rule.message = String{allocator, message};
 
   return true;
@@ -960,8 +958,9 @@ File::execute(const ExecContext               &ec,
      time:   O(P log P) sort over P magic paths. one lstat() per operand
              in one batch. the default samples read one 8192-byte buffer per
              regular operand. the custom samples read at most sample_byte_count
-             bytes per regular operand. the rule scan costs O(R) per sample for
-             R magic rules. */
+             bytes per regular operand. numeric rule checks take constant
+             time. string rule checks compare up to expected_text.count()
+             bytes each. */
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());

@@ -44,8 +44,6 @@ basename_component(StringView path) wontthrow -> StringView
   }
 
   if (end_position == 0) return path.is_empty() ? path : StringView{"/"};
-  /* at this point: path is non-empty, and end_position is one past a byte
-     that is not a separator. */
 
   return Path::filename(path.substring_of_length(0, end_position));
 }

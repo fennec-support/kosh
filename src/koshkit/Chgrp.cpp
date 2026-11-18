@@ -78,8 +78,8 @@ Chgrp::execute(const ExecContext               &ec,
     group_id = static_cast<i64>(*resolved);
   }
 
-  /* at this point: operands holds a group operand and at least one file
-     operand, and group_id holds the resolved group id. */
+  /* at this point: operands holds a group and at least one file, and group_id
+     is the resolved group id or -1 for no change. */
   return utils::change_operands_ownership(
       ec, cxt, operands,
       {-1, group_id, FLAG_CHGRP_RECURSIVE.is_enabled(),

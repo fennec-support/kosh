@@ -106,9 +106,9 @@ report_exec_resolution_error(ExecContext   &ec,
 }
 
 /* memory: argv copies on heap_allocator(), owned by command.
-   time:   O(args) to copy argv, one PATH search that may stat each PATH
-           entry when command_name has no directory separator, and three
-           descriptor saves. no locks. */
+   time:   copying depends on argument bytes, plus path resolution and
+           delegated execution. the process-replacement path saves three
+           descriptors; confined stages return before those saves. */
 fn
 Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

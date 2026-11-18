@@ -844,8 +844,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       ArrayList<String> values         = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           cxt.is_associative_array(assignment.name)
-              ? argument_context::AssociativeLiteral
-              : argument_context::ArrayLiteral,
+                      ? argument_context::AssociativeLiteral
+                      : argument_context::ArrayLiteral,
           &subscript_ends);
 
       /* a compound assignment traces its words as written. */
@@ -1684,8 +1684,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       ArrayList<String> values         = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           is_associative_request || cxt.is_associative_array(assignment.name)
-              ? argument_context::AssociativeLiteral
-              : argument_context::ArrayLiteral,
+                      ? argument_context::AssociativeLiteral
+                      : argument_context::ArrayLiteral,
           &subscript_ends);
 
       do_trace_array_assignment(assignment, values);

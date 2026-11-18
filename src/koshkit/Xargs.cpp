@@ -654,9 +654,9 @@ Xargs::execute(const ExecContext               &ec,
   /* a capped item is longer than any command, so no truncated value runs. */
   reader.set_item_byte_limit(maximum_byte_count + 1);
 
-  /* at this point: base holds the utility, or echo, followed by the operands.
-     reader takes its input from ec.in_fd or KOSH_STDIN, and the three limits
-     are positive and fit in usize. */
+  /* reader uses the -a descriptor when present, otherwise ec.in_fd or
+     KOSH_STDIN. base holds the command and its fixed arguments, and the three
+     limits are positive and fit in usize. */
   let   deferred_value       = String{heap_allocator()};
   usize deferred_line_number = 0;
   bool  has_deferred_item    = false;
@@ -713,7 +713,6 @@ Xargs::execute(const ExecContext               &ec,
     }
   };
 
-  /* a status that stops the run is returned. */
   let const do_apply_status =
       [&](i32 command_status) throws -> Maybe<i32> {
     if (command_status == 255) {

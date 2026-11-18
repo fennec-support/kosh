@@ -1381,9 +1381,9 @@ preflight_timeout_stage(const ExecContext &,
 
 #endif
 
-/* memory: none.
-   time:   one read_fd() call per input byte, until a newline, end of input,
-           or read error. */
+/* memory: prompt uses heap_allocator() and is destroyed on return.
+   time:   the prompt is written to stderr before reading. one read_fd() call
+           per input byte, until a newline, end of input, or read error. */
 fn
 confirm_koshkit_action(const ExecContext    &ec,
                        StringView            message,

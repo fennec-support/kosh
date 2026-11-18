@@ -51,8 +51,10 @@ namespace koshka::koshkit {
 /* memory: line holds one whole input line, so memory grows with the longest
            line. output is flushed to stdout after a line once it reaches 65536
            bytes.
-   time:   O(input bytes). character and field selection each scan a line up to
-           last_selected_position. */
+   time:   field selection costs O(b + f * r) for b input bytes, f visited
+           fields, and r selected ranges. character selection scans through
+           last_selected_position. byte selection visits the selected ranges,
+           or decodes the whole line with -n. */
 fn
 Cut::execute(const ExecContext               &ec,
              EvalContext                     &cxt,

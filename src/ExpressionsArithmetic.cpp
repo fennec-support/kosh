@@ -811,7 +811,6 @@ arithmetic_clause_command_text(StringView clause) throws -> String
   return command_text;
 }
 
-/* time: one clause evaluation per call. */
 fn
 ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {

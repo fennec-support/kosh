@@ -111,8 +111,8 @@ history_target_needs_separator(const Path &target) throws
 
 /* memory: out and the events list are allocated in scratch_allocator() and
            are released when the scratch arena is reset.
-   time:   one get_history_events() read, then O(displayed events) to format
-           each line. */
+   time:   one get_history_events() call, then work proportional to displayed
+           command bytes and event numbers, plus the output write. */
 static fn
 print_history_list(const ExecContext &ec,
                    EvalContext       &cxt,

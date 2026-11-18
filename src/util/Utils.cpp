@@ -827,6 +827,8 @@ path_component_owner(
     usize expanded_component_index)
     wontthrow -> Maybe<path_component_owner_range>
 {
+  /* raw_components is [pre, $X, end], with only $X opaque, and
+     expanded_components is [pre, a, b, end]. expanded_component_index is 2. */
   usize raw_left_index      = 0;
   usize expanded_left_index = 0;
 
@@ -841,6 +843,7 @@ path_component_owner(
     raw_left_index++;
     expanded_left_index++;
   }
+  /* the prefix scan leaves raw_left_index and expanded_left_index at 1. */
 
   usize raw_right_index      = raw_components.count();
   usize expanded_right_index = expanded_components.count();
@@ -856,6 +859,8 @@ path_component_owner(
     raw_right_index--;
     expanded_right_index--;
   }
+  /* the suffix scan leaves raw_right_index at 2 and expanded_right_index at
+     3. the middle belongs to raw range [1, 2), the $X component. */
 
   if (expanded_component_index >= expanded_left_index &&
       expanded_component_index < expanded_right_index &&

@@ -1,8 +1,8 @@
 unset KOSH_FLAGS
 # type reports how a name resolves in the shell's own order, a keyword, an alias,
 # a function, then a builtin. The -t form prints the class word, the default form
-# spells it out, -a lists every location, and -p and -t stay silent for a name
-# that is not a file. These are kept off the PATH so the output is stable.
+# spells it out, and -a lists every location. -p is silent for a non-file
+# resolution. -t is silent for a missing name.
 echo "== -t keyword:"; "$BIN" -c 'type -t for'
 echo "== -t builtin:"; "$BIN" -c 'type -t echo'
 echo "== -t alias:"; "$BIN" -c 'alias g=git; type -t g'

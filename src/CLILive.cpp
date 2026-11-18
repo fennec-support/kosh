@@ -371,8 +371,6 @@ live_report_options::parse_with_window(const ExecContext       &ec,
       "invalid live interval", "use a positive number of seconds", allocator);
 
   if (!interval.has_value()) return None;
-  /* at this point: live_flag has a value, and interval holds a positive
-     number of seconds. */
 
   options.interval_seconds = *interval;
 
@@ -400,8 +398,6 @@ live_report_options::parse(const ExecContext       &ec,
       allocator);
 
   if (!window.has_value()) return None;
-  /* at this point: options holds a value, cumulative_flag has a value, and
-     window holds a positive number of seconds. */
 
   options->window_seconds = *window;
 
@@ -1825,8 +1821,8 @@ private:
     }
   }
 
-  /* reads a search pattern on the prompt line after prefix. An empty
-     pattern repeats the previous one. */
+  /* a search pattern is read after / or ?. an empty pattern repeats the
+     previous one. */
   fn
   read_search(bool is_forward) throws -> pager_action
   {

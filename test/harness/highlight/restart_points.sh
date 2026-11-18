@@ -1,9 +1,9 @@
 set -e
 
-# The highlight scan records a restart point at a line start with no open
-# construct at least every 4096 bytes. A scan that resumes at one of them must
-# color the rest exactly as a scan from the start, including functions and
-# variables defined before the point and constructs that span several lines.
+# the highlight scan records eligible line starts at least 4096 bytes apart.
+# a resumed scan must color the remaining text exactly as a scan from the start,
+# including functions and variables defined before the point and constructs
+# that span several lines.
 script='early_fn() { echo "$1"; }
 assigned_early=1
 '

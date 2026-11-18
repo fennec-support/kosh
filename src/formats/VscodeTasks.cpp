@@ -119,10 +119,9 @@ is_windows_override(StringView source, usize object_start) wontthrow -> bool
 
 /* memory: ArrayList<usize> of open '{' offsets from heap_allocator(), freed
            when this function returns. its length is the number of open '{'.
-   time:   O(N) for the scan. each args array rescans its innermost object in
-           json_object_end() and json_member_string(), which cost the object
-           length. a byte inside d nested objects that each hold an args array
-           is rescanned up to d times, so the total is O(N * d). */
+   time:   O(N) scanning plus the sum of containing-object lengths over args
+           occurrences, for json_object_end() and json_member_string().
+           repeated args keys rescan even without additional nesting. */
 static fn
 extract_shell_args(const parser_format_input &input,
                    parsed_format_document    &document) throws -> void

@@ -229,8 +229,9 @@ Path::with_extension(StringView new_extension) const throws -> Path
   return result;
 }
 
-/* memory: components and normalized_text are allocated in allocator(). both
-           are freed on return, and the returned Path owns a copy of the text.
+/* memory: components and normalized_text use allocator(). their heap storage
+           is released on return; arena storage remains owned by the arena.
+           the returned Path owns a copy of the text.
    time:   O(n) for n = m_text.count(). each byte is visited once by
            next_component(), pops are O(1), and the join copies each component
            once. */
@@ -577,8 +578,9 @@ Path::read_entire_file() const throws -> Maybe<String>
   return os::read_fd_to_string(*file, heap_allocator());
 }
 
-/* memory: the file is read into a String in heap_allocator(), at most
-           max_byte_count bytes. the caller owns it on success.
+/* memory: the caller owns the returned heap String. the initial file size
+           and the completed read must fit max_byte_count, but a growing file
+           can allocate more before the completed read is rejected.
    time:   one nonblocking open, one fstat, reads until a read returns 0, and
            one close. */
 fn

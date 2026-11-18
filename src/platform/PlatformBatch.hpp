@@ -21,7 +21,7 @@ struct batch_operation_access;
 inline pure fn
 encode_directory_descriptor(descriptor directory) wontthrow -> u64
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#if K_PLATFORM_IS K_WIN32
 
   return static_cast<u64>(reinterpret_cast<uintptr_t>(directory));
 #else
@@ -33,7 +33,7 @@ encode_directory_descriptor(descriptor directory) wontthrow -> u64
 inline pure fn
 decode_directory_descriptor(u64 byte_offset) wontthrow -> descriptor
 {
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+#if K_PLATFORM_IS K_WIN32
 
   return reinterpret_cast<descriptor>(static_cast<uintptr_t>(byte_offset));
 #else
@@ -44,6 +44,8 @@ decode_directory_descriptor(u64 byte_offset) wontthrow -> descriptor
 
 } /* namespace batch_internal */
 
+/* operations borrow their paths, names, buffers, and status outputs. these
+   objects remain valid until Batch::execute() returns. */
 struct batch_operation
 {
   enum class Kind : u8

@@ -2,9 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the hive, a container whose elements never move. It
+ * This file implements the hive, a container with stable element storage. It
  * stores elements in fixed blocks, so a pointer to an element and its index
- * stay valid until that element is erased.
+ * stay valid until that element is erased or the allocator changes.
  */
 
 #pragma once
@@ -60,9 +60,10 @@ public:
 
   ~Hive() { destroy_all(); }
 
-  /* memory: one Block of BLOCK_SLOT_COUNT slots when every slot is taken, and
-             a doubled block table when the table is full.
-     time:   O(1), and O(block count) when the table grows. */
+  /* memory: a fresh Block when all slots are taken and a doubled block table
+             when full. destruction releases heap storage; arena storage
+             remains owned by the arena.
+     time:   T construction plus O(block count) when the table grows. */
   template <class... Arguments>
   fn
   emplace(Arguments &&...arguments) throws -> T *
@@ -288,7 +289,8 @@ public:
     return Iterator<const T>{this, m_slot_end};
   }
 
-  /* destroys every element and frees the blocks. */
+  /* destroys every element and releases heap blocks; arena storage remains
+     owned by the arena. */
   fn
   clear() wontthrow -> void
   {
@@ -342,7 +344,7 @@ public:
   }
 
 private:
-  /* an erased slot keeps the index of the next erased slot in its own bytes,
+  /* an erased slot keeps its index and a pointer to the next erased slot,
      so a live element carries no bookkeeping beyond one bit of its block. */
   struct FreeLink
   {

@@ -333,9 +333,9 @@ find_canonical_operation_positions(
            belong to this Batch and are cleared on entry. m_optimized_operations
            is cleared again on exit.
    time:   O(n) expected for n = m_operations.count() when more than 8 metadata
-           requests exist, and O(8n) below that. execute_batch_operations() runs
-           each unique operation once when deduplication applies, so the syscall
-           count is the unique operation count. no locks. */
+           requests exist, and O(8n) below that. execute_batch_operations()
+           receives each unique operation once when deduplication applies.
+           syscall and synchronization costs depend on the backend. */
 fn
 Batch::execute(ArrayList<batch_result> &results,
                batch_deduplication      deduplication) throws -> void

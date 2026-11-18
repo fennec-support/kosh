@@ -331,7 +331,6 @@ Nl::execute(const ExecContext               &ec,
   u64  blank_count           = 0;
   i32  status                = 0;
 
-  /* at this point: width_value is positive. */
   for (let const source : sources) {
     let const input = open_named_or_stdin(ec, source);
 

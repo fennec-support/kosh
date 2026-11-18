@@ -91,7 +91,6 @@ control_sequence_length(StringView text, usize position) wontthrow -> usize
   if (byte != 0xc2 || position + 1 >= text.length) {
     return 0;
   }
-  /* at this point: byte is 0xc2 and position + 1 < text.length. */
 
   let const next_byte = static_cast<u8>(text[position + 1]);
 
@@ -318,8 +317,6 @@ internal::shell_syntax_candidate_is_unchanged(
   if (raw_token != decoded_word.text.view()) return false;
   if (!decoded_candidate.starts_with(raw_token)) return false;
 
-  /* at this point: the word has no quote, raw_token equals its decoded text,
-     and decoded_candidate starts with raw_token. */
   let const suffix = decoded_candidate.substring(raw_token.length);
 
   return should_quote_words ? !path_candidate_needs_quoting(suffix)

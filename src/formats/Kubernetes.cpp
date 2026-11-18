@@ -70,7 +70,8 @@ argo_source_mood(StringView source, usize line_start, usize indent) wontthrow
 
 /* memory: this function allocates nothing itself. the extractors add fragments
            to document, which owns them.
-   time:   O(n) for the line scan over n source bytes. each .sh key line walks
+   time:   parser_format_extract_yaml_exec_keys() plus an O(n) line scan over
+           n source bytes. each .sh key line walks
            upward through the lines before it until a line with less
            indentation, which is O(n) per key, so O(n * k) for k such keys.
            argo_source_mood() walks the surrounding block, which is O(n) for

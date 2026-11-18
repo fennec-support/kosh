@@ -66,9 +66,8 @@ bc_find_matching_closer(StringView text,
   return position;
 }
 
-/* memory: one String in allocator, returned to the caller.
-   time:   O(program.length), one pass with constant work per byte.
-           the output is no longer than program. */
+/* memory: result uses allocator and is returned to the caller.
+   time:   O(text.length). result is no longer than text. */
 /* the text of an evaluator message without the prefix that bc adds to its
    variable and function words. */
 static fn
@@ -171,6 +170,8 @@ bc_radix_number(StringView number,
 {
   if (input_base == 10) return String{allocator, number};
 
+  /* e.g. number = "A.F", input_base = 16 gives integer = "A" and
+     fraction = "F". translated becomes "(16#A+(16#F*1.0/(16**1)))". */
   let const point = number.find_character('.');
   let const integer =
       point.has_value() ? number.substring_of_length(0, *point) : number;
@@ -534,7 +535,6 @@ bc_parse_register(StringView   value,
     return {};
   }
 
-  /* at this point: parsed holds a u64 value that fits in u32. */
   return static_cast<u32>(parsed.value());
 }
 
