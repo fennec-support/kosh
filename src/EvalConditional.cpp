@@ -47,7 +47,7 @@ fail_conditional_syntax(StringView reason) throws -> void
 
 namespace {
 
-struct conditional_tree_builder
+struct ConditionalTreeBuilder
 {
   using Kind    = conditional_element::Kind;
   using Node    = conditional_node;
@@ -227,7 +227,7 @@ struct conditional_tree_builder
   }
 };
 
-struct conditional_evaluator
+struct ConditionalEvaluator
 {
   EvalContext                          &cxt;
   const ArrayList<conditional_element> &elements;
@@ -904,19 +904,19 @@ struct conditional_evaluator
 pure fn
 is_conditional_unary_operator(StringView text) wontthrow -> bool
 {
-  return conditional_evaluator::unary_operator(text).has_value();
+  return ConditionalEvaluator::unary_operator(text).has_value();
 }
 
 pure fn
 is_conditional_binary_operator(StringView text) wontthrow -> bool
 {
-  return conditional_evaluator::binary_operator(text).has_value();
+  return ConditionalEvaluator::binary_operator(text).has_value();
 }
 
 pure fn
 get_conditional_unary_operator_code(StringView text) wontthrow -> u8
 {
-  let const kind = conditional_evaluator::unary_operator(text);
+  let const kind = ConditionalEvaluator::unary_operator(text);
 
   if (!kind.has_value()) return conditional_element::OPERATOR_NONE;
 
@@ -927,7 +927,7 @@ get_conditional_unary_operator_code(StringView text) wontthrow -> u8
 pure fn
 get_conditional_binary_operator_code(StringView text) wontthrow -> u8
 {
-  let const kind = conditional_evaluator::binary_operator(text);
+  let const kind = ConditionalEvaluator::binary_operator(text);
 
   if (!kind.has_value()) return conditional_element::OPERATOR_NONE;
 
@@ -995,7 +995,7 @@ build_conditional_tree(const ArrayList<conditional_element> &elements)
     throws -> conditional_tree
 {
   let tree    = conditional_tree{};
-  let builder = conditional_tree_builder{elements, tree};
+  let builder = ConditionalTreeBuilder{elements, tree};
 
   if (elements.is_empty()) {
     tree.root = builder.fail(conditional_node::Failure::Empty);
@@ -1020,7 +1020,7 @@ EvalContext::evaluate_conditional(
   LOG(Debug, "evaluating a [[ ]] conditional of %zu elements",
       elements.count());
 
-  let       evaluator           = conditional_evaluator{*this, elements, tree};
+  let       evaluator           = ConditionalEvaluator{*this, elements, tree};
   let const is_conditional_true = evaluator.eval_node(tree.root);
 
   if (tree.failure != conditional_node::NO_NODE)

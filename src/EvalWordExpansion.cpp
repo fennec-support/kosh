@@ -86,7 +86,7 @@ get_segment_quoting(const WordSegment &segment) wontthrow
            candidate character. */
 hot fn
 EvalContext::expand_word(const Word &word) throws
-    -> ArrayList<glob_field>
+    -> ArrayList<GlobField>
 {
   LOG(All, "expanding a word of %zu segments into fields",
       word.segments.count());
@@ -183,14 +183,14 @@ EvalContext::expand_word(const Word &word) throws
     }
   }
 
-  let fields      = ArrayList<glob_field>{scratch};
-  let current     = glob_field{scratch};
+  let fields      = ArrayList<GlobField>{scratch};
+  let current     = GlobField{scratch};
   let has_current = false;
 
   let const do_flush = [&]() {
     if (has_current) {
       fields.push(steal(current));
-      current     = glob_field{scratch};
+      current     = GlobField{scratch};
       has_current = false;
     }
   };
@@ -213,7 +213,7 @@ EvalContext::expand_word(const Word &word) throws
     has_current = true;
   };
 
-  let const do_emit_empty_field = [&]() { fields.push(glob_field{scratch}); };
+  let const do_emit_empty_field = [&]() { fields.push(GlobField{scratch}); };
 
   /* e.g. text = "a::b" with IFS ":"
        the first run appends "a" to current and stops at the first ":".
@@ -360,7 +360,7 @@ EvalContext::expand_word(const Word &word) throws
 
   let const do_emit_operand_word =
       [&](StringView word, const SourceLocation *word_location, bool is_quoted,
-          const parameter_reference *reference) throws {
+          const ParameterReference *reference) throws {
         let const is_field_sensitive =
             reference != nullptr ? reference->is_operand_field_sensitive()
                                  : is_field_sensitive_word(word);
@@ -492,7 +492,7 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
-      let        analyzed  = parameter_reference{};
+      let        analyzed  = ParameterReference{};
       let const *reference = resolved_text.has_value()
                                  ? nullptr
                                  : segment.get_parameter_reference();
@@ -502,7 +502,7 @@ EvalContext::expand_word(const Word &word) throws
         reference = &analyzed;
       }
 
-      if (reference->kind == parameter_reference::Form::Name) {
+      if (reference->kind == ParameterReference::Form::Name) {
         if (let const stored = variable_store().find_plain_scalar(segment_text);
             stored.has_value())
         {
@@ -517,7 +517,7 @@ EvalContext::expand_word(const Word &word) throws
 
       /* ${!prefix*} lists variables only when prefix is a valid identifier, so
          ${!ref%c*} stays an indirect expansion with an operator. */
-      if (reference->kind == parameter_reference::Form::PrefixNames) {
+      if (reference->kind == ParameterReference::Form::PrefixNames) {
         const StringView prefix =
             segment_text.substring_of_length(1, segment_text.length - 2);
         let const is_star = segment_text[segment_text.length - 1] == '*';
@@ -527,7 +527,7 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
-      if (reference->kind == parameter_reference::Form::Keys) {
+      if (reference->kind == ParameterReference::Form::Keys) {
         const StringView array_name =
             segment_text.substring_of_length(1, segment_text.length - 4);
         let const is_star    = segment_text[segment_text.length - 2] == '*';
@@ -537,7 +537,7 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
-      if (reference->has_route(parameter_reference::ROUTE_ARRAY_ELEMENTS)) {
+      if (reference->has_route(ParameterReference::ROUTE_ARRAY_ELEMENTS)) {
         let const array_name =
             segment_text.substring_of_length(0, segment_text.length - 3);
         let const is_star  = segment_text[segment_text.length - 2] == '*';
@@ -562,11 +562,11 @@ EvalContext::expand_word(const Word &word) throws
       };
 
       let const has_positional_test_colon =
-          reference->has_route(parameter_reference::ROUTE_POSITIONAL_SLICE);
+          reference->has_route(ParameterReference::ROUTE_POSITIONAL_SLICE);
       const usize positional_test_op_position =
           has_positional_test_colon ? 2 : 1;
 
-      if (reference->has_route(parameter_reference::ROUTE_POSITIONAL_TEST)) {
+      if (reference->has_route(ParameterReference::ROUTE_POSITIONAL_TEST)) {
         let const is_star = segment_text[0] == '*';
         let const op      = segment_text[positional_test_op_position];
         let const word =
@@ -711,7 +711,7 @@ EvalContext::expand_word(const Word &word) throws
       }
 
       if (segment.is_in_double_quotes &&
-          reference->has_route(parameter_reference::ROUTE_POSITIONAL_DECLARE))
+          reference->has_route(ParameterReference::ROUTE_POSITIONAL_DECLARE))
       {
         let const fields = get_declaration_fields("@");
 
@@ -728,8 +728,7 @@ EvalContext::expand_word(const Word &word) throws
         }
       }
 
-      if (reference->has_route(parameter_reference::ROUTE_POSITIONAL_MODIFIER))
-      {
+      if (reference->has_route(ParameterReference::ROUTE_POSITIONAL_MODIFIER)) {
         const char positional_at_op =
             segment_text[1] == '@' ? segment_text[2] : '\0';
         let const  is_star           = segment_text[0] == '*';
@@ -815,7 +814,7 @@ EvalContext::expand_word(const Word &word) throws
       {
         let const name_end = static_cast<usize>(reference->name_length);
 
-        if (reference->has_route(parameter_reference::ROUTE_ARRAY_SLICE)) {
+        if (reference->has_route(ParameterReference::ROUTE_ARRAY_SLICE)) {
           let const array_name = segment_text.substring_of_length(0, name_end);
           let const is_star    = segment_text[name_end + 1] == '*';
           let const slice      = segment_text.substring(name_end + 4);
@@ -850,7 +849,7 @@ EvalContext::expand_word(const Word &word) throws
         }
 
         if (segment.is_in_double_quotes &&
-            reference->has_route(parameter_reference::ROUTE_ARRAY_DECLARE))
+            reference->has_route(ParameterReference::ROUTE_ARRAY_DECLARE))
         {
           let const fields = get_declaration_fields(
               segment_text.substring_of_length(0, name_end));
@@ -881,7 +880,7 @@ EvalContext::expand_word(const Word &word) throws
             at_transform_op == 'u' || at_transform_op == 'P' ||
             at_transform_op == 'a' || at_transform_op == 'k';
 
-        if (reference->has_route(parameter_reference::ROUTE_ARRAY_MODIFIER)) {
+        if (reference->has_route(ParameterReference::ROUTE_ARRAY_MODIFIER)) {
           let const  array_name = segment_text.substring_of_length(0, name_end);
           let const  modifier   = segment_text.substring(name_end + 3);
           let        modifier_location = SourceLocation{};
@@ -971,7 +970,7 @@ EvalContext::expand_word(const Word &word) throws
           break;
         }
 
-        if (reference->has_route(parameter_reference::ROUTE_ARRAY_TEST)) {
+        if (reference->has_route(ParameterReference::ROUTE_ARRAY_TEST)) {
           let const rest          = segment_text.substring(name_end + 3);
           let const is_colon_form = rest[0] == ':';
           let const op_index      = is_colon_form ? usize{1} : usize{0};
@@ -1115,7 +1114,7 @@ EvalContext::expand_word(const Word &word) throws
         return true;
       };
 
-      if (reference->has_route(parameter_reference::ROUTE_ALTERNATE_OPERAND) &&
+      if (reference->has_route(ParameterReference::ROUTE_ALTERNATE_OPERAND) &&
           do_read_alternate_subject(segment_text.substring_of_length(
               0, static_cast<usize>(reference->alternate_name_end))))
       {

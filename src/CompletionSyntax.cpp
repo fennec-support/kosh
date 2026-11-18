@@ -214,7 +214,7 @@ timeout_option_takes_next_word(StringView word) wontthrow -> bool
   }
 
   let const flags =
-      koshkit::koshkit_util_flag_list(koshkit::Utility::Kind::Timeout);
+      koshkit::koshkit_util_flag_list(koshkit::utility::Kind::Timeout);
 
   if (flags == nullptr) return false;
 
@@ -233,9 +233,8 @@ timeout_option_takes_next_word(StringView word) wontthrow -> bool
 }
 
 static fn
-decoded_word_text(StringView                 word,
-                  utils::decoded_shell_word &decoded) throws
-    -> StringView
+decoded_word_text(StringView               word,
+                  utils::DecodedShellWord &decoded) throws -> StringView
 {
   for (usize position = 0; position < word.length; position++) {
     switch (word[position]) {
@@ -266,7 +265,7 @@ timeout_managed_command_start(StringView line, usize position) wontthrow
 
     if (!word.has_value()) return None;
 
-    let       decoded_word = utils::decoded_shell_word{completion_allocator()};
+    let       decoded_word = utils::DecodedShellWord{completion_allocator()};
     let const word_text    = decoded_word_text(*word, decoded_word);
 
     if (should_skip_value) {
@@ -301,7 +300,7 @@ timeout_command_start(StringView line, usize position) wontthrow -> Maybe<usize>
 
     if (!word.has_value()) return None;
 
-    let       decoded_word = utils::decoded_shell_word{completion_allocator()};
+    let       decoded_word = utils::DecodedShellWord{completion_allocator()};
     let const word_text    = decoded_word_text(*word, decoded_word);
 
     if (word_text == "timeout")
@@ -312,7 +311,7 @@ timeout_command_start(StringView line, usize position) wontthrow -> Maybe<usize>
 
       if (!utility.has_value()) return None;
 
-      let decoded_utility = utils::decoded_shell_word{completion_allocator()};
+      let decoded_utility    = utils::DecodedShellWord{completion_allocator()};
       let const utility_text = decoded_word_text(*utility, decoded_utility);
 
       if (utility_text == "timeout")

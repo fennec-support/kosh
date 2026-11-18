@@ -304,7 +304,7 @@ scan_no_editor_history(const Path &path,
 
 static fn
 load_no_editor_history(const Path &path, bool should_allow_missing)
-    -> ErrorOr<Ok>
+    -> ErrorOr<ok>
 {
   let &state = get_no_editor_history_state();
 
@@ -344,7 +344,7 @@ load_no_editor_history(const Path &path, bool should_allow_missing)
 
 static fn
 ensure_no_editor_history_loaded(const Path &path, bool should_allow_missing)
-    -> ErrorOr<Ok>
+    -> ErrorOr<ok>
 {
   let const &state = get_no_editor_history_state();
 
@@ -734,7 +734,7 @@ get_history_path() -> koshka::Maybe<koshka::Path>
            write_history_file_atomically(). the process lock on the history
            directory is held until return. */
 fn
-write_history() -> koshka::ErrorOr<koshka::Ok>
+write_history() -> koshka::ErrorOr<koshka::ok>
 {
   let const path = get_history_path();
 
@@ -789,7 +789,7 @@ write_history() -> koshka::ErrorOr<koshka::Ok>
 }
 
 fn
-read_history() -> koshka::ErrorOr<koshka::Ok>
+read_history() -> koshka::ErrorOr<koshka::ok>
 {
   let const path = get_history_path();
 
@@ -799,7 +799,7 @@ read_history() -> koshka::ErrorOr<koshka::Ok>
 }
 
 fn
-sync_history() -> koshka::ErrorOr<koshka::Ok>
+sync_history() -> koshka::ErrorOr<koshka::ok>
 {
   let const path = get_history_path();
 
@@ -818,7 +818,7 @@ sync_history() -> koshka::ErrorOr<koshka::Ok>
 }
 
 fn
-clear_history() -> koshka::ErrorOr<koshka::Ok>
+clear_history() -> koshka::ErrorOr<koshka::ok>
 {
   let const path = get_history_path();
 
@@ -836,7 +836,7 @@ clear_history() -> koshka::ErrorOr<koshka::Ok>
 }
 
 fn
-import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
+import_history(StringView contents) -> koshka::ErrorOr<koshka::ok>
 {
   let const path = get_history_path();
 
@@ -870,7 +870,7 @@ import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
            directory is held until return. with no unwritten record, the file
            is not touched after the load. */
 fn
-append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
+append_unwritten_history() -> koshka::ErrorOr<koshka::ok>
 {
   let const path = get_history_path();
 

@@ -99,7 +99,7 @@ struct dump_entry
   i64    modification_time{0};
 };
 
-struct newest_named_entry_comparator
+struct NewestNamedEntryComparator
 {
   template <class Entry>
   pure fn
@@ -245,14 +245,14 @@ program_of_dump(StringView name, Allocator allocator) throws -> String
            make_sorted(). */
 fn
 collect_dumps(StringView directory, Allocator allocator) throws
-    -> SortedArrayList<dump_entry, newest_named_entry_comparator>
+    -> SortedArrayList<dump_entry, NewestNamedEntryComparator>
 {
   let       dumps    = ArrayList<dump_entry>{allocator};
   let const children = os::list_directory_status(directory, allocator);
 
   if (!children.has_value()) {
-    return SortedArrayList<dump_entry, newest_named_entry_comparator>{
-        allocator, newest_named_entry_comparator{}};
+    return SortedArrayList<dump_entry, NewestNamedEntryComparator>{
+        allocator, NewestNamedEntryComparator{}};
   }
 
   dumps.reserve(children->count());
@@ -277,7 +277,7 @@ collect_dumps(StringView directory, Allocator allocator) throws
     dumps.push(steal(dump));
   }
 
-  return steal(dumps).make_sorted(newest_named_entry_comparator{});
+  return steal(dumps).make_sorted(NewestNamedEntryComparator{});
 }
 
 fn
@@ -308,12 +308,12 @@ append_setting_row(ReportTable &table,
   let cells = ArrayList<report_table_cell_view>{allocator};
 
   cells.push({
-      name, colors::color_style{colors::color::BoldCyan,
-                                colors::color_variant::Soft}
+      name, colors::ColorStyle{colors::color::BoldCyan,
+                               colors::color_variant::Soft}
   });
   cells.push({
       value,
-      colors::color_style{colors::color::Green, colors::color_variant::Soft}
+      colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
   });
   table.add_row(cells);
 }
@@ -412,14 +412,14 @@ append_core_dump_report(String   &output,
       let cells = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({
-          size.view(), colors::color_style{colors::color::Green,
-                                           colors::color_variant::Soft}
+          size.view(), colors::ColorStyle{colors::color::Green,
+                                          colors::color_variant::Soft}
       });
       cells.push({modified.view(), colors::color::Dim});
       cells.push({
           dump.program.view(),
-          colors::color_style{colors::color::BoldMagenta,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::BoldMagenta,
+                             colors::color_variant::Soft}
       });
       cells.push({dump.name.view(), {}});
       table.add_row(cells);
@@ -555,14 +555,14 @@ struct format_probe
            adds O(n log n). */
 fn
 collect_log_entries(StringView directory, Allocator allocator) throws
-    -> SortedArrayList<log_entry, newest_named_entry_comparator>
+    -> SortedArrayList<log_entry, NewestNamedEntryComparator>
 {
   let       entries  = ArrayList<log_entry>{allocator};
   let const children = os::list_directory_status(directory, allocator);
 
   if (!children.has_value()) {
-    return SortedArrayList<log_entry, newest_named_entry_comparator>{
-        allocator, newest_named_entry_comparator{}};
+    return SortedArrayList<log_entry, NewestNamedEntryComparator>{
+        allocator, NewestNamedEntryComparator{}};
   }
 
   entries.reserve(children->count());
@@ -579,7 +579,7 @@ collect_log_entries(StringView directory, Allocator allocator) throws
     batch.clear();
 
     for (usize index = 0; index < probe_count; index++) {
-      batch.add(os::batch_operation::read(
+      batch.add(os::BatchOperation::read(
           probes[index].descriptor, probes[index].bytes, MAGIC_BYTE_COUNT));
     }
 
@@ -639,7 +639,7 @@ collect_log_entries(StringView directory, Allocator allocator) throws
 
   if (probe_count != 0) do_flush_probes();
 
-  return steal(entries).make_sorted(newest_named_entry_comparator{});
+  return steal(entries).make_sorted(NewestNamedEntryComparator{});
 }
 
 constexpr StringView EVENT_LOG_NAMES[]            = {"System", "Application"};
@@ -696,13 +696,13 @@ append_event_log_report(String   &output,
 
       cells.push({generated.view(), colors::color::Dim});
       cells.push({
-          record.level, colors::color_style{colors::color::BoldMagenta,
-                                            colors::color_variant::Soft}
+          record.level, colors::ColorStyle{colors::color::BoldMagenta,
+                                           colors::color_variant::Soft}
       });
       cells.push({
           record.source.view(),
-          colors::color_style{colors::color::Green,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::Green,
+                             colors::color_variant::Soft}
       });
       cells.push({message.view(), {}});
       table.add_row(cells);
@@ -764,13 +764,12 @@ append_log_report(String   &output,
       let cells = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({
-          size.view(), colors::color_style{colors::color::Green,
-                                           colors::color_variant::Soft}
+          size.view(), colors::ColorStyle{colors::color::Green,
+                                          colors::color_variant::Soft}
       });
       cells.push({
-          entry.format_label,
-          colors::color_style{colors::color::BoldMagenta,
-                              colors::color_variant::Soft}
+          entry.format_label, colors::ColorStyle{colors::color::BoldMagenta,
+                                                 colors::color_variant::Soft}
       });
       cells.push({modified.view(), colors::color::Dim});
       cells.push({entry.name.view(), {}});

@@ -383,7 +383,7 @@ public:
 };
 
 fn
-colored(colors::color_style code, bool should_color) wontthrow -> StringView
+colored(colors::ColorStyle code, bool should_color) wontthrow -> StringView
 {
   return should_color ? colors::color_to_sv(code) : StringView{};
 }
@@ -576,30 +576,30 @@ append_metric_line(String          &out,
   out.append(row.name.view());
   out.append_repeated(' ', name_width - row.name.length() + 2);
 
-  out.append(colored(colors::color_style{colors::color::BoldGreen,
-                                         colors::color_variant::Soft},
-                     should_color));
+  out.append(colored(
+      colors::ColorStyle{colors::color::BoldGreen, colors::color_variant::Soft},
+      should_color));
   out.append(row.mean.view());
   out.append(colored(colors::color::Reset, should_color));
   out.append_repeated(' ', mean_width - row.mean.length());
 
   out += " +/- ";
-  out.append(colored(colors::color_style{colors::color::BoldGreen,
-                                         colors::color_variant::Soft},
-                     should_color));
+  out.append(colored(
+      colors::ColorStyle{colors::color::BoldGreen, colors::color_variant::Soft},
+      should_color));
   out.append(row.std_dev.view());
   out.append(colored(colors::color::Reset, should_color));
   out.append_repeated(' ', std_dev_width - row.std_dev.length());
 
   out += "  (";
   out.append(colored(
-      colors::color_style{colors::color::BoldCyan, colors::color_variant::Soft},
+      colors::ColorStyle{colors::color::BoldCyan, colors::color_variant::Soft},
       should_color));
   out.append(row.min.view());
   out.append(colored(colors::color::Reset, should_color));
   out += " ... ";
-  out.append(colored(colors::color_style{colors::color::BoldMagenta,
-                                         colors::color_variant::Soft},
+  out.append(colored(colors::ColorStyle{colors::color::BoldMagenta,
+                                        colors::color_variant::Soft},
                      should_color));
   out.append(row.max.view());
   out.append(colored(colors::color::Reset, should_color));
@@ -637,14 +637,14 @@ append_relative_line(String             &out,
   if (ratio > 1.0) {
     snprintf(buffer, sizeof(buffer), "%.2fx slower +/- %.2f", ratio,
              ratio_uncertainty);
-    out.append(colored(colors::color_style{colors::color::BoldRed,
-                                           colors::color_variant::Soft},
-                       should_color));
+    out.append(colored(
+        colors::ColorStyle{colors::color::BoldRed, colors::color_variant::Soft},
+        should_color));
   } else {
     snprintf(buffer, sizeof(buffer), "%.2fx faster +/- %.2f", 1.0 / ratio,
              ratio_uncertainty / (ratio * ratio));
-    out.append(colored(colors::color_style{colors::color::BoldGreen,
-                                           colors::color_variant::Soft},
+    out.append(colored(colors::ColorStyle{colors::color::BoldGreen,
+                                          colors::color_variant::Soft},
                        should_color));
   }
 

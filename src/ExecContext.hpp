@@ -125,7 +125,7 @@ public:
   fn
   set_program_path(Path path) throws -> void;
   pure fn
-  builtin_kind() const wontthrow -> const Builtin::Kind &;
+  builtin_kind() const wontthrow -> const builtin::Kind &;
 
   template <typename PlaceOut,
             typename PlaceErr,

@@ -1141,7 +1141,7 @@ enum class memory_status_field : u32
   HugePagesFree   = 1u << 15,
 };
 
-struct memory_status
+struct MemoryStatus
 {
   u64 total_kib{0};
   u64 available_kib{0};
@@ -1169,7 +1169,7 @@ struct memory_status
 };
 
 fn
-read_memory_status(memory_status &status) wontthrow -> bool;
+read_memory_status(MemoryStatus &status) wontthrow -> bool;
 
 struct swap_status
 {
@@ -1234,7 +1234,7 @@ enum class system_activity_field : u32
   CgroupMembershipCount = 1u << 27,
 };
 
-struct system_activity_status
+struct SystemActivityStatus
 {
   u64  cpu_user_units{0};
   u64  cpu_system_units{0};
@@ -1277,7 +1277,7 @@ struct system_activity_status
 };
 
 fn
-read_system_activity_status(system_activity_status &status) wontthrow -> bool;
+read_system_activity_status(SystemActivityStatus &status) wontthrow -> bool;
 
 enum class disk_io_field : u32
 {
@@ -1297,7 +1297,7 @@ enum class disk_io_field : u32
   WriteRetries     = 1u << 13,
 };
 
-struct disk_io_status
+struct DiskIoStatus
 {
   String name{heap_allocator()};
   u64    read_byte_count{0};
@@ -1325,8 +1325,8 @@ struct disk_io_status
 
 struct disk_io_snapshot
 {
-  ArrayList<disk_io_status> disks{heap_allocator()};
-  u64                       sampled_at_nanoseconds{0};
+  ArrayList<DiskIoStatus> disks{heap_allocator()};
+  u64                     sampled_at_nanoseconds{0};
 };
 
 fn
@@ -1979,9 +1979,9 @@ struct regex_execution_options
   regex_start_position start_position{regex_start_position::Beginning};
 };
 
-struct regex_execution_report
+struct RegexExecutionReport
 {
-  explicit regex_execution_report(Allocator allocator)
+  explicit RegexExecutionReport(Allocator allocator)
       : spans(allocator), error_message(allocator)
   {}
 
@@ -2001,7 +2001,7 @@ compile_basic_regex(StringView       pattern,
 fn
 execute_regex(compiled_regex                &compiled,
               const regex_execution_options &options) throws
-    -> regex_execution_report;
+    -> RegexExecutionReport;
 
 fn
 free_regex(compiled_regex &compiled) wontthrow -> void;
@@ -2086,7 +2086,7 @@ path_is_executable(const Path &path) wontthrow -> bool;
 cold fn
 read_current_directory() throws -> Path;
 fn
-change_current_directory(StringView path) throws -> ErrorOr<Ok>;
+change_current_directory(StringView path) throws -> ErrorOr<ok>;
 fn
 reference_current_directory() wontthrow -> DirectoryReference;
 fn
@@ -2386,7 +2386,7 @@ enum class network_statistics_field : u32
   TransmitQueueLimit  = 1u << 11,
 };
 
-struct network_interface_statistics_entry
+struct NetworkInterfaceStatisticsEntry
 {
   String interface_name{heap_allocator()};
   u64    receive_byte_count{0};
@@ -2412,7 +2412,7 @@ struct network_interface_statistics_entry
 
 fn
 read_network_interface_statistics() throws
-    -> ArrayList<network_interface_statistics_entry>;
+    -> ArrayList<NetworkInterfaceStatisticsEntry>;
 
 enum class tcp_statistics_field : u32
 {
@@ -2440,7 +2440,7 @@ enum class tcp_statistics_field : u32
   RetransmitFailures         = 1u << 21,
 };
 
-struct tcp_statistics
+struct TcpStatistics
 {
   u64 active_open_count{0};
   u64 passive_open_count{0};
@@ -2474,7 +2474,7 @@ struct tcp_statistics
 };
 
 fn
-read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool;
+read_tcp_statistics(TcpStatistics &statistics) wontthrow -> bool;
 
 enum class network_socket_protocol : u8
 {
@@ -3075,17 +3075,17 @@ enum class process_substitution_direction : u8
   CommandWrites,
 };
 
-struct subshell_bootstrap
+struct SubshellBootstrap
 {
-  subshell_bootstrap() = default;
-  subshell_bootstrap(subshell_bootstrap &&other) noexcept;
-  ~subshell_bootstrap();
+  SubshellBootstrap() = default;
+  SubshellBootstrap(SubshellBootstrap &&other) noexcept;
+  ~SubshellBootstrap();
 
   fn
-  operator=(subshell_bootstrap &&other) noexcept -> subshell_bootstrap &;
-  subshell_bootstrap(const subshell_bootstrap &)                = delete;
+  operator=(SubshellBootstrap &&other) noexcept -> SubshellBootstrap &;
+  SubshellBootstrap(const SubshellBootstrap &)                = delete;
   fn
-  operator=(const subshell_bootstrap &) -> subshell_bootstrap & = delete;
+  operator=(const SubshellBootstrap &) -> SubshellBootstrap & = delete;
 
   fn
   release_process_ownership() wontthrow -> void;
@@ -3116,16 +3116,16 @@ public:
   set(StringView key, StringView value) throws -> void;
 
 private:
-  struct SavedVariable
+  struct saved_variable
   {
     String        key;
     Maybe<String> previous;
   };
 
-  ArrayList<SavedVariable> m_saved{heap_allocator()};
+  ArrayList<saved_variable> m_saved{heap_allocator()};
 };
 
-struct inherited_subshell_state
+struct InheritedSubshellState
 {
   i32   previous_exit_status{0};
   i64   shell_process_id{0};
@@ -3136,17 +3136,17 @@ struct inherited_subshell_state
   apply_to(ScopedEnvironment &environment) const throws -> void;
 
   static fn
-  take_from_environment() throws -> Maybe<inherited_subshell_state>;
+  take_from_environment() throws -> Maybe<InheritedSubshellState>;
   static fn
   clear_environment() throws -> void;
 };
 
 struct child_evaluator_state
 {
-  const subshell_bootstrap *bootstrap{nullptr};
-  StringView                shell_name{};
-  inherited_subshell_state  inherited{};
-  mimic_mood                mood{static_cast<mimic_mood>(0)};
+  const SubshellBootstrap *bootstrap{nullptr};
+  StringView               shell_name{};
+  InheritedSubshellState   inherited{};
+  mimic_mood               mood{static_cast<mimic_mood>(0)};
 };
 
 struct process_substitution_options
@@ -3215,7 +3215,7 @@ register_platform_flags(FlagList &flags) throws -> void;
 fn
 initialize_platform_runtime() wontthrow -> void;
 fn
-take_subshell_bootstrap() wontthrow -> subshell_bootstrap;
+take_subshell_bootstrap() wontthrow -> SubshellBootstrap;
 
 wontreturn fn
 exit_process_immediately(i32 status) wontthrow -> void;

@@ -62,9 +62,9 @@ struct network_socket_report_options
   bool should_show_header{true};
 };
 
-struct socket_row
+struct SocketRow
 {
-  explicit socket_row(Allocator allocator)
+  explicit SocketRow(Allocator allocator)
       : protocol(allocator), state(allocator), receive_queue(allocator),
         send_queue(allocator), local(allocator), peer(allocator),
         process_id(allocator), process_name(allocator), owner(allocator)
@@ -81,7 +81,7 @@ struct socket_row
   String owner;
 };
 
-struct process_pid_order
+struct ProcessPidOrder
 {
   pure fn
   operator()(const os::process_entry &left,
@@ -191,14 +191,14 @@ append_network_socket_report(String                              &output,
     owner_process_ids.truncate(unique_count);
   }
 
-  let const processes = os::describe_processes(owner_process_ids)
-                            .make_sorted(process_pid_order{});
+  let const processes =
+      os::describe_processes(owner_process_ids).make_sorted(ProcessPidOrder{});
 
   let const do_get_owner_text = [&](u32 owner_id) throws -> String {
     return utils::user_name_or_id(owner_id, allocator);
   };
 
-  let rows                = ArrayList<socket_row>{allocator};
+  let rows                = ArrayList<SocketRow>{allocator};
   u64 previous_identity   = 0;
   u32 previous_process_id = 0;
 
@@ -261,7 +261,7 @@ append_network_socket_report(String                              &output,
     previous_identity   = socket.identity;
     previous_process_id = socket.process_id;
 
-    let row = socket_row{allocator};
+    let row = SocketRow{allocator};
 
     row.protocol =
         String{allocator, is_unix ? unix_protocol_name(socket.unix_type)
@@ -330,45 +330,43 @@ append_network_socket_report(String                              &output,
   for (let const &row : rows) {
     cells.clear();
     cells.push({
-        row.protocol.view(), colors::color_style{colors::color::BoldMagenta,
-                                                 colors::color_variant::Soft}
+        row.protocol.view(), colors::ColorStyle{colors::color::BoldMagenta,
+                                                colors::color_variant::Soft}
     });
     cells.push({
-        row.state.view(), colors::color_style{colors::color::BoldGreen,
-                                              colors::color_variant::Soft}
+        row.state.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                             colors::color_variant::Soft}
     });
     cells.push({
         row.receive_queue.view(),
-        colors::color_style{colors::color::Green,
-                            colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
         row.send_queue.view(),
-        colors::color_style{colors::color::Green,
-                            colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
-        row.local.view(), colors::color_style{colors::color::BoldCyan,
-                                              colors::color_variant::Soft}
+        row.local.view(), colors::ColorStyle{colors::color::BoldCyan,
+                                             colors::color_variant::Soft}
     });
     cells.push({
         row.peer.view(),
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft}
     });
     if (options.should_show_processes) {
       cells.push({
           row.process_id.view(),
-          colors::color_style{colors::color::Yellow,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::Yellow,
+                             colors::color_variant::Soft}
       });
       cells.push({
           row.process_name.view(),
-          colors::color_style{colors::color::BoldGreen,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::BoldGreen,
+                             colors::color_variant::Soft}
       });
       cells.push({
-          row.owner.view(), colors::color_style{colors::color::Yellow,
-                                                colors::color_variant::Soft}
+          row.owner.view(), colors::ColorStyle{colors::color::Yellow,
+                                               colors::color_variant::Soft}
       });
     }
 
@@ -421,7 +419,7 @@ EvilSS::execute(const ExecContext               &ec,
   };
 
   if (FLAG_EVILSS_LIVE.is_enabled()) {
-    let const live_options = live_report_options::parse_with_window(
+    let const live_options = LiveReportOptions::parse_with_window(
         ec, cxt, FLAG_EVILSS_LIVE, false, 1.0, allocator);
 
     if (!live_options.has_value()) return 1;

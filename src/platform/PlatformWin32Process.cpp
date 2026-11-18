@@ -1553,10 +1553,10 @@ append_subshell_transport_u64(String &output, u64 value) throws -> void
            DuplicateHandle() per entry of bootstrap.processes that is not a pid
            reference. */
 static fn
-make_subshell_transport(const subshell_bootstrap &bootstrap,
-                        process                   child) throws -> Maybe<String>
+make_subshell_transport(const SubshellBootstrap &bootstrap,
+                        process                  child) throws -> Maybe<String>
 {
-  let const header = subshell_transport_header::from_bootstrap(bootstrap);
+  let const header = SubshellTransportHeader::from_bootstrap(bootstrap);
   if (!header.has_value()) return koshka::None;
 
   let transport = String{heap_allocator()};
@@ -2723,7 +2723,7 @@ spawn_subshell_stage(StringView                   source,
   if (!module_path.has_value()) return koshka::None;
 
   if (bootstrap != nullptr &&
-      !subshell_transport_header::from_bootstrap(*bootstrap).has_value())
+      !SubshellTransportHeader::from_bootstrap(*bootstrap).has_value())
   {
     let const state_byte_count = static_cast<u64>(bootstrap->payload.count()) +
                                  bootstrap->source_origin.count() +
@@ -2732,9 +2732,9 @@ spawn_subshell_stage(StringView                   source,
         "The shell state is " +
         String::from(state_byte_count, heap_allocator()) +
         " bytes, more than the " +
-        String::from(static_cast<u64>(
-                         subshell_transport_header::MAXIMUM_TRANSPORT_LENGTH),
-                     heap_allocator()) +
+        String::from(
+            static_cast<u64>(SubshellTransportHeader::MAXIMUM_TRANSPORT_LENGTH),
+            heap_allocator()) +
         " bytes a Windows child shell can receive"};
   }
 
@@ -4074,7 +4074,7 @@ system_uptime_seconds() wontthrow -> Maybe<u64>
 }
 
 fn
-read_memory_status(memory_status &status) wontthrow -> bool
+read_memory_status(MemoryStatus &status) wontthrow -> bool
 {
   MEMORYSTATUSEX memory{};
   memory.dwLength = sizeof(memory);
@@ -4185,7 +4185,7 @@ read_process_io_statuses(const ArrayList<i64>         &process_ids,
 }
 
 fn
-read_system_activity_status(system_activity_status &status) wontthrow -> bool
+read_system_activity_status(SystemActivityStatus &status) wontthrow -> bool
 {
   FILETIME idle_time{};
   FILETIME kernel_time{};
@@ -4215,7 +4215,7 @@ hundred_nanosecond_units_to_nanoseconds(i64 units) wontthrow -> u64
 fn
 read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
 {
-  disk_io_snapshot snapshot{ArrayList<disk_io_status>{allocator},
+  disk_io_snapshot snapshot{ArrayList<DiskIoStatus>{allocator},
                             monotonic_nanos()};
   constexpr u32    AVAILABLE = static_cast<u32>(disk_io_field::ReadBytes) |
                             static_cast<u32>(disk_io_field::WrittenBytes) |
@@ -4247,7 +4247,7 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
       continue;
     }
 
-    snapshot.disks.push(disk_io_status{
+    snapshot.disks.push(DiskIoStatus{
         String{allocator, "PhysicalDrive"}
         +
             String::from(disk_index, allocator),

@@ -126,12 +126,12 @@ enum class nl_number_format : uchar
 };
 
 static fn
-append_nl_number(String             &output,
-                 i64                 number,
-                 usize               width,
-                 StringView          separator,
-                 nl_number_format    format,
-                 colors::color_style style) throws -> void
+append_nl_number(String            &output,
+                 i64                number,
+                 usize              width,
+                 StringView         separator,
+                 nl_number_format   format,
+                 colors::ColorStyle style) throws -> void
 {
   char digit_buffer[24];
 
@@ -317,11 +317,11 @@ Nl::execute(const ExecContext               &ec,
 
   if (delimiter_text.length() == 1) delimiter_text += ':';
 
-  let const number_style =
-      koshkit_should_color() ? colors::color_style{colors::color::Green,
-                                                   colors::color_variant::Soft}
-                             : colors::color_style{};
-  let const delimiter = delimiter_text.view();
+  let const number_style = koshkit_should_color()
+                               ? colors::ColorStyle{colors::color::Green,
+                                                    colors::color_variant::Soft}
+                               : colors::ColorStyle{};
+  let const delimiter    = delimiter_text.view();
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
   let  output                = String{cxt.scratch_allocator()};

@@ -126,7 +126,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     StringView           word{};
     Maybe<String>        alias_value;
-    Maybe<Builtin::Kind> builtin_kind;
+    Maybe<builtin::Kind> builtin_kind;
     bool                 is_bundled_utility = false;
 
     if (name_is_keyword_in_mood(name.view(), cxt.runtime_state().get_mood())) {

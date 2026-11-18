@@ -137,7 +137,7 @@ effective_entry_kind(const os::directory_status_entry &entry) wontthrow
   }
 }
 
-struct removal_request
+struct RemovalRequest
 {
   const ExecContext  &ec;
   EvalContext        &cxt;
@@ -293,8 +293,8 @@ remove_path(StringView   path,
 
 struct tree_removal_state
 {
-  const removal_request &request;
-  Maybe<u64>             root_device_id;
+  const RemovalRequest &request;
+  Maybe<u64>            root_device_id;
 };
 
 static fn
@@ -347,9 +347,9 @@ report_tree_removal_failure(void                    *context,
 }
 
 static fn
-remove_path_with_prompt(const removal_request &request,
-                        StringView             path,
-                        bool                   is_directory_mode) throws -> bool
+remove_path_with_prompt(const RemovalRequest &request,
+                        StringView            path,
+                        bool                  is_directory_mode) throws -> bool
 {
   let &cxt = request.cxt;
 
@@ -429,11 +429,11 @@ remove_path_with_prompt(const removal_request &request,
    time:   O(entries under path). each entry costs a constant number of stat
            calls, and each descended directory costs one listing call. */
 static fn
-report_dry_run_removal(const removal_request &request,
-                       StringView             path,
-                       bool                   is_directory_mode,
-                       bool                  &is_kept,
-                       bool                  &is_left_behind,
+report_dry_run_removal(const RemovalRequest &request,
+                       StringView            path,
+                       bool                  is_directory_mode,
+                       bool                 &is_kept,
+                       bool                 &is_left_behind,
                        Path::EntryKind known_kind = Path::EntryKind::Unknown,
                        const os::file_status *known_status   = nullptr,
                        Maybe<u64>             root_device_id = {}) throws -> bool
@@ -712,7 +712,7 @@ Rm::execute(const ExecContext               &ec,
       FLAG_RM_PRESERVE_ROOT.position() > FLAG_RM_NO_PRESERVE_ROOT.position();
   let const should_preserve_all_roots =
       should_preserve_root && FLAG_RM_PRESERVE_ROOT.has_value();
-  let const request = removal_request{
+  let const request = RemovalRequest{
       ec,
       cxt,
       allocator,

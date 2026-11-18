@@ -78,8 +78,8 @@ append_node_report(String                    &output,
   let const do_append_field = [&](StringView name,
                                   StringView value) throws {
     table.add_field_row(name, value,
-                        colors::color_style{colors::color::BoldCyan,
-                                            colors::color_variant::Soft});
+                        colors::ColorStyle{colors::color::BoldCyan,
+                                           colors::color_variant::Soft});
   };
 
   do_append_field("Type", file_type_name(status));
@@ -368,8 +368,8 @@ GoodNode::execute(const ExecContext               &ec,
   }
 
   for (usize index = 0; index < paths.count(); index++)
-    report_batch.add(os::batch_operation::lstat(report_paths[index],
-                                                report_statuses[index]));
+    report_batch.add(
+        os::BatchOperation::lstat(report_paths[index], report_statuses[index]));
 
   let const report_results = report_batch.execute();
 

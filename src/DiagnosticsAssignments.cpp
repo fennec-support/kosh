@@ -123,8 +123,8 @@ plain_output_redirection_spelling(Redirection::Kind kind) wontthrow
 } /* namespace */
 
 fn
-check_redirection_lints(AnalysisContext          &actx,
-                        const command_lint_input &input) throws -> void
+check_redirection_lints(AnalysisContext        &actx,
+                        const CommandLintInput &input) throws -> void
 {
   let          has_stderr_to_stdout = false;
   String       read_target{heap_allocator()};
@@ -320,8 +320,8 @@ check_redirection_lints(AnalysisContext          &actx,
 }
 
 fn
-check_test_operand_lints(AnalysisContext          &actx,
-                         const command_lint_input &input) throws -> void
+check_test_operand_lints(AnalysisContext        &actx,
+                         const CommandLintInput &input) throws -> void
 {
   if (!input.is_in_group(COMMAND_GROUP_TEST) || input.is_command_shadowed) {
     return;
@@ -689,8 +689,8 @@ prefix_value_is_own_name(const PrefixAssignment &var) wontthrow -> bool
 } /* namespace */
 
 fn
-check_prefix_assignment_reads(AnalysisContext          &actx,
-                              const command_lint_input &input) throws
+check_prefix_assignment_reads(AnalysisContext        &actx,
+                              const CommandLintInput &input) throws
     -> bool
 {
   if (input.local_vars.is_empty()) return false;

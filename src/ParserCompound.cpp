@@ -1055,7 +1055,7 @@ Parser::parse_arithmetic_command(Token *open) throws -> Command *
 fn
 Parser::build_evaluated_arithmetic_tree(StringView expression,
                                         Allocator  allocator) throws
-    -> const arith_tree *
+    -> const ArithTree *
 {
   if (!m_lexer.should_build_evaluation_facts()) return nullptr;
 

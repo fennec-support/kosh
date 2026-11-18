@@ -22,7 +22,7 @@ namespace koshka {
 class ExecContext;
 class EvalContext;
 class Path;
-struct job;
+struct Job;
 
 enum class builtin_section : u8
 {
@@ -97,7 +97,7 @@ enum class builtin_section : u8
   X(Koshconf, "koshconf", Koshka, false)                                       \
   X(Slurp, "slurp", Koshka, false)
 
-class Builtin
+class builtin
 {
 public:
 #define T__BUILTIN_KIND(kind, name, section, should_dispatch_help) kind,
@@ -109,16 +109,16 @@ public:
 };
 
 #define T__BUILTIN_ENTRY(kind, name, section, should_dispatch_help)            \
-  {SSK(name), Builtin::Kind::kind},
+  {SSK(name), builtin::Kind::kind},
 /* every builtin, then the alternate spellings of five of them. */
 /* clang-format off */
-inline constexpr static_string_entry<Builtin::Kind> BUILTIN_ENTRIES[] = {
+inline constexpr static_string_entry<builtin::Kind> BUILTIN_ENTRIES[] = {
     KOSH_BUILTIN_KINDS(T__BUILTIN_ENTRY)
-    {SSK(":"),         Builtin::Kind::True   },
-    {SSK("["),         Builtin::Kind::Test   },
-    {SSK("."),         Builtin::Kind::Source },
-    {SSK("typeset"),   Builtin::Kind::Declare},
-    {SSK("readarray"), Builtin::Kind::Mapfile},
+    {SSK(":"),         builtin::Kind::True   },
+    {SSK("["),         builtin::Kind::Test   },
+    {SSK("."),         builtin::Kind::Source },
+    {SSK("typeset"),   builtin::Kind::Declare},
+    {SSK("readarray"), builtin::Kind::Mapfile},
 };
 /* clang-format on */
 #undef T__BUILTIN_ENTRY
@@ -149,7 +149,7 @@ inline constexpr StaticStringMap BUILTIN_ENTRY_POSITIONS{
     BUILTIN_ENTRY_POSITION_TABLE.entries};
 
 #define T__BUILTIN_CASE(kind, name, section, should_dispatch_help)             \
-  case Builtin::Kind::kind: {                                                  \
+  case builtin::Kind::kind: {                                                  \
     kind builtin;                                                              \
     return builtin.execute(ec, cxt);                                           \
   }
@@ -179,10 +179,10 @@ inline constexpr bool SHOULD_DISPATCH_BUILTIN_HELP[] = {
 #undef T__BUILTIN_HELP_DISPATCH
 
 fn
-search_builtin(StringView builtin_name) throws -> Maybe<Builtin::Kind>;
+search_builtin(StringView builtin_name) throws -> Maybe<builtin::Kind>;
 
 pure fn
-builtin_is_hidden_by_mood(Builtin::Kind kind, mimic_mood mood)
+builtin_is_hidden_by_mood(builtin::Kind kind, mimic_mood mood)
     wontthrow -> bool;
 
 pure fn
@@ -198,21 +198,21 @@ inline constexpr usize BUILTIN_KIND_COUNT =
     sizeof(BUILTIN_SECTIONS) / sizeof(BUILTIN_SECTIONS[0]);
 
 fn
-register_builtin_help(Builtin::Kind       kind,
+register_builtin_help(builtin::Kind       kind,
                       const FlagList     *flags,
                       const StringView   *description,
                       const SynopsisList *synopsis) wontthrow -> void;
 
 fn
-builtin_flag_list(Builtin::Kind kind) wontthrow -> const FlagList *;
+builtin_flag_list(builtin::Kind kind) wontthrow -> const FlagList *;
 fn
-builtin_help_description(Builtin::Kind kind) wontthrow -> StringView;
+builtin_help_description(builtin::Kind kind) wontthrow -> StringView;
 fn
-builtin_help_synopsis(Builtin::Kind kind) wontthrow -> const SynopsisList *;
+builtin_help_synopsis(builtin::Kind kind) wontthrow -> const SynopsisList *;
 
 #define REGISTER_BUILTIN_FLAGS(kind)                                           \
   static uchar t__builtin_flag_registrar =                                     \
-      (koshka::register_builtin_help(koshka::Builtin::Kind::kind, &FLAG_LIST,  \
+      (koshka::register_builtin_help(koshka::builtin::Kind::kind, &FLAG_LIST,  \
                                      &HELP_DESCRIPTION, &HELP_SYNOPSIS),       \
        0)
 
@@ -354,7 +354,7 @@ report_usage_error(const ExecContext &ec,
                    StringView         program_name) throws -> i32;
 
 fn
-continue_job(job &job) throws -> void;
+continue_job(Job &job) throws -> void;
 
 fn
 bind_declared_self_nameref(const ExecContext &ec,

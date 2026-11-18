@@ -36,7 +36,7 @@ enum class assignment_update_mode : u8
 };
 
 using exported_name_value =
-    conditional_t<os::IS_ENVIRONMENT_CASE_SENSITIVE, Nothing, String>;
+    conditional_t<os::IS_ENVIRONMENT_CASE_SENSITIVE, nothing, String>;
 
 class CompositeKeyArrays
 {
@@ -237,13 +237,13 @@ enum class status_flag : u32
   ExitCodeReported = 1U << 1,
 };
 
-struct status_result
+struct StatusResult
 {
   i32 status{0};
   u32 flags{0};
 
-  constexpr status_result() wontthrow = default;
-  constexpr status_result(i64 exit_status, u32 status_flags = 0) wontthrow
+  constexpr StatusResult() wontthrow = default;
+  constexpr StatusResult(i64 exit_status, u32 status_flags = 0) wontthrow
       : status{static_cast<i32>(exit_status)}, flags{status_flags}
   {}
 
@@ -260,7 +260,7 @@ struct status_result
   }
 };
 
-static_assert(sizeof(status_result) == 8);
+static_assert(sizeof(StatusResult) == 8);
 
 enum class restricted_path_use : u8
 {
@@ -280,17 +280,17 @@ enum class variable_attribute : u8
   Nameref   = 1U << 5,
 };
 
-struct variable_entry
+struct VariableEntry
 {
-  explicit variable_entry(Allocator allocator) wontthrow
+  explicit VariableEntry(Allocator allocator) wontthrow
       : value{allocator}, elements{allocator}
   {}
-  variable_entry(const variable_entry &) = delete;
-  variable_entry &
-  operator=(const variable_entry &) = delete;
-  variable_entry(variable_entry &&) = default;
-  variable_entry &
-  operator=(variable_entry &&) = default;
+  VariableEntry(const VariableEntry &) = delete;
+  VariableEntry &
+  operator=(const VariableEntry &) = delete;
+  VariableEntry(VariableEntry &&)  = default;
+  VariableEntry &
+  operator=(VariableEntry &&) = default;
 
   cold fn
   move_to_allocator(Allocator allocator) throws -> void
@@ -300,17 +300,17 @@ struct variable_entry
   }
 
   mustuse fn
-  clone() const throws -> variable_entry
+  clone() const throws -> VariableEntry
   {
     return clone_to(value.allocator());
   }
 
   mustuse fn
-  clone_to(Allocator allocator) const throws -> variable_entry
+  clone_to(Allocator allocator) const throws -> VariableEntry
   {
-    return variable_entry{value.clone_to(allocator),
-                          elements.clone_to(allocator), attribute_bits,
-                          has_value, is_indexed_array};
+    return VariableEntry{value.clone_to(allocator),
+                         elements.clone_to(allocator), attribute_bits,
+                         has_value, is_indexed_array};
   }
 
   String            value;
@@ -320,24 +320,24 @@ struct variable_entry
   bool              is_indexed_array{false};
 
 private:
-  variable_entry(String            cloned_value,
-                 ArrayList<String> cloned_elements,
-                 u8                cloned_attribute_bits,
-                 bool              has_cloned_value,
-                 bool              is_cloned_indexed_array) wontthrow
+  VariableEntry(String            cloned_value,
+                ArrayList<String> cloned_elements,
+                u8                cloned_attribute_bits,
+                bool              has_cloned_value,
+                bool              is_cloned_indexed_array) wontthrow
       : value{steal(cloned_value)}, elements{steal(cloned_elements)},
         attribute_bits{cloned_attribute_bits}, has_value{has_cloned_value},
         is_indexed_array{is_cloned_indexed_array}
   {}
 };
 
-struct variable_table_body
+struct VariableTableBody
 {
-  explicit variable_table_body(Allocator allocator) wontthrow
+  explicit VariableTableBody(Allocator allocator) wontthrow
       : index{allocator}, entries{allocator}
   {}
 
-  variable_table_body(variable_table_body &&other) wontthrow
+  VariableTableBody(VariableTableBody &&other) wontthrow
       : index{steal(other.index)}, entries{steal(other.entries)},
         pipestatus_entry{other.pipestatus_entry},
         value_count{other.value_count},
@@ -348,40 +348,40 @@ struct variable_table_body
     other.value_count         = 0;
     other.indexed_array_count = 0;
   }
-  variable_table_body(const variable_table_body &) = delete;
-  variable_table_body &
-  operator=(const variable_table_body &) = delete;
-  variable_table_body &
-  operator=(variable_table_body &&) = delete;
+  VariableTableBody(const VariableTableBody &) = delete;
+  VariableTableBody &
+  operator=(const VariableTableBody &) = delete;
+  VariableTableBody &
+  operator=(VariableTableBody &&) = delete;
 
   mustuse fn
-  clone() const throws -> variable_table_body
+  clone() const throws -> VariableTableBody
   {
     return clone_to(index.allocator());
   }
 
   mustuse fn
-  clone_to(Allocator allocator) const throws -> variable_table_body
+  clone_to(Allocator allocator) const throws -> VariableTableBody
   {
-    let copy = variable_table_body{allocator};
+    let copy = VariableTableBody{allocator};
 
     copy.index                = index.clone_to(allocator);
     copy.value_count          = value_count;
     copy.indexed_array_count  = indexed_array_count;
     copy.noted_attribute_bits = noted_attribute_bits;
-    copy.index.for_each([&](StringView, variable_entry *&entry) throws {
+    copy.index.for_each([&](StringView, VariableEntry *&entry) throws {
       entry = copy.entries.emplace(entry->clone_to(allocator));
     });
 
     return copy;
   }
 
-  StringMap<variable_entry *> index;
-  Hive<variable_entry>        entries;
-  mutable variable_entry     *pipestatus_entry{nullptr};
-  usize                       value_count{0};
-  usize                       indexed_array_count{0};
-  u8                          noted_attribute_bits{0};
+  StringMap<VariableEntry *> index;
+  Hive<VariableEntry>        entries;
+  mutable VariableEntry     *pipestatus_entry{nullptr};
+  usize                      value_count{0};
+  usize                      indexed_array_count{0};
+  u8                         noted_attribute_bits{0};
 };
 
 class VariableTable
@@ -437,7 +437,7 @@ public:
   }
 
   hot pure fn
-  find(StringView name) const wontthrow -> Maybe<const variable_entry *>
+  find(StringView name) const wontthrow -> Maybe<const VariableEntry *>
   {
     if (m_body.is_empty()) return None;
 
@@ -446,7 +446,7 @@ public:
 
   hot pure fn
   find_hashed(StringView name, u64 hash) const wontthrow
-      -> Maybe<const variable_entry *>
+      -> Maybe<const VariableEntry *>
   {
     if (m_body.is_empty()) return None;
 
@@ -458,7 +458,7 @@ public:
   }
 
   hot fn
-  find_for_write(StringView name) throws -> Maybe<variable_entry *>
+  find_for_write(StringView name) throws -> Maybe<VariableEntry *>
   {
     if (m_body.is_empty()) return None;
     /* a miss returns before body() clones a shared body made by share(). */
@@ -476,7 +476,7 @@ public:
   }
 
   fn
-  get_or_create(StringView name) throws -> variable_entry &
+  get_or_create(StringView name) throws -> VariableEntry &
   {
     let &table = body();
     let &slot  = table.index.get_or_create(name, nullptr);
@@ -498,7 +498,7 @@ public:
   }
 
   fn
-  release_if_unused(StringView name, variable_entry &entry) throws
+  release_if_unused(StringView name, VariableEntry &entry) throws
       -> void
   {
     if (entry.has_value || entry.is_indexed_array || entry.attribute_bits != 0)
@@ -545,7 +545,7 @@ public:
   }
 
   fn
-  find_pipestatus() const wontthrow -> Maybe<const variable_entry *>
+  find_pipestatus() const wontthrow -> Maybe<const VariableEntry *>
   {
     if (m_body.is_empty()) return None;
 
@@ -565,7 +565,7 @@ public:
   }
 
   fn
-  find_pipestatus_for_write() throws -> Maybe<variable_entry *>
+  find_pipestatus_for_write() throws -> Maybe<VariableEntry *>
   {
     return find_for_write(StringView{"PIPESTATUS", 10});
   }
@@ -577,7 +577,7 @@ public:
   }
 
   fn
-  assign_value(variable_entry &entry, StringView value) throws
+  assign_value(VariableEntry &entry, StringView value) throws
       -> String *
   {
     let &table = body();
@@ -643,8 +643,8 @@ public:
     if (m_body.is_empty()) return;
 
     m_body.read().index.for_each(
-        [&](StringView name, variable_entry *const &entry) throws {
-          do_callback(name, static_cast<const variable_entry &>(*entry));
+        [&](StringView name, VariableEntry *const &entry) throws {
+          do_callback(name, static_cast<const VariableEntry &>(*entry));
         });
   }
 
@@ -703,16 +703,16 @@ public:
 
 private:
   fn
-  body() throws -> variable_table_body &
+  body() throws -> VariableTableBody &
   {
     if (m_body.is_empty()) {
-      m_body.assign(variable_table_body{m_body.allocator()});
+      m_body.assign(VariableTableBody{m_body.allocator()});
     }
 
     return m_body.write();
   }
 
-  CopyOnWrite<variable_table_body> m_body;
+  CopyOnWrite<VariableTableBody> m_body;
 
 #if !defined NDEBUG
   /* memory: none beyond the stack.
@@ -736,7 +736,7 @@ private:
     if (m_body.is_empty()) return checksum;
 
     m_body.read().index.for_each(
-        [&](StringView name, variable_entry *const &entry) {
+        [&](StringView name, VariableEntry *const &entry) {
           do_mix(name);
           do_mix(entry->value.view());
           for (let const &element : entry->elements)
@@ -755,9 +755,9 @@ private:
 #endif
 };
 
-struct glob_field
+struct GlobField
 {
-  explicit glob_field(Allocator allocator)
+  explicit GlobField(Allocator allocator)
       : text(allocator), glob_active(heap_allocator())
   {}
 
@@ -773,9 +773,9 @@ struct glob_field
   }
 
   mustuse cold fn
-  clone_to(Allocator allocator) const throws -> glob_field
+  clone_to(Allocator allocator) const throws -> GlobField
   {
-    let result = glob_field{allocator};
+    let result = GlobField{allocator};
 
     result.text             = text.clone_to(allocator);
     result.glob_active      = glob_active.clone_to(allocator);
@@ -818,8 +818,8 @@ class Token;
 class Word;
 class WordSegment;
 class Expression;
-struct arith_tree;
-struct parameter_reference;
+struct ArithTree;
+struct ParameterReference;
 
 struct conditional_element
 {
@@ -946,7 +946,7 @@ enum class source_frame_kind : u8
   SourcedFile,
 };
 
-struct trap_definition
+struct TrapDefinition
 {
   String         action_text;
   String         line_source;
@@ -955,28 +955,28 @@ struct trap_definition
   bool           has_location{false};
 
   fn
-  clone() const throws -> trap_definition
+  clone() const throws -> TrapDefinition
   {
     return clone_to(action_text.allocator());
   }
 
   fn
-  clone_to(Allocator allocator) const throws -> trap_definition
+  clone_to(Allocator allocator) const throws -> TrapDefinition
   {
-    return trap_definition{action_text.clone_to(allocator),
-                           line_source.clone_to(allocator), location,
-                           line_offset, has_location};
+    return TrapDefinition{action_text.clone_to(allocator),
+                          line_source.clone_to(allocator), location,
+                          line_offset, has_location};
   }
 
   static fn
-  empty(Allocator allocator) throws -> trap_definition
+  empty(Allocator allocator) throws -> TrapDefinition
   {
-    return trap_definition{String{allocator}, String{allocator},
-                           SourceLocation{}, 0, false};
+    return TrapDefinition{String{allocator}, String{allocator},
+                          SourceLocation{}, 0, false};
   }
 };
 
-struct trap_action_frame
+struct TrapActionFrame
 {
   usize      trigger_line_number{0};
   usize      source_frame_count{0};
@@ -1010,7 +1010,7 @@ struct startup_options
   bool should_error_exit{false};
 };
 
-struct coprocess_descriptors
+struct CoprocessDescriptors
 {
   i32    read_fd{-1};
   i32    write_fd{-1};
@@ -1049,14 +1049,14 @@ struct source_line_base
   usize         preceding_line_count;
 };
 
-struct source_frame
+struct SourceFrame
 {
-  source_frame(String            origin,
-               SourceLocation    call_site,
-               const String     *parent_source,
-               u64               parent_source_generation,
-               String            source_path,
-               source_frame_kind kind)
+  SourceFrame(String            origin,
+              SourceLocation    call_site,
+              const String     *parent_source,
+              u64               parent_source_generation,
+              String            source_path,
+              source_frame_kind kind)
       : origin(steal(origin)), source_path(steal(source_path)),
         parent_source(parent_source),
         parent_source_generation(parent_source_generation),
@@ -1069,20 +1069,20 @@ struct source_frame
     return kind == source_frame_kind::SourcedFile;
   }
 
-  String                 origin;
-  String                 source_path;
-  const String          *parent_source;
-  u64                    parent_source_generation;
-  const trap_definition *definition{nullptr};
-  usize                  function_call_depth{0};
-  SourceLocation         call_site;
-  Maybe<SourceLocation>  deferred_trace_location;
-  source_frame_kind      kind;
-  bool                   was_printed{false};
-  bool                   was_definition_printed{false};
-  bool                   is_source_changing : 1 {true};
-  bool                   should_defer_trace : 1 {false};
-  bool                   has_deferred_trace : 1 {false};
+  String                origin;
+  String                source_path;
+  const String         *parent_source;
+  u64                   parent_source_generation;
+  const TrapDefinition *definition{nullptr};
+  usize                 function_call_depth{0};
+  SourceLocation        call_site;
+  Maybe<SourceLocation> deferred_trace_location;
+  source_frame_kind     kind;
+  bool                  was_printed{false};
+  bool                  was_definition_printed{false};
+  bool                  is_source_changing : 1 {true};
+  bool                  should_defer_trace : 1 {false};
+  bool                  has_deferred_trace : 1 {false};
 };
 
 struct local_binding
@@ -1103,10 +1103,10 @@ struct local_binding
 
 static_assert(sizeof(usize) != 8 || sizeof(local_binding) == 272);
 
-struct job
+struct Job
 {
-  job() = default;
-  explicit job(Allocator allocator)
+  Job() = default;
+  explicit Job(Allocator allocator)
       : earlier_pipeline_processes(allocator), command(allocator)
   {}
 
@@ -1140,9 +1140,9 @@ struct job
   }
 
   mustuse cold fn
-  clone_to(Allocator allocator) const throws -> job
+  clone_to(Allocator allocator) const throws -> Job
   {
-    let result = job{allocator};
+    let result = Job{allocator};
 
     result.earlier_pipeline_processes =
         earlier_pipeline_processes.clone_to(allocator);
@@ -1166,9 +1166,9 @@ struct job
 
 struct job_line_format
 {
-  bool                should_show_process_id{false};
-  bool                is_posix{false};
-  colors::color_style state_color{};
+  bool               should_show_process_id{false};
+  bool               is_posix{false};
+  colors::ColorStyle state_color{};
 };
 
 struct finished_process_status
@@ -1188,26 +1188,25 @@ struct next_job_wait
 struct job_table_snapshot
 {
   Maybe<i64>                         last_background_pid;
-  ArrayList<job>                     jobs;
+  ArrayList<Job>                     jobs;
   ArrayList<os::process>             detached_job_processes;
   ArrayList<finished_process_status> finished_statuses;
   usize                              next_finished_status_slot;
   i32                                next_job_id;
 };
 
-struct subshell_bootstrap_reader;
+struct SubshellBootstrapReader;
 
-struct job_table_wire
+struct JobTableWire
 {
   Maybe<i64>             last_background_pid{None};
   i32                    next_job_id{1};
-  ArrayList<job>         jobs{heap_allocator()};
+  ArrayList<Job>         jobs{heap_allocator()};
   ArrayList<os::process> detached_processes{heap_allocator()};
   ArrayList<u32>         process_references{heap_allocator()};
 
   fn
-  bind_processes(const os::subshell_bootstrap &bootstrap) throws
-      -> bool;
+  bind_processes(const os::SubshellBootstrap &bootstrap) throws -> bool;
 };
 
 class JobTable
@@ -1256,7 +1255,7 @@ public:
 
   fn
   wait_for_job_processes(
-      job  &entry,
+      Job  &entry,
       bool *was_stopped                 = nullptr,
       bool  should_wait_for_termination = false) throws -> i32;
   fn
@@ -1267,9 +1266,9 @@ public:
   fn
   find_job_index_by_spec(StringView spec) throws -> Maybe<usize>;
   fn
-  find_job_by_spec(StringView spec) throws -> job *;
+  find_job_by_spec(StringView spec) throws -> Job *;
   fn
-  most_recent_job() wontthrow -> job *;
+  most_recent_job() wontthrow -> Job *;
   fn
   forget_done_jobs() throws -> void;
   fn
@@ -1277,7 +1276,7 @@ public:
   fn
   mark_job_waited(i32 id, bool should_remember_status) wontthrow -> void;
   fn
-  mark_job_waited(job &entry, bool should_remember_status) wontthrow -> void;
+  mark_job_waited(Job &entry, bool should_remember_status) wontthrow -> void;
 
   fn
   forget_waited_jobs() throws -> void
@@ -1297,12 +1296,12 @@ public:
   fn
   restore_snapshot(job_table_snapshot snapshot) throws -> void;
   fn
-  append_wire(String &output, os::subshell_bootstrap &bootstrap) const throws -> void;
+  append_wire(String &output, os::SubshellBootstrap &bootstrap) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            job_table_wire            &wire) throws -> bool;
+  from_wire(SubshellBootstrapReader &reader, JobTableWire &wire) throws
+      -> bool;
   fn
-  apply_wire(job_table_wire wire) wontthrow -> void;
+  apply_wire(JobTableWire wire) wontthrow -> void;
 
   fn
   last_background_pid() wontthrow -> Maybe<i64> &
@@ -1317,13 +1316,13 @@ public:
   }
 
   fn
-  jobs() wontthrow -> ArrayList<job> &
+  jobs() wontthrow -> ArrayList<Job> &
   {
     return m_jobs;
   }
 
   pure fn
-  jobs() const wontthrow -> const ArrayList<job> &
+  jobs() const wontthrow -> const ArrayList<Job> &
   {
     return m_jobs;
   }
@@ -1414,7 +1413,7 @@ private:
   Maybe<i64>                         m_last_background_pid{};
   ArrayList<finished_process_status> m_finished_statuses;
   usize                              m_next_finished_status_slot{0};
-  ArrayList<job>                     m_jobs;
+  ArrayList<Job>                     m_jobs;
   ArrayList<os::process>             m_detached_job_processes;
   i32                                m_next_job_id{1};
   String       m_foreground_program_title_buffer{heap_allocator()};
@@ -1468,23 +1467,23 @@ struct subshell_saved_descriptor
 
 struct function_definition_info
 {
-  usize            body_start_position{0};
-  usize            header_length{0};
-  usize            definition_line{0};
-  isize            line_offset{0};
-  usize            enclosing_line_count{0};
-  u32              source_name_index{0};
-  u32              body_name_index{0};
-  String           line_prefix{heap_allocator()};
-  String           line_suffix{heap_allocator()};
-  mutable String   render_source{heap_allocator()};
-  mutable bool     has_render_source{false};
-  bool             is_numbered_apart{false};
-  String           signature_source{heap_allocator()};
-  SourceLocation   signature_location{};
-  isize            signature_line_offset{0};
-  bool             has_signature_location{false};
-  definition_state defining_state;
+  usize           body_start_position{0};
+  usize           header_length{0};
+  usize           definition_line{0};
+  isize           line_offset{0};
+  usize           enclosing_line_count{0};
+  u32             source_name_index{0};
+  u32             body_name_index{0};
+  String          line_prefix{heap_allocator()};
+  String          line_suffix{heap_allocator()};
+  mutable String  render_source{heap_allocator()};
+  mutable bool    has_render_source{false};
+  bool            is_numbered_apart{false};
+  String          signature_source{heap_allocator()};
+  SourceLocation  signature_location{};
+  isize           signature_line_offset{0};
+  bool            has_signature_location{false};
+  DefinitionState defining_state;
 };
 
 struct function_arena_stats
@@ -1496,18 +1495,18 @@ struct function_arena_stats
   usize destructor_capacity{0};
 };
 
-struct function_body_storage
+struct FunctionBodyStorage
 {
-  explicit function_body_storage(BumpArena *arena);
-  ~function_body_storage();
+  explicit FunctionBodyStorage(BumpArena *arena);
+  ~FunctionBodyStorage();
 
   BumpArena               *arena{nullptr};
   const Expression        *body{nullptr};
   String                   source{heap_allocator()};
   function_definition_info definition_info;
   u32                      reference_count{1};
-  function_body_storage   *previous_live{nullptr};
-  function_body_storage   *next_live{nullptr};
+  FunctionBodyStorage     *previous_live{nullptr};
+  FunctionBodyStorage     *next_live{nullptr};
 };
 
 pure fn
@@ -1552,8 +1551,7 @@ public:
       -> void;
 
 private:
-  explicit FunctionBodyHandle(function_body_storage *storage)
-      : m_storage(storage)
+  explicit FunctionBodyHandle(FunctionBodyStorage *storage) : m_storage(storage)
   {}
 
   fn
@@ -1561,12 +1559,12 @@ private:
   fn
   release() wontthrow -> void;
 
-  function_body_storage *m_storage{nullptr};
+  FunctionBodyStorage *m_storage{nullptr};
 
-  friend struct function_body_storage;
+  friend struct FunctionBodyStorage;
 };
 
-struct shell_option_mutations
+struct ShellOptionMutations
 {
   u64 revision{0};
   u64 last_revision[static_cast<usize>(shell_option_id::Count)]{};
@@ -1594,7 +1592,7 @@ enum class reporting_field : u8
   Annoying    = 1U << 3,
 };
 
-struct reporting_revisions
+struct ReportingRevisions
 {
   bool was_mood_set_explicitly{false};
   u64  mood{0};
@@ -1603,7 +1601,7 @@ struct reporting_revisions
   u64  annoying{0};
 
   pure fn
-  changed_fields_since(const reporting_revisions &prior) const wontthrow -> u8
+  changed_fields_since(const ReportingRevisions &prior) const wontthrow -> u8
   {
     u8 fields = 0;
 
@@ -1627,8 +1625,8 @@ struct reporting_revisions
 
 struct control_mutations
 {
-  reporting_revisions    reporting;
-  shell_option_mutations options;
+  ReportingRevisions   reporting;
+  ShellOptionMutations options;
 };
 
 enum class definition_state_exit : u8
@@ -1646,8 +1644,8 @@ struct function_runtime_state
 
 struct saved_frame_trap
 {
-  Maybe<trap_definition> definition;
-  usize                  active_depth{0};
+  Maybe<TrapDefinition> definition;
+  usize                 active_depth{0};
 };
 
 fn

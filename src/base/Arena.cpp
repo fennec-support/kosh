@@ -105,7 +105,7 @@ BumpArena::~BumpArena()
   run_destructors_down_to(0);
   release_destructor_chunks(0);
 
-  for (Block &block : m_blocks) {
+  for (block &block : m_blocks) {
     unpoison_arena_bytes(block.base, block.size);
     heap_allocator().free_array(block.base, block.size);
   }
@@ -157,7 +157,7 @@ BumpArena::find_live_owner(const opaque *pointer) wontthrow -> BumpArena *
 }
 
 fn
-BumpArena::push_destructor(PendingDestructor pending) throws -> void
+BumpArena::push_destructor(pending_destructor pending) throws -> void
 {
   usize chunk_index       = 0;
   usize position_in_chunk = 0;
@@ -167,7 +167,7 @@ BumpArena::push_destructor(PendingDestructor pending) throws -> void
   if (chunk_index == m_destructor_chunks.count()) rarely {
     let const chunk_count = destructor_chunk_capacity(chunk_index);
     let const chunk =
-        heap_allocator().alloc_array<PendingDestructor>(chunk_count);
+        heap_allocator().alloc_array<pending_destructor>(chunk_count);
 
     try {
       m_destructor_chunks.push(chunk);
@@ -226,7 +226,7 @@ BumpArena::add_block(usize minimum_byte_count,
   LOG(All, "mapping a new arena block of %zu bytes", size);
 
   try {
-    m_blocks.push(Block{base, size, 0});
+    m_blocks.push(block{base, size, 0});
   } catch (...) {
     heap_allocator().free_array(base, size);
     throw;
@@ -288,7 +288,7 @@ BumpArena::owns(const opaque *pointer) const wontthrow -> bool
   }
 
   for (usize i = m_blocks.count(); i > 0; i--) {
-    const Block &block = m_blocks[i - 1];
+    const block &block = m_blocks[i - 1];
     let const    base  = reinterpret_cast<uintptr>(block.base);
 
     if (candidate >= base && candidate - base < block.size) {
@@ -311,24 +311,24 @@ BumpArena::bytes_used() const wontthrow -> usize
 }
 
 fn
-BumpArena::mark() const wontthrow -> BumpArena::Mark
+BumpArena::mark() const wontthrow -> BumpArena::arena_mark
 {
   if (m_current_index >= m_blocks.count())
-    return Mark{m_current_index, 0, m_destructor_count};
+    return arena_mark{m_current_index, 0, m_destructor_count};
 
-  return Mark{m_current_index, m_blocks[m_current_index].used,
-              m_destructor_count};
+  return arena_mark{m_current_index, m_blocks[m_current_index].used,
+                    m_destructor_count};
 }
 
 fn
-BumpArena::register_lifetime() throws -> LifetimeIdentity
+BumpArena::register_lifetime() throws -> lifetime_identity
 {
   u32 slot_position = m_first_free_lifetime_slot;
 
   if (slot_position == UINT32_MAX) {
     if (m_lifetime_slots.count() >= UINT32_MAX) throw std::bad_alloc{};
     slot_position = static_cast<u32>(m_lifetime_slots.count());
-    m_lifetime_slots.push(LifetimeSlot{});
+    m_lifetime_slots.push(lifetime_slot{});
   } else {
     ASSERT(m_lifetime_slots[slot_position].next_free_position != slot_position,
            "a free lifetime slot cannot point to itself");
@@ -345,11 +345,12 @@ BumpArena::register_lifetime() throws -> LifetimeIdentity
   slot.incarnation++;
   m_active_lifetime_slots.push(slot_position);
 
-  return LifetimeIdentity{m_arena_incarnation, slot_position, slot.incarnation};
+  return lifetime_identity{m_arena_incarnation, slot_position,
+                           slot.incarnation};
 }
 
 pure fn
-BumpArena::is_lifetime_valid(LifetimeIdentity identity) const wontthrow -> bool
+BumpArena::is_lifetime_valid(lifetime_identity identity) const wontthrow -> bool
 {
   if (identity.arena_incarnation != m_arena_incarnation ||
       identity.slot_position >= m_lifetime_slots.count())
@@ -366,7 +367,7 @@ BumpArena::is_lifetime_valid(LifetimeIdentity identity) const wontthrow -> bool
 }
 
 fn
-BumpArena::release(Mark saved) wontthrow -> void
+BumpArena::release(arena_mark saved) wontthrow -> void
 {
   ASSERT(saved.block_index <= m_current_index,
          "mark cannot refer to a block above the current one");

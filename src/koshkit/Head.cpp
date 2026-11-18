@@ -137,7 +137,7 @@ read_regular_all_but_last(os::descriptor fd,
   let const do_read_block = [&](u64   offset,
                                 usize byte_count) -> os::batch_result {
     batch.clear();
-    batch.add(os::batch_operation::read(fd, block, byte_count, offset));
+    batch.add(os::BatchOperation::read(fd, block, byte_count, offset));
     batch.execute(results);
 
     return results[0];
@@ -213,8 +213,8 @@ read_regular_all_but_last(os::descriptor fd,
       buffers.push(ArrayList<char>{allocator});
       buffers.back().reserve(byte_count);
       byte_counts.push(byte_count);
-      batch.add(os::batch_operation::read(fd, buffers.back().begin(),
-                                          byte_count, next_offset));
+      batch.add(os::BatchOperation::read(fd, buffers.back().begin(), byte_count,
+                                         next_offset));
       next_offset += byte_count;
     }
 
@@ -340,8 +340,8 @@ Head::execute(const ExecContext               &ec,
                                            : sources[source_index];
     header += " <==";
     append_report_text(output, header.view(),
-                       colors::color_style{colors::color::BoldCyan,
-                                           colors::color_variant::Soft},
+                       colors::ColorStyle{colors::color::BoldCyan,
+                                          colors::color_variant::Soft},
                        should_color);
     output += '\n';
   };
@@ -418,7 +418,7 @@ Head::execute(const ExecContext               &ec,
 
   let reader =
       SourceBatchReader{ec, sources, cxt.scratch_allocator(), read_byte_count};
-  let   chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+  let   chunks = ArrayList<SourceBatchReader::chunk>{cxt.scratch_allocator()};
   usize current_source_index = sources.count();
   u64   line_count           = 0;
   u64   byte_count           = 0;

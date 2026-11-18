@@ -694,9 +694,9 @@ static git_count_cache GIT_COUNT_CACHE{};
 
 fn
 git_status(StringView ceiling_directories, Allocator allocator) throws
-    -> git_status_result
+    -> GitStatusResult
 {
-  let result = git_status_result{allocator};
+  let result = GitStatusResult{allocator};
 
   let const git_dir = resolve_git_directory(ceiling_directories);
 

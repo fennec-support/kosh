@@ -287,7 +287,7 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
 }
 
 hot fn
-AssignCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+AssignCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_assignment != nullptr);
 
@@ -397,7 +397,7 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     let const checked_entry =
         is_plain_assignment
             ? cxt.variable_store().find_variable_for_write(assigned_name)
-            : Maybe<variable_entry *>{};
+            : Maybe<VariableEntry *>{};
     let const is_readonly =
         is_plain_assignment
             ? cxt.is_implicitly_readonly(assigned_name) ||
@@ -574,7 +574,7 @@ SimpleCommand::record_command_lookup() throws -> void
 
   let const builtin = search_builtin(*name);
 
-  m_literal_command_lookup = LiteralCommandLookup{
+  m_literal_command_lookup = literal_command_lookup{
       builtin, builtin.has_value() && is_special_builtin_name(*name)};
 }
 

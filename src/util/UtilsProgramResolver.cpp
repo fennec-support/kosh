@@ -325,8 +325,8 @@ read_directory_cached_after_status(const Path             &directory,
       batch.clear();
 
       for (usize index = 0; index < unknown_indices.count(); index++)
-        batch.add(os::batch_operation::stat(unknown_paths[index],
-                                            unknown_statuses[index]));
+        batch.add(os::BatchOperation::stat(unknown_paths[index],
+                                           unknown_statuses[index]));
 
       let const results = batch.execute();
 
@@ -479,9 +479,9 @@ directory_listing_generation(const Path &directory) wontthrow -> u64
 
 static fn
 sort_and_deduplicate_names(ArrayList<String> names) throws
-    -> SortedArrayList<String, program_name_comparator>
+    -> SortedArrayList<String, ProgramNameComparator>
 {
-  let   sorted_names = steal(names).make_sorted(program_name_comparator{});
+  let   sorted_names = steal(names).make_sorted(ProgramNameComparator{});
   usize unique_count = 0;
 
   /* e.g. sorted_names = [cat, cat, ls, ls, pwd]
@@ -740,7 +740,7 @@ collect_directory_generations(const ArrayList<String> &directory_texts)
   }
 
   for (usize index = 0; index < directories.count(); index++)
-    batch.add(os::batch_operation::stat(directories[index], statuses[index]));
+    batch.add(os::BatchOperation::stat(directories[index], statuses[index]));
 
   let const results = batch.execute();
 
@@ -807,8 +807,8 @@ ProgramResolver::probe_directory_entries(
   }
 
   for (usize position = 0; position < symlink_count; position++)
-    symlink_batch.add(os::batch_operation::stat(symlink_paths[position],
-                                                symlink_statuses[position]));
+    symlink_batch.add(os::BatchOperation::stat(symlink_paths[position],
+                                               symlink_statuses[position]));
 
   let symlink_results = ArrayList<os::batch_result>{heap_allocator()};
 
@@ -1084,8 +1084,8 @@ ProgramResolver::revalidate_command_prefix(StringView prefix) throws
     symlink_batch.reserve(symlink_paths.count());
 
     for (usize position = 0; position < symlink_paths.count(); position++)
-      symlink_batch.add(os::batch_operation::stat(symlink_paths[position],
-                                                  symlink_statuses[position]));
+      symlink_batch.add(os::BatchOperation::stat(symlink_paths[position],
+                                                 symlink_statuses[position]));
 
     let symlink_results = ArrayList<os::batch_result>{heap_allocator()};
 
@@ -1387,8 +1387,8 @@ ProgramResolver::resolve_along_path(
     candidate_batch.reserve(candidate_paths.count());
 
     for (usize index = 0; index < candidate_paths.count(); index++)
-      candidate_batch.add(os::batch_operation::stat(candidate_paths[index],
-                                                    candidate_statuses[index]));
+      candidate_batch.add(os::BatchOperation::stat(candidate_paths[index],
+                                                   candidate_statuses[index]));
 
     let const candidate_results = candidate_batch.execute();
 
@@ -1439,8 +1439,8 @@ ProgramResolver::resolve_along_path(
     candidate_batch.reserve(candidate_paths.count());
 
     for (usize index = 0; index < candidate_paths.count(); index++)
-      candidate_batch.add(os::batch_operation::stat(candidate_paths[index],
-                                                    candidate_statuses[index]));
+      candidate_batch.add(os::BatchOperation::stat(candidate_paths[index],
+                                                   candidate_statuses[index]));
 
     candidate_batch.execute(candidate_results);
 

@@ -109,7 +109,7 @@ struct parser_format_template_masks
 
 /* analysis_source holds one byte for each host byte in [host_start,
    host_end), as analysis reads it. */
-struct parser_format_fragment
+struct ParserFormatFragment
 {
   String              analysis_source{heap_allocator()};
   String              shell_source{heap_allocator()};
@@ -134,9 +134,9 @@ struct parser_format_fragment
 
 struct parsed_format_document
 {
-  parser_format_kind                kind{parser_format_kind::Shell};
-  bool                              is_host_format{false};
-  ArrayList<parser_format_fragment> fragments{heap_allocator()};
+  parser_format_kind              kind{parser_format_kind::Shell};
+  bool                            is_host_format{false};
+  ArrayList<ParserFormatFragment> fragments{heap_allocator()};
 };
 
 struct parser_format_input
@@ -160,8 +160,8 @@ pure fn
 parser_format_fragment_at(const parsed_format_document &document,
                           usize host_position) wontthrow -> Maybe<usize>;
 fn
-parser_format_encode(const parser_format_fragment &fragment,
-                     StringView replacement) throws -> Maybe<String>;
+parser_format_encode(const ParserFormatFragment &fragment,
+                     StringView                  replacement) throws -> Maybe<String>;
 /* replacements come in ascending start order, as the fragments of a parsed
    document do. returns None when two overlap or one is out of order. */
 fn
@@ -235,12 +235,12 @@ parser_format_masked_template_source(
     bool                         &did_mask,
     parser_format_template_masks *masks = nullptr) throws -> String;
 fn
-parser_format_formattable_source(
-    const parser_format_fragment &fragment) throws -> Maybe<String>;
+parser_format_formattable_source(const ParserFormatFragment &fragment)
+    throws -> Maybe<String>;
 fn
-parser_format_host_replacement(const parser_format_fragment &fragment,
-                               StringView                    host_source,
-                               StringView                    formatted) throws
+parser_format_host_replacement(const ParserFormatFragment &fragment,
+                               StringView                  host_source,
+                               StringView                  formatted) throws
     -> Maybe<String>;
 fn
 parser_format_add_indented_fragment(

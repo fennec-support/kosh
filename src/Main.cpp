@@ -524,7 +524,7 @@ make_invocation_identity(String program_path) throws
       is_restricted_shell, was_mood_named_on_command_line};
 }
 
-struct command_line
+struct CommandLine
 {
   int                     argc;
   char                  **argv;
@@ -558,7 +558,7 @@ static constexpr flag_parse_options INVOCATION_PARSE_OPTIONS{
    time:   one pass over the bytes of KOSH_FLAGS, with one flag lookup per
            option letter. */
 static fn
-splice_environment_flags(command_line &line) throws -> void
+splice_environment_flags(CommandLine &line) throws -> void
 {
   if (os::is_running_secure()) {
     os::unset_environment_variable("KOSH_FLAGS");
@@ -708,7 +708,7 @@ parse_invocation_flags(int argc, const char *const *argv) throws
 }
 
 static fn
-enter_rescue_mode(command_line &line) throws -> void
+enter_rescue_mode(CommandLine &line) throws -> void
 {
   show_warning("Entering rescue");
   line.is_rescue_mode = true;
@@ -730,7 +730,7 @@ enter_rescue_mode(command_line &line) throws -> void
 }
 
 static fn
-parse_command_line(command_line &line) throws -> Maybe<int>
+parse_command_line(CommandLine &line) throws -> Maybe<int>
 {
   splice_environment_flags(line);
   line.is_login_invocation = line.argc > 0 && line.argv[0][0] == '-';
@@ -832,9 +832,9 @@ parse_init_moods(ArrayList<mimic_mood> &moods) throws -> Maybe<int>
 
 struct invocation_option
 {
-  const option_descriptor *option;
-  option_origin            origin;
-  bool                     is_on;
+  const OptionDescriptor *option;
+  option_origin           origin;
+  bool                    is_on;
 };
 
 static fn
@@ -925,9 +925,9 @@ resolve_invocation_options(ArrayList<invocation_option> &options) throws
 /* locates a flag in the parsed command line. A short flag also matches inside
    a group such as `-si`. */
 static fn
-find_flag_location(const command_line &line,
-                   StringView          long_flag,
-                   char                short_flag) wontthrow -> Maybe<SourceLocation>
+find_flag_location(const CommandLine &line,
+                   StringView         long_flag,
+                   char               short_flag) wontthrow -> Maybe<SourceLocation>
 {
   let const parse_argc = line.get_parse_argc();
   let const parse_argv = line.get_parse_argv();
@@ -953,11 +953,11 @@ find_flag_location(const command_line &line,
 /* the diagnostic points at the flag in the invocation when the flag is
    present, and stands alone otherwise. */
 static fn
-show_flag_diagnostic(const command_line &line,
-                     StringView          long_flag,
-                     char                short_flag,
-                     bool                is_warning,
-                     StringView          message) throws -> void
+show_flag_diagnostic(const CommandLine &line,
+                     StringView         long_flag,
+                     char               short_flag,
+                     bool               is_warning,
+                     StringView         message) throws -> void
 {
   let const location = find_flag_location(line, long_flag, short_flag);
 
@@ -982,7 +982,7 @@ show_flag_diagnostic(const command_line &line,
 }
 
 static fn
-validate_invocation(const command_line      &line,
+validate_invocation(const CommandLine       &line,
                     const ArrayList<String> &operands,
                     ArrayList<mimic_mood>   &init_moods) throws
     -> Maybe<int>
@@ -1076,7 +1076,7 @@ validate_invocation(const command_line      &line,
 }
 
 static fn
-select_input_source(const command_line      &line,
+select_input_source(const CommandLine       &line,
                     const ArrayList<String> &operands) throws
     -> input_plan
 {
@@ -1135,7 +1135,7 @@ select_input_source(const command_line      &line,
 }
 
 static fn
-resolve_input_plan(const command_line      &line,
+resolve_input_plan(const CommandLine       &line,
                    const ArrayList<String> &operands) throws
     -> input_plan
 {
@@ -1216,13 +1216,13 @@ make_startup_options(const input_plan &input) wontthrow -> startup_options
   return options;
 }
 
-struct inherited_shell
+struct InheritedShell
 {
   decltype(os::take_subshell_bootstrap()) bootstrap;
   root_evaluation_mode                    evaluation_mode;
   String                                  source_origin{heap_allocator()};
   ArrayList<String>                       source_windows{heap_allocator()};
-  Maybe<os::inherited_subshell_state>     state             = None;
+  Maybe<os::InheritedSubshellState>       state             = None;
   bool                                    has_invalid_state = false;
   bool should_suppress_root_source_trace                    = false;
   bool should_use_command_string_status                     = false;
@@ -1238,7 +1238,7 @@ struct inherited_shell
 };
 
 static fn
-take_inherited_shell() throws -> inherited_shell
+take_inherited_shell() throws -> InheritedShell
 {
   os::unset_environment_variable("KOSH_IDENTITY");
 
@@ -1246,7 +1246,7 @@ take_inherited_shell() throws -> inherited_shell
   let const evaluation_mode = bootstrap.evaluation_mode;
   let const should_use_command_string_status =
       bootstrap.should_use_command_string_status;
-  let inherited = inherited_shell{steal(bootstrap), evaluation_mode};
+  let inherited = InheritedShell{steal(bootstrap), evaluation_mode};
 
   inherited.should_use_command_string_status = should_use_command_string_status;
   inherited.source_origin = steal(inherited.bootstrap.source_origin);
@@ -1254,7 +1254,7 @@ take_inherited_shell() throws -> inherited_shell
      in src/platform/PlatformWin32Process.cpp), so the shell state arrives
      through the environment. */
   if (!os::can_fork_evaluator() && !inherited.bootstrap.payload.is_empty()) {
-    inherited.state = os::inherited_subshell_state::take_from_environment();
+    inherited.state = os::InheritedSubshellState::take_from_environment();
     if (!inherited.state.has_value()) {
       show_message(Error{"Invalid inherited shell state"}.to_string());
       inherited.has_invalid_state = true;
@@ -1276,8 +1276,8 @@ take_inherited_shell() throws -> inherited_shell
 }
 
 static fn
-apply_inherited_shell(inherited_shell &inherited,
-                      EvalContext     &context) throws -> Maybe<int>
+apply_inherited_shell(InheritedShell &inherited,
+                      EvalContext    &context) throws -> Maybe<int>
 {
   if (!inherited.bootstrap.payload.is_empty()) {
     try {
@@ -1307,7 +1307,7 @@ apply_inherited_shell(inherited_shell &inherited,
 }
 
 static pure fn
-is_kept_in_restricted_shell(const option_descriptor &option) wontthrow -> bool
+is_kept_in_restricted_shell(const OptionDescriptor &option) wontthrow -> bool
 {
   return option.category != option_class::Semantic &&
          option.storage != option_storage::Mood &&
@@ -1335,8 +1335,8 @@ keep_restricted_settings(koshconf_reading &reading) throws -> void
 }
 
 static fn
-read_startup_configuration(const command_line        &line,
-                           const inherited_shell     &inherited,
+read_startup_configuration(const CommandLine         &line,
+                           const InheritedShell      &inherited,
                            const invocation_identity &identity,
                            bool                       has_elevated_identity) throws
     -> koshconf_reading
@@ -1459,7 +1459,7 @@ describe_init_moods(const ArrayList<mimic_mood> &init_moods) throws
 
 static fn
 is_pinned_by_invocation(
-    const option_descriptor            &option,
+    const OptionDescriptor             &option,
     const ArrayList<invocation_option> &invocation_options) wontthrow -> bool
 {
   for (let const &named : invocation_options) {
@@ -1472,8 +1472,8 @@ is_pinned_by_invocation(
     }
   }
 
-  let const is_analysis_inherited = os::has_environment_variable(
-      inheritable_analysis_state::ENVIRONMENT_NAME);
+  let const is_analysis_inherited =
+      os::has_environment_variable(InheritableAnalysisState::ENVIRONMENT_NAME);
 
   switch (option.storage) {
   case option_storage::Mood: return true;
@@ -1605,39 +1605,39 @@ print_requested_option_listings(const EvalContext &context,
 
 struct session_config
 {
-  mimic_mood                 mood;
-  tab_selector_mode          tab_selector;
-  inheritable_analysis_state analysis;
-  bool                       is_job_control_enabled;
-  bool                       is_login_shell;
-  bool                       is_restricted_shell;
-  bool                       has_execution_string;
-  bool                       is_reading_standard_input;
-  bool                       is_stats_enabled;
-  bool                       should_show_ast;
-  bool                       should_show_lexed_words;
-  bool                       should_show_exit_code;
-  bool                       should_show_all_exit_codes;
-  bool                       is_memory_stats_enabled;
-  bool                       has_source_traces;
-  bool                       is_tab_completion_enabled;
-  bool                       is_syntax_highlighting_enabled;
-  bool                       is_privileged;
-  bool                       is_one_command;
-  bool                       is_extended_arithmetic_enabled;
-  bool                       is_extended_arithmetic_explicit;
-  bool                       is_nounset_enabled;
-  bool                       is_no_clobber;
-  bool                       is_export_all;
-  bool                       is_no_exec;
-  bool                       is_koshkit_enabled;
+  mimic_mood               mood;
+  tab_selector_mode        tab_selector;
+  InheritableAnalysisState analysis;
+  bool                     is_job_control_enabled;
+  bool                     is_login_shell;
+  bool                     is_restricted_shell;
+  bool                     has_execution_string;
+  bool                     is_reading_standard_input;
+  bool                     is_stats_enabled;
+  bool                     should_show_ast;
+  bool                     should_show_lexed_words;
+  bool                     should_show_exit_code;
+  bool                     should_show_all_exit_codes;
+  bool                     is_memory_stats_enabled;
+  bool                     has_source_traces;
+  bool                     is_tab_completion_enabled;
+  bool                     is_syntax_highlighting_enabled;
+  bool                     is_privileged;
+  bool                     is_one_command;
+  bool                     is_extended_arithmetic_enabled;
+  bool                     is_extended_arithmetic_explicit;
+  bool                     is_nounset_enabled;
+  bool                     is_no_clobber;
+  bool                     is_export_all;
+  bool                     is_no_exec;
+  bool                     is_koshkit_enabled;
 };
 
 static fn
 read_analysis_state(const invocation_identity &identity) throws
-    -> inheritable_analysis_state
+    -> InheritableAnalysisState
 {
-  let analysis = inheritable_analysis_state::from_environment();
+  let analysis = InheritableAnalysisState::from_environment();
 
   analysis.is_mimicry_enabled |= FLAG_MIMICRY.is_enabled();
   analysis.reporting.is_diagnostics_disabled |=
@@ -1771,7 +1771,7 @@ static fn
 seed_session_variables(EvalContext                 &context,
                        invocation_identity         &identity,
                        const ArrayList<mimic_mood> &init_moods,
-                       const inherited_shell       &inherited,
+                       const InheritedShell        &inherited,
                        const input_plan            &input) throws -> void
 {
   let const is_interactive = input.is_interactive;
@@ -1875,14 +1875,14 @@ seed_session_variables(EvalContext                 &context,
   }
 }
 
-struct init_diagnostics_scope
+struct InitDiagnosticsScope
 {
   EvalContext &context;
   bool         should_restore;
   bool         was_diagnostics_disabled;
   u64          saved_mutation_revision;
 
-  init_diagnostics_scope(EvalContext &target, bool should_suppress)
+  InitDiagnosticsScope(EvalContext &target, bool should_suppress)
       : context{target}, should_restore{should_suppress},
         was_diagnostics_disabled{
             target.runtime_state().is_diagnostics_disabled()}
@@ -1892,11 +1892,11 @@ struct init_diagnostics_scope
         target.runtime_control_store().diagnostics_mutation_revision();
   }
 
-  init_diagnostics_scope(const init_diagnostics_scope &) = delete;
+  InitDiagnosticsScope(const InitDiagnosticsScope &) = delete;
   fn
-  operator=(const init_diagnostics_scope &)              = delete;
+  operator=(const InitDiagnosticsScope &)            = delete;
 
-  ~init_diagnostics_scope()
+  ~InitDiagnosticsScope()
   {
     if (should_restore &&
         context.runtime_control_store().diagnostics_mutation_revision() ==
@@ -1912,8 +1912,8 @@ static fn
 run_startup(EvalContext               &context,
             ArrayList<mimic_mood>     &init_moods,
             const invocation_identity &identity,
-            const command_line        &line,
-            const inherited_shell     &inherited,
+            const CommandLine         &line,
+            const InheritedShell      &inherited,
             bool                       has_elevated_identity,
             bool                       is_interactive,
             bool                       should_use_line_editor) throws -> void
@@ -1934,7 +1934,7 @@ run_startup(EvalContext               &context,
     return;
   }
 
-  let const diagnostics_scope = init_diagnostics_scope{
+  let const diagnostics_scope = InitDiagnosticsScope{
       context, FLAG_SUPPRESS_INIT_DIAGNOSTICS.is_enabled()};
 
   if (!init_moods.is_empty() || identity.is_login_shell || is_interactive ||
@@ -1949,7 +1949,7 @@ run_startup(EvalContext               &context,
 static fn
 finish_startup(EvalContext               &context,
                const invocation_identity &identity,
-               inherited_shell           &inherited,
+               InheritedShell            &inherited,
                bool                       is_interactive) throws -> Maybe<int>
 {
   if (is_interactive && !context.get_variable_value("PS1").has_value()) {
@@ -1980,8 +1980,7 @@ finish_startup(EvalContext               &context,
         warning_level_for_mood(context.runtime_state().get_mood()));
   }
 
-  if (os::has_environment_variable(
-          inheritable_analysis_state::ENVIRONMENT_NAME))
+  if (os::has_environment_variable(InheritableAnalysisState::ENVIRONMENT_NAME))
     context.sync_analysis_environment();
 
   if (Maybe<int> inherit_status = apply_inherited_shell(inherited, context);
@@ -2056,9 +2055,9 @@ struct script_chunk
   bool                  was_rejected                     = false;
 };
 
-struct script_cursor
+struct ScriptCursor
 {
-  const command_line        &line;
+  const CommandLine         &line;
   const ArrayList<String>   &operands;
   const input_plan          &input;
   const invocation_identity &identity;
@@ -2512,7 +2511,7 @@ configure_line_editor(EvalContext &context) throws -> void
   toiletline::set_wrap_width(context.runtime_state().get_wrap_width());
 }
 
-struct interactive_session
+struct InteractiveSession
 {
   bool                    did_seed_path_map = false;
   bool                    did_prompt        = false;
@@ -2520,11 +2519,11 @@ struct interactive_session
   history_expansion_state expansion_state{};
 
   fn
-  read_line(EvalContext        &context,
-            BumpArena          &ast_arena,
-            const command_line &line,
-            i32                 exit_code,
-            script_chunk       &chunk) throws -> void
+  read_line(EvalContext       &context,
+            BumpArena         &ast_arena,
+            const CommandLine &line,
+            i32                exit_code,
+            script_chunk      &chunk) throws -> void
   {
     start_line_editor(context);
 
@@ -2564,8 +2563,8 @@ struct interactive_session
   }
 
   fn
-  prepare_completion(EvalContext        &context,
-                     const command_line &line) throws -> void
+  prepare_completion(EvalContext       &context,
+                     const CommandLine &line) throws -> void
   {
     let const &state = context.runtime_state();
     let const  is_tab_completion_enabled =
@@ -2589,7 +2588,7 @@ struct interactive_session
 
   fn
   read_accepted_line(EvalContext         &context,
-                     const command_line  &line,
+                     const CommandLine   &line,
                      const String        &prompt,
                      const String        &right_prompt,
                      const Maybe<String> &transient_prompt,
@@ -2700,7 +2699,7 @@ struct interactive_session
   }
 };
 
-struct lint_run
+struct LintRun
 {
   StringView                 invocation{};
   bool                       did_input_fail = false;
@@ -2744,7 +2743,7 @@ static fn
 run_chunk(script_chunk        &chunk,
           EvalContext         &context,
           BumpArena           &ast_arena,
-          lint_run            &lint,
+          LintRun             &lint,
           root_evaluation_mode evaluation_mode) throws -> i32
 {
   if (!chunk.should_analyze) return EXIT_FAILURE;
@@ -2788,10 +2787,10 @@ allow_terminal_exec_on_final_chunk(EvalContext &context,
 }
 
 static fn
-should_exit_after_chunk(EvalContext         &context,
-                        const script_cursor &cursor,
-                        const script_chunk  &chunk,
-                        i32                  exit_code) wontthrow -> bool
+should_exit_after_chunk(EvalContext        &context,
+                        const ScriptCursor &cursor,
+                        const script_chunk &chunk,
+                        i32                 exit_code) wontthrow -> bool
 {
   return cursor.should_quit ||
          (chunk.was_rejected && chunk.command_string_name.has_value()) ||
@@ -2806,7 +2805,7 @@ should_exit_after_chunk(EvalContext         &context,
 wontreturn static fn
 exit_after_final_chunk(EvalContext &context,
                        i32          exit_code,
-                       lint_run    &lint) throws -> void
+                       LintRun     &lint) throws -> void
 {
 #if !defined NDEBUG
   if (FLAG_DEBUG_COMPLETE_AT.is_set() && !os::is_child_process()) {
@@ -2918,7 +2917,7 @@ kosh_main(int argc, char **argv) -> int
     }
   }
 
-  let line = koshka::command_line{argc, argv};
+  let line = koshka::CommandLine{argc, argv};
 
   if (koshka::Maybe<int> usage_status = koshka::parse_command_line(line);
       usage_status.has_value())
@@ -3148,16 +3147,16 @@ kosh_main(int argc, char **argv) -> int
 
   /* at this point: startup finished without a status, context holds the parse
      and function arenas, and the signal handlers match input.is_interactive. */
-  let cursor    = koshka::script_cursor{line,
-                                     file_names,
-                                     input,
-                                     identity,
-                                     cli_invocation,
-                                     prefetched_script_contents,
-                                     FLAG_ONE_COMMAND.is_enabled() &&
-                                         !FLAG_LINT.is_enabled()};
-  let session   = koshka::interactive_session{};
-  let lint      = koshka::lint_run{cli_invocation.view()};
+  let cursor    = koshka::ScriptCursor{line,
+                                    file_names,
+                                    input,
+                                    identity,
+                                    cli_invocation,
+                                    prefetched_script_contents,
+                                    FLAG_ONE_COMMAND.is_enabled() &&
+                                        !FLAG_LINT.is_enabled()};
+  let session   = koshka::InteractiveSession{};
+  let lint      = koshka::LintRun{cli_invocation.view()};
   i32 exit_code = EXIT_SUCCESS;
 
   loop {

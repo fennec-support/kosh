@@ -51,7 +51,7 @@ namespace koshka {
 namespace {
 
 fn
-is_set_option(const option_descriptor &option) wontthrow -> bool
+is_set_option(const OptionDescriptor &option) wontthrow -> bool
 {
   return !option.set_name.is_empty() ||
          (option.letter != '\0' && option.storage != option_storage::Mood);
@@ -64,8 +64,8 @@ is_restricted(const EvalContext &cxt) wontthrow -> bool
 }
 
 fn
-option_is_on(const EvalContext       &cxt,
-             const option_descriptor &option) throws -> bool
+option_is_on(const EvalContext      &cxt,
+             const OptionDescriptor &option) throws -> bool
 {
   if (!option_is_available(cxt, option)) return false;
   if (option.storage == option_storage::WarningLevel)
@@ -75,9 +75,9 @@ option_is_on(const EvalContext       &cxt,
 }
 
 fn
-apply_or_reject_option(EvalContext             &cxt,
-                       const option_descriptor &option,
-                       bool                     is_enabled,
+apply_or_reject_option(EvalContext            &cxt,
+                       const OptionDescriptor &option,
+                       bool                    is_enabled,
                        bool should_step_warning_level = false) throws
     -> void
 {

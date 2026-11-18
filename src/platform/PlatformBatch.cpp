@@ -12,12 +12,12 @@
 namespace koshka::os {
 
 fn
-batch_operation::read(descriptor fd,
-                      char      *buffer,
-                      usize      byte_count,
-                      u64        byte_offset) wontthrow -> batch_operation
+BatchOperation::read(descriptor fd,
+                     char      *buffer,
+                     usize      byte_count,
+                     u64        byte_offset) wontthrow -> BatchOperation
 {
-  batch_operation operation{Kind::Read};
+  BatchOperation operation{Kind::Read};
 
   operation.m_secondary.fd          = fd;
   operation.m_primary.output_buffer = buffer;
@@ -28,12 +28,12 @@ batch_operation::read(descriptor fd,
 }
 
 fn
-batch_operation::write(descriptor  fd,
-                       const char *buffer,
-                       usize       byte_count,
-                       u64         byte_offset) wontthrow -> batch_operation
+BatchOperation::write(descriptor  fd,
+                      const char *buffer,
+                      usize       byte_count,
+                      u64         byte_offset) wontthrow -> BatchOperation
 {
-  batch_operation operation{Kind::Write};
+  BatchOperation operation{Kind::Write};
 
   operation.m_secondary.fd         = fd;
   operation.m_primary.input_buffer = buffer;
@@ -44,11 +44,11 @@ batch_operation::write(descriptor  fd,
 }
 
 fn
-batch_operation::write_current(descriptor  fd,
-                               const char *buffer,
-                               usize       byte_count) wontthrow -> batch_operation
+BatchOperation::write_current(descriptor  fd,
+                              const char *buffer,
+                              usize       byte_count) wontthrow -> BatchOperation
 {
-  batch_operation operation{Kind::WriteCurrent};
+  BatchOperation operation{Kind::WriteCurrent};
 
   operation.m_secondary.fd         = fd;
   operation.m_primary.input_buffer = buffer;
@@ -58,10 +58,10 @@ batch_operation::write_current(descriptor  fd,
 }
 
 fn
-batch_operation::lstat(const Path &path, file_status &status) wontthrow
-    -> batch_operation
+BatchOperation::lstat(const Path &path, file_status &status) wontthrow
+    -> BatchOperation
 {
-  batch_operation operation{Kind::Lstat};
+  BatchOperation operation{Kind::Lstat};
 
   operation.m_primary.path     = &path;
   operation.m_secondary.status = &status;
@@ -70,10 +70,10 @@ batch_operation::lstat(const Path &path, file_status &status) wontthrow
 }
 
 fn
-batch_operation::stat(const Path &path, file_status &status) wontthrow
-    -> batch_operation
+BatchOperation::stat(const Path &path, file_status &status) wontthrow
+    -> BatchOperation
 {
-  batch_operation operation{Kind::Stat};
+  BatchOperation operation{Kind::Stat};
 
   operation.m_primary.path     = &path;
   operation.m_secondary.status = &status;
@@ -82,9 +82,9 @@ batch_operation::stat(const Path &path, file_status &status) wontthrow
 }
 
 fn
-batch_operation::exists(const Path &path) wontthrow -> batch_operation
+BatchOperation::exists(const Path &path) wontthrow -> BatchOperation
 {
-  batch_operation operation{Kind::Exists};
+  BatchOperation operation{Kind::Exists};
 
   operation.m_primary.path = &path;
 
@@ -92,11 +92,11 @@ batch_operation::exists(const Path &path) wontthrow -> batch_operation
 }
 
 fn
-batch_operation::lstat_at(descriptor   directory,
-                          const char  *name,
-                          file_status &status) wontthrow -> batch_operation
+BatchOperation::lstat_at(descriptor   directory,
+                         const char  *name,
+                         file_status &status) wontthrow -> BatchOperation
 {
-  batch_operation operation{Kind::LstatAt};
+  BatchOperation operation{Kind::LstatAt};
 
   operation.m_primary.input_buffer = name;
   operation.m_secondary.status     = &status;
@@ -118,18 +118,18 @@ Batch::reserve(usize operation_count) throws -> void
 }
 
 fn
-Batch::add(batch_operation operation) throws -> void
+Batch::add(BatchOperation operation) throws -> void
 {
   switch (operation.syscall_id) {
-  case batch_operation::Kind::Lstat:
-  case batch_operation::Kind::Stat:
-  case batch_operation::Kind::Exists:
-  case batch_operation::Kind::LstatAt: m_has_metadata_operations = true; break;
+  case BatchOperation::Kind::Lstat:
+  case BatchOperation::Kind::Stat:
+  case BatchOperation::Kind::Exists:
+  case BatchOperation::Kind::LstatAt: m_has_metadata_operations = true; break;
 
-  case batch_operation::Kind::Read:
-  case batch_operation::Kind::Write:
-  case batch_operation::Kind::WriteCurrent:
-  case batch_operation::Kind::Invalid:      break;
+  case BatchOperation::Kind::Read:
+  case BatchOperation::Kind::Write:
+  case BatchOperation::Kind::WriteCurrent:
+  case BatchOperation::Kind::Invalid:      break;
   }
 
   operation.request_id = m_operations.count();
@@ -148,40 +148,39 @@ is_same_metadata_request(const batch_internal::batched_syscall &left,
                          const batch_internal::batched_syscall &right) wontthrow
     -> bool
 {
-  let const left_kind = batch_internal::batch_operation_access::get_kind(left);
+  let const left_kind = batch_internal::BatchOperationAccess::get_kind(left);
 
-  if (left_kind != batch_internal::batch_operation_access::get_kind(right))
+  if (left_kind != batch_internal::BatchOperationAccess::get_kind(right))
     return false;
   switch (left_kind) {
-  case batch_operation::Kind::Lstat:
-  case batch_operation::Kind::Stat:
-  case batch_operation::Kind::Exists: break;
+  case BatchOperation::Kind::Lstat:
+  case BatchOperation::Kind::Stat:
+  case BatchOperation::Kind::Exists: break;
 
-  case batch_operation::Kind::LstatAt: {
+  case BatchOperation::Kind::LstatAt: {
     let const left_directory =
-        batch_internal::batch_operation_access::get_directory_descriptor(left);
+        batch_internal::BatchOperationAccess::get_directory_descriptor(left);
     let const right_directory =
-        batch_internal::batch_operation_access::get_directory_descriptor(right);
+        batch_internal::BatchOperationAccess::get_directory_descriptor(right);
 
     if (left_directory != right_directory) return false;
 
     let const *left_name =
-        batch_internal::batch_operation_access::get_relative_name(left);
+        batch_internal::BatchOperationAccess::get_relative_name(left);
     let const *right_name =
-        batch_internal::batch_operation_access::get_relative_name(right);
+        batch_internal::BatchOperationAccess::get_relative_name(right);
 
     return left_name != nullptr && right_name != nullptr &&
            strcmp(left_name, right_name) == 0;
   }
-  case batch_operation::Kind::Read:
-  case batch_operation::Kind::Write:
-  case batch_operation::Kind::WriteCurrent:
-  case batch_operation::Kind::Invalid:      return false;
+  case BatchOperation::Kind::Read:
+  case BatchOperation::Kind::Write:
+  case BatchOperation::Kind::WriteCurrent:
+  case BatchOperation::Kind::Invalid:      return false;
   }
 
-  let const *left_path = batch_internal::batch_operation_access::get_path(left);
-  let const *right_path =
-      batch_internal::batch_operation_access::get_path(right);
+  let const *left_path  = batch_internal::BatchOperationAccess::get_path(left);
+  let const *right_path = batch_internal::BatchOperationAccess::get_path(right);
 
   if (left_path == nullptr || right_path == nullptr) {
     return false;
@@ -197,17 +196,17 @@ static pure fn
 is_metadata_request(const batch_internal::batched_syscall &operation) wontthrow
     -> bool
 {
-  switch (batch_internal::batch_operation_access::get_kind(operation)) {
-  case batch_operation::Kind::Lstat:
-  case batch_operation::Kind::Stat:
-  case batch_operation::Kind::Exists: return true;
-  case batch_operation::Kind::LstatAt:
-    return batch_internal::batch_operation_access::get_relative_name(
-               operation) != nullptr;
-  case batch_operation::Kind::Read:
-  case batch_operation::Kind::Write:
-  case batch_operation::Kind::WriteCurrent:
-  case batch_operation::Kind::Invalid:      return false;
+  switch (batch_internal::BatchOperationAccess::get_kind(operation)) {
+  case BatchOperation::Kind::Lstat:
+  case BatchOperation::Kind::Stat:
+  case BatchOperation::Kind::Exists: return true;
+  case BatchOperation::Kind::LstatAt:
+    return batch_internal::BatchOperationAccess::get_relative_name(operation) !=
+           nullptr;
+  case BatchOperation::Kind::Read:
+  case BatchOperation::Kind::Write:
+  case BatchOperation::Kind::WriteCurrent:
+  case BatchOperation::Kind::Invalid:      return false;
   }
 
   return false;
@@ -284,19 +283,18 @@ find_canonical_operation_positions(
 
     let const kind_hash =
         static_cast<u64>(
-            batch_internal::batch_operation_access::get_kind(operation)) *
+            batch_internal::BatchOperationAccess::get_kind(operation)) *
         0x9e3779b97f4a7c15ull;
-    let const *path =
-        batch_internal::batch_operation_access::get_path(operation);
-    u64 request_hash = kind_hash;
+    let const *path = batch_internal::BatchOperationAccess::get_path(operation);
+    u64        request_hash = kind_hash;
 
     if (path != nullptr) {
       request_hash ^= hash_bytes(path->text().view());
     } else {
       let const *name =
-          batch_internal::batch_operation_access::get_relative_name(operation);
+          batch_internal::BatchOperationAccess::get_relative_name(operation);
       let const directory =
-          batch_internal::batch_operation_access::get_directory_descriptor(
+          batch_internal::BatchOperationAccess::get_directory_descriptor(
               operation);
 
       if (name == nullptr) continue;
@@ -399,9 +397,9 @@ Batch::execute(ArrayList<batch_result> &results,
 
     let const &operation           = m_operations[index];
     let const &optimized_operation = m_optimized_operations[optimized_position];
-    let *status = batch_internal::batch_operation_access::get_status(operation);
+    let *status = batch_internal::BatchOperationAccess::get_status(operation);
     let *optimized_status =
-        batch_internal::batch_operation_access::get_status(optimized_operation);
+        batch_internal::BatchOperationAccess::get_status(optimized_operation);
 
     if (result.error_number == 0 && status != nullptr &&
         optimized_status != nullptr && status != optimized_status)

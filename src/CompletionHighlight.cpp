@@ -529,9 +529,9 @@ static_assert(every_lexer_keyword_has_a_highlight_spec(),
 } /* namespace */
 
 fn
-internal::advance_shell_keyword_state(StringView           word,
-                                      usize                frame_depth,
-                                      shell_lexical_state &state) throws
+internal::advance_shell_keyword_state(StringView         word,
+                                      usize              frame_depth,
+                                      ShellLexicalState &state) throws
     -> Maybe<bool>
 {
   let const spec = HIGHLIGHT_KEYWORDS.find(word);
@@ -1015,10 +1015,10 @@ color_dollar(StringView                 line,
 
   if (nesting_depth >= MAX_NESTING_DEPTH) return end;
 
-  struct nesting_scope
+  struct NestingScope
   {
-    nesting_scope() { nesting_depth++; }
-    ~nesting_scope() { nesting_depth--; }
+    NestingScope() { nesting_depth++; }
+    ~NestingScope() { nesting_depth--; }
   } const scope;
 
   if (i + 2 < end && line[i + 1] == '(' && line[i + 2] == '(') {
@@ -1166,11 +1166,11 @@ color_arithmetic(StringView                 line,
 }
 
 static fn
-scan_heredoc_bodies(StringView                               line,
-                    usize                                    position,
-                    usize                                    end,
-                    const ArrayList<lexer::pending_heredoc> &pending,
-                    ArrayList<highlight_span>               &spans) throws -> usize
+scan_heredoc_bodies(StringView                              line,
+                    usize                                   position,
+                    usize                                   end,
+                    const ArrayList<lexer::PendingHeredoc> &pending,
+                    ArrayList<highlight_span>              &spans) throws -> usize
 {
   let i = position;
 
@@ -1260,7 +1260,7 @@ command_name_operand_of(StringView word) wontthrow -> StringView
 
 static fn
 static_koshkit_operand(StringView word, bool &is_valid) throws
-    -> Maybe<koshkit::Utility::Kind>
+    -> Maybe<koshkit::utility::Kind>
 {
   constexpr usize CAPACITY =
       koshkit::KOSHKIT_UTILS.prefilter.longest_key_length;
@@ -1409,7 +1409,7 @@ internal::scan_highlight_range(
 
   let stack = ArrayList<highlight_construct>{bump_allocator(HIGHLIGHT_ARENA)};
   let pending_heredocs =
-      ArrayList<lexer::pending_heredoc>{bump_allocator(HIGHLIGHT_ARENA)};
+      ArrayList<lexer::PendingHeredoc>{bump_allocator(HIGHLIGHT_ARENA)};
   let is_command_position      = true;
   let is_time_option_pending   = false;
   let highlight_command_word   = StringView{};
@@ -1419,7 +1419,7 @@ internal::scan_highlight_range(
   let function_name_pending    = false;
   let is_case_pattern_expected = false;
   let decoded_command_word =
-      utils::decoded_shell_word{bump_allocator(HIGHLIGHT_ARENA)};
+      utils::DecodedShellWord{bump_allocator(HIGHLIGHT_ARENA)};
   let   is_in_array_value             = false;
   let   is_unsetting_functions        = false;
   let   is_in_conditional_regex       = false;
@@ -1556,7 +1556,7 @@ internal::scan_highlight_range(
         let delimiter = lexer::unquote_heredoc_delimiter(
             delimiter_word, bump_allocator(HIGHLIGHT_ARENA));
 
-        pending_heredocs.push(lexer::pending_heredoc{
+        pending_heredocs.push(lexer::PendingHeredoc{
             steal(delimiter), tail.should_strip_tabs,
             lexer::heredoc_word_joins_lines(delimiter_word)});
       }

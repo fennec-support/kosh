@@ -895,7 +895,7 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
     }
   }
 
-  let const lint_input = command_lint_input{
+  let const lint_input = CommandLintInput{
       m_args,
       m_redirections,
       m_local_vars,

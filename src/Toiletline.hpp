@@ -160,17 +160,17 @@ fn
 encode_history_record(String &output, StringView command) -> void;
 
 fn
-write_history() -> koshka::ErrorOr<koshka::Ok>;
+write_history() -> koshka::ErrorOr<koshka::ok>;
 fn
-read_history() -> koshka::ErrorOr<koshka::Ok>;
+read_history() -> koshka::ErrorOr<koshka::ok>;
 fn
-sync_history() -> koshka::ErrorOr<koshka::Ok>;
+sync_history() -> koshka::ErrorOr<koshka::ok>;
 fn
-clear_history() -> koshka::ErrorOr<koshka::Ok>;
+clear_history() -> koshka::ErrorOr<koshka::ok>;
 fn
-import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>;
+import_history(StringView contents) -> koshka::ErrorOr<koshka::ok>;
 fn
-append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>;
+append_unwritten_history() -> koshka::ErrorOr<koshka::ok>;
 
 fn
 set_history_persistent(bool should_persist) -> void;

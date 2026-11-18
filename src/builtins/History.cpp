@@ -225,7 +225,7 @@ get_history_import_state() -> history_import_state &
 static fn
 write_history_contents(const Path        &target,
                        os::file_open_mode mode,
-                       StringView         contents) throws -> ErrorOr<Ok>
+                       StringView         contents) throws -> ErrorOr<ok>
 {
   let const did_exist = target.exists();
   let const opened    = os::open_file_descriptor(target.view(), mode);
@@ -275,7 +275,7 @@ static fn
 write_history_to_file(EvalContext            &cxt,
                       const Path             &target,
                       history_file_write_mode write_mode) throws
-    -> ErrorOr<Ok>
+    -> ErrorOr<ok>
 {
   let      &append_state = get_history_append_state();
   let const source_path  = toiletline::get_history_path();

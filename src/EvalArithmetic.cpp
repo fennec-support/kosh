@@ -576,9 +576,9 @@ struct arith_lvalue_syntax
   bool              is_expanded_subscript{false};
 };
 
-struct arith_tree_storage
+struct ArithTreeStorage
 {
-  explicit arith_tree_storage(Allocator allocator)
+  explicit ArithTreeStorage(Allocator allocator)
       : nodes{allocator}, text{allocator}
   {}
 
@@ -604,9 +604,9 @@ struct arith_tree_storage
   }
 
   pure fn
-  get_view(u32 root) const wontthrow -> arith_tree
+  get_view(u32 root) const wontthrow -> ArithTree
   {
-    arith_tree tree{};
+    ArithTree tree{};
 
     tree.nodes       = nodes.begin();
     tree.node_count  = static_cast<u32>(nodes.count());
@@ -622,11 +622,11 @@ struct arith_tree_storage
 class ArithmeticTreeBuilder
 {
 public:
-  ArithmeticTreeBuilder(StringView          source_value,
-                        bool                is_exact_value,
-                        bool                is_calculator_value,
-                        arith_tree_storage &storage_value,
-                        BumpArena          &arena_value)
+  ArithmeticTreeBuilder(StringView        source_value,
+                        bool              is_exact_value,
+                        bool              is_calculator_value,
+                        ArithTreeStorage &storage_value,
+                        BumpArena        &arena_value)
       : source{source_value}, is_exact{is_exact_value},
         is_calculator{is_calculator_value}, storage{storage_value},
         nodes{storage_value.nodes}, arena{arena_value}
@@ -657,7 +657,7 @@ private:
   usize                  pos{0};
   bool                   is_exact;
   bool                   is_calculator;
-  arith_tree_storage    &storage;
+  ArithTreeStorage      &storage;
   ArrayList<arith_node> &nodes;
   BumpArena             &arena;
   usize                  depth{0};
@@ -1112,7 +1112,7 @@ private:
     return add_ternary(condition, if_true, if_false);
   }
 
-  struct BinaryOperator
+  struct binary_operator
   {
     char kind;
     u8   precedence;
@@ -1120,7 +1120,7 @@ private:
   };
 
   fn
-  peek_binary_operator() wontthrow -> BinaryOperator
+  peek_binary_operator() wontthrow -> binary_operator
   {
     skip_spaces();
     if (pos >= source.length) return {0, 0, 0};
@@ -1133,53 +1133,53 @@ private:
     case '*':
       if (second_byte == '*') return {'P', 11, 2};
 
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'*', 10, 1};
+      return second_byte == '=' ? binary_operator{0, 0, 0}
+                                : binary_operator{'*', 10, 1};
     case '/':
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'/', 10, 1};
+      return second_byte == '=' ? binary_operator{0, 0, 0}
+                                : binary_operator{'/', 10, 1};
     case '%':
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'%', 10, 1};
+      return second_byte == '=' ? binary_operator{0, 0, 0}
+                                : binary_operator{'%', 10, 1};
     case '+':
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'+', 9, 1};
+      return second_byte == '=' ? binary_operator{0, 0, 0}
+                                : binary_operator{'+', 9, 1};
     case '-':
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'-', 9, 1};
+      return second_byte == '=' ? binary_operator{0, 0, 0}
+                                : binary_operator{'-', 9, 1};
     case '<':
       if (second_byte == '<')
-        return third_byte == '=' ? BinaryOperator{0, 0, 0}
-                                 : BinaryOperator{'L', 8, 2};
+        return third_byte == '=' ? binary_operator{0, 0, 0}
+                                 : binary_operator{'L', 8, 2};
       if (second_byte == '=') return {'l', 7, 2};
 
       return {'<', 7, 1};
     case '>':
       if (second_byte == '>')
-        return third_byte == '=' ? BinaryOperator{0, 0, 0}
-                                 : BinaryOperator{'R', 8, 2};
+        return third_byte == '=' ? binary_operator{0, 0, 0}
+                                 : binary_operator{'R', 8, 2};
       if (second_byte == '=') return {'g', 7, 2};
 
       return {'>', 7, 1};
     case '=':
-      return second_byte == '=' ? BinaryOperator{'e', 6, 2}
-                                : BinaryOperator{0, 0, 0};
+      return second_byte == '=' ? binary_operator{'e', 6, 2}
+                                : binary_operator{0, 0, 0};
     case '!':
-      return second_byte == '=' ? BinaryOperator{'n', 6, 2}
-                                : BinaryOperator{0, 0, 0};
+      return second_byte == '=' ? binary_operator{'n', 6, 2}
+                                : binary_operator{0, 0, 0};
     case '&':
       if (second_byte == '&') return {'A', 2, 2};
 
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'&', 5, 1};
+      return second_byte == '=' ? binary_operator{0, 0, 0}
+                                : binary_operator{'&', 5, 1};
     case '^':
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'^', 4, 1};
+      return second_byte == '=' ? binary_operator{0, 0, 0}
+                                : binary_operator{'^', 4, 1};
     case '|':
       if (second_byte == '|') return {'O', 1, 2};
 
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'|', 3, 1};
+      return second_byte == '=' ? binary_operator{0, 0, 0}
+                                : binary_operator{'|', 3, 1};
     default: return {0, 0, 0};
     }
   }
@@ -1574,24 +1574,24 @@ evaluate_text_tree(EvalContext              *context,
 class ArithmeticTreeEvaluator
 {
 public:
-  ArithmeticTreeEvaluator(EvalContext      *context_value,
-                          StringView        source_value,
-                          const arith_tree &tree_value,
-                          bool              is_exact_value,
-                          BumpArena        &arena_value,
-                          usize             depth_value    = 0,
-                          bool              is_skipping    = false,
-                          Maybe<u32>        bc_scale_value = {})
+  ArithmeticTreeEvaluator(EvalContext     *context_value,
+                          StringView       source_value,
+                          const ArithTree &tree_value,
+                          bool             is_exact_value,
+                          BumpArena       &arena_value,
+                          usize            depth_value    = 0,
+                          bool             is_skipping    = false,
+                          Maybe<u32>       bc_scale_value = {})
       : context{context_value}, source{source_value}, tree{tree_value},
         is_exact{is_exact_value}, depth{depth_value},
         m_is_skipping{is_skipping}, bc_scale{bc_scale_value}, arena{arena_value}
   {}
 
-  EvalContext      *context;
-  StringView        source;
-  const arith_tree &tree;
-  usize             pos{0};
-  bool              is_exact{false};
+  EvalContext     *context;
+  StringView       source;
+  const ArithTree &tree;
+  usize            pos{0};
+  bool             is_exact{false};
 
   usize depth{0};
   bool  is_variable_value{false};
@@ -1744,7 +1744,7 @@ public:
     context->set_shell_variable(name, text.view());
   }
 
-  struct Lvalue
+  struct lvalue
   {
     StringView        name;
     Maybe<StringView> subscript;
@@ -1758,7 +1758,7 @@ public:
   /* an element read of a variable without any value reports the variable,
      before its subscript is evaluated. */
   fn
-  check_array_base_set(const Lvalue &target) const throws -> void
+  check_array_base_set(const lvalue &target) const throws -> void
   {
     let const array_name =
         resolve_subscripted_array_name(*context, target.name);
@@ -1770,7 +1770,7 @@ public:
   /* the associative array that a subscript expanded with the expression
      addresses by its literal key, reached directly or through a nameref. */
   fn
-  find_literal_key_array(const Lvalue &target) const throws
+  find_literal_key_array(const lvalue &target) const throws
       -> Maybe<String>
   {
     if (!target.is_expanded_subscript || *target.subscript == "@" ||
@@ -1787,7 +1787,7 @@ public:
   }
 
   fn
-  get_associative_array_of(const Lvalue &target) const throws -> String
+  get_associative_array_of(const lvalue &target) const throws -> String
   {
     try {
       return associative_array_for_expanded_subscript(*context, target.name,
@@ -1803,7 +1803,7 @@ public:
   /* evaluates an indexed subscript once so that a read and a write of the
      same lvalue use one index. */
   fn
-  resolve_lvalue_subscript(Lvalue &target) throws -> void
+  resolve_lvalue_subscript(lvalue &target) throws -> void
   {
     if (m_is_skipping || !target.subscript.has_value()) {
       return;
@@ -1834,10 +1834,10 @@ public:
   }
 
   fn
-  get_lvalue(u32 index) const wontthrow -> Lvalue
+  get_lvalue(u32 index) const wontthrow -> lvalue
   {
     let const &node = tree.nodes[index];
-    let target = Lvalue{source.substring_of_length(node.start, node.length),
+    let target = lvalue{source.substring_of_length(node.start, node.length),
                         None, node.start};
 
     if ((node.flags & arith_node::SUBSCRIPT_FLAG) != 0) {
@@ -1852,7 +1852,7 @@ public:
   }
 
   fn
-  read_lvalue_value(const Lvalue &target) throws -> ArithmeticValue
+  read_lvalue_value(const lvalue &target) throws -> ArithmeticValue
   {
     if (m_is_skipping) return ArithmeticValue{};
 
@@ -1894,7 +1894,7 @@ public:
   }
 
   fn
-  write_lvalue(const Lvalue &target, const ArithmeticValue &value) const throws -> void
+  write_lvalue(const lvalue &target, const ArithmeticValue &value) const throws -> void
   {
     if (m_is_skipping) return;
     if (target.subscript.has_value()) {
@@ -3629,7 +3629,7 @@ get_constant_arithmetic_arena() wontthrow -> BumpArena &
    evaluator can read and step each variable without resolving subscripts or
    limiting depth. */
 static pure fn
-arith_tree_is_simple(const arith_tree &tree) wontthrow -> bool
+arith_tree_is_simple(const ArithTree &tree) wontthrow -> bool
 {
   for (u32 index = 0; index < tree.node_count; index++) {
     let const &node = tree.nodes[index];
@@ -3660,11 +3660,11 @@ arith_tree_is_simple(const arith_tree &tree) wontthrow -> bool
 }
 
 fn
-build_tree_into(StringView          expression,
-                arith_tree_storage &storage,
-                BumpArena          &arena) throws -> arith_tree
+build_tree_into(StringView        expression,
+                ArithTreeStorage &storage,
+                BumpArena        &arena) throws -> ArithTree
 {
-  let tree = arith_tree{};
+  let tree = ArithTree{};
 
   tree.should_expand = expression.find_character('$').has_value() ||
                        expression.find_character('`').has_value() ||
@@ -3697,7 +3697,7 @@ evaluate_text_tree(EvalContext              *context,
                    const arith_text_options &options) throws
     -> ArithmeticValue
 {
-  let storage = arith_tree_storage{bump_allocator(arena)};
+  let storage = ArithTreeStorage{bump_allocator(arena)};
 
   let builder = ArithmeticTreeBuilder{
       source, is_exact, options.should_error_unset, storage, arena};
@@ -3728,15 +3728,15 @@ evaluate_text_tree(EvalContext              *context,
 } /* namespace */
 
 fn
-arith_tree::clone_to(Allocator allocator) const throws
-    -> const arith_tree *
+ArithTree::clone_to(Allocator allocator) const throws
+    -> const ArithTree *
 {
-  static_assert(sizeof(arith_tree) <= sizeof(arith_node));
-  static_assert(alignof(arith_tree) <= alignof(arith_node));
+  static_assert(sizeof(ArithTree) <= sizeof(arith_node));
+  static_assert(alignof(ArithTree) <= alignof(arith_node));
 
   let const slot_count = get_arith_tree_slot_count(node_count, text_length);
   let const block      = allocator.alloc_array<arith_node>(slot_count);
-  let const copy       = new (static_cast<void *>(block)) arith_tree{*this};
+  let const copy       = new (static_cast<void *>(block)) ArithTree{*this};
   let const node_block = block + 1;
   let const text_block = reinterpret_cast<char *>(node_block + node_count);
 
@@ -3755,22 +3755,22 @@ arith_tree::clone_to(Allocator allocator) const throws
 }
 
 fn
-arith_tree::release(const arith_tree *tree) wontthrow -> void
+ArithTree::release(const ArithTree *tree) wontthrow -> void
 {
   if (tree == nullptr || !tree->is_heap) {
     return;
   }
 
   heap_allocator().free_array(
-      reinterpret_cast<arith_node *>(const_cast<arith_tree *>(tree)),
+      reinterpret_cast<arith_node *>(const_cast<ArithTree *>(tree)),
       get_arith_tree_slot_count(tree->node_count, tree->text_length));
 }
 
 fn
 build_arithmetic_tree(StringView expression, Allocator allocator) throws
-    -> const arith_tree *
+    -> const ArithTree *
 {
-  static thread_local arith_tree_storage storage{heap_allocator()};
+  static thread_local ArithTreeStorage storage{heap_allocator()};
 
   let      &arena   = get_constant_arithmetic_arena();
   let const scratch = arena.mark();
@@ -3872,7 +3872,7 @@ evaluate_arithmetic_value(
 fn
 evaluate_stored_tree(EvalContext          *context,
                      StringView            expression,
-                     const arith_tree     *stored_tree,
+                     const ArithTree      *stored_tree,
                      const SourceLocation *source_location,
                      bool                  is_exact,
                      BumpArena            &arena) throws -> ArithmeticValue;
@@ -3884,7 +3884,7 @@ evaluate_unstored_tree(EvalContext          *context,
                        bool                  is_exact,
                        BumpArena            &arena) throws -> ArithmeticValue
 {
-  let       storage = arith_tree_storage{bump_allocator(arena)};
+  let       storage = ArithTreeStorage{bump_allocator(arena)};
   let const tree    = build_tree_into(expression, storage, arena);
 
   return evaluate_stored_tree(context, expression, &tree, source_location,
@@ -3894,7 +3894,7 @@ evaluate_unstored_tree(EvalContext          *context,
 hot fn
 evaluate_stored_tree(EvalContext          *context,
                      StringView            expression,
-                     const arith_tree     *stored_tree,
+                     const ArithTree      *stored_tree,
                      const SourceLocation *source_location,
                      bool                  is_exact,
                      BumpArena            &arena) throws -> ArithmeticValue
@@ -4103,7 +4103,7 @@ EvalContext::evaluate_arithmetic_segment_text(
 fn
 EvalContext::evaluate_arithmetic_tree_nonzero(
     StringView            expression,
-    const arith_tree     *tree,
+    const ArithTree      *tree,
     const SourceLocation *source_location) throws -> bool
 {
   let const scratch = expansion_store().scratch_arena().mark();
@@ -4143,7 +4143,7 @@ find_arithmetic_syntax_problem(StringView expression,
   const SourceLocation base{0, 0};
   let                  problem = arithmetic_syntax_problem{};
 
-  let storage = arith_tree_storage{bump_allocator(arena)};
+  let storage = ArithTreeStorage{bump_allocator(arena)};
   let builder =
       ArithmeticTreeBuilder{expression, is_exact, false, storage, arena};
 
@@ -4201,8 +4201,9 @@ evaluate_constant_arithmetic_text(StringView expression,
 }
 
 pure fn
-arithmetic_has_side_effect(StringView        expression,
-                           const arith_tree *tree) wontthrow -> bool
+arithmetic_has_side_effect(StringView expression, const ArithTree *tree)
+    wontthrow
+    -> bool
 {
   if (tree != nullptr && !tree->should_expand) {
     for (u32 index = 0; index < tree->node_count; index++) {

@@ -282,7 +282,7 @@ public:
 
   fn
   find_enabled_builtin(StringView name) const throws
-      -> Maybe<Builtin::Kind>;
+      -> Maybe<builtin::Kind>;
   fn
   is_koshkit_utility_reachable(StringView name) const throws -> bool;
 
@@ -542,10 +542,10 @@ private:
 class DefinitionStateScope
 {
 public:
-  DefinitionStateScope(EvalContext            &context,
-                       const definition_state &state,
-                       definition_state_exit   exit,
-                       bool                    should_enter = true) wontthrow;
+  DefinitionStateScope(EvalContext           &context,
+                       const DefinitionState &state,
+                       definition_state_exit  exit,
+                       bool                   should_enter = true) wontthrow;
   DefinitionStateScope(const DefinitionStateScope &)                = delete;
   fn
   operator=(const DefinitionStateScope &) -> DefinitionStateScope & = delete;
@@ -578,9 +578,9 @@ public:
   /* known_entry, when given, is the result of find_variable_for_write(name)
      taken with no write to the table since. */
   fn
-  set_shell_variable(StringView              name,
-                     StringView              value,
-                     Maybe<variable_entry *> known_entry = None) throws
+  set_shell_variable(StringView             name,
+                     StringView             value,
+                     Maybe<VariableEntry *> known_entry = None) throws
       -> void;
   pure fn
   special_variable_definition_location(StringView name) const wontthrow
@@ -957,7 +957,7 @@ public:
       -> void;
   fn
   capture_trap_definition(const SourceLocation &location,
-                          StringView            action) throws -> trap_definition;
+                          StringView            action) throws -> TrapDefinition;
   fn
   remove_trap(StringView condition) throws -> void;
   fn
@@ -1071,7 +1071,7 @@ public:
   is_implicitly_integer(StringView name) const wontthrow -> bool;
   fn
   readonly_names() const throws
-      -> SortedArrayList<String, order_comparator<String>>;
+      -> SortedArrayList<String, OrderComparator<String>>;
 
   fn
   is_integer_variable(StringView name) const wontthrow -> bool;
@@ -1089,7 +1089,7 @@ public:
   fn
   pop_function_call_name() wontthrow -> void;
   using BashArgumentFrameFlag    = koshka::bash_argument_frame_flag;
-  using BashArgumentFrameContext = koshka::bash_argument_frame;
+  using BashArgumentFrameContext = koshka::BashArgumentFrame;
   fn
   enter_bash_function_argument_frame(
       BashArgumentFrameContext &frame_context,
@@ -1102,7 +1102,7 @@ public:
   fn
   leave_bash_argument_frame(BashArgumentFrameContext &frame_context) wontthrow
       -> void;
-  struct MergedFrame
+  struct merged_frame
   {
     enum class Kind : u8
     {
@@ -1118,9 +1118,9 @@ public:
   merged_frame_at(usize        index,
                   usize        total,
                   Maybe<usize> script_source_index) const wontthrow
-      -> MergedFrame;
+      -> merged_frame;
   mustuse fn
-  merged_frame_at(usize index) const wontthrow -> MergedFrame;
+  merged_frame_at(usize index) const wontthrow -> merged_frame;
   mustuse fn
   script_source_frame_index() const wontthrow -> Maybe<usize>;
   mustuse fn
@@ -1175,7 +1175,7 @@ public:
   pure fn
   source_generation_for(const String *source) const wontthrow -> u64;
   pure fn
-  borrowed_frame_source(const source_frame &frame) const wontthrow
+  borrowed_frame_source(const SourceFrame &frame) const wontthrow
       -> const String *;
   fn
   declare_local(StringView name, bool should_inherit_value) throws
@@ -1188,16 +1188,16 @@ public:
   fn
   restore_state(eval_state_snapshot snapshot) throws -> void;
   fn
-  make_subshell_bootstrap() const throws -> os::subshell_bootstrap;
+  make_subshell_bootstrap() const throws -> os::SubshellBootstrap;
   fn
-  make_child_evaluator_state(os::subshell_bootstrap &bootstrap) const throws -> os::child_evaluator_state;
+  make_child_evaluator_state(os::SubshellBootstrap &bootstrap) const throws -> os::child_evaluator_state;
   fn
-  apply_subshell_bootstrap(os::subshell_bootstrap bootstrap) throws
+  apply_subshell_bootstrap(os::SubshellBootstrap bootstrap) throws
       -> void;
   fn
-  set_child_source_origin(os::subshell_bootstrap &bootstrap,
-                          StringView              child_source,
-                          const SourceLocation &launch_location) const throws -> void;
+  set_child_source_origin(os::SubshellBootstrap &bootstrap,
+                          StringView             child_source,
+                          const SourceLocation  &launch_location) const throws -> void;
   fn
   register_inherited_source_origin(
       StringView         origin,
@@ -1363,7 +1363,7 @@ public:
 
   friend class RuntimeState;
   fn
-  enter_definition_state(const definition_state &defining_state) wontthrow
+  enter_definition_state(const DefinitionState &defining_state) wontthrow
       -> function_runtime_state
   {
     let const previous = runtime_state();
@@ -1396,8 +1396,7 @@ public:
     let const  entry_option_revision = state.entry_mutations.options.revision;
     let        changed_options =
         state.entered.get_shell_options() ^ finished.get_shell_options();
-    if (reporting_revisions::has_field(changed_reporting,
-                                       reporting_field::Mood))
+    if (ReportingRevisions::has_field(changed_reporting, reporting_field::Mood))
     {
       changed_options |= RuntimeState::option_mask(shell_option_id::Nounset);
       changed_options |= RuntimeState::option_mask(shell_option_id::Pipefail);
@@ -1433,18 +1432,17 @@ public:
                               entry_option_revision))
       runtime_state().set_extended_arithmetic_set_explicitly(
           finished.was_extended_arithmetic_set_explicitly());
-    if (reporting_revisions::has_field(changed_reporting,
-                                       reporting_field::Mood))
+    if (ReportingRevisions::has_field(changed_reporting, reporting_field::Mood))
       runtime_state().set_mood(finished.get_mood());
-    if (reporting_revisions::has_field(changed_reporting,
-                                       reporting_field::Warning))
+    if (ReportingRevisions::has_field(changed_reporting,
+                                      reporting_field::Warning))
       runtime_state().set_warning_level(finished.get_warning_level());
-    if (reporting_revisions::has_field(changed_reporting,
-                                       reporting_field::Diagnostics))
+    if (ReportingRevisions::has_field(changed_reporting,
+                                      reporting_field::Diagnostics))
       runtime_state().set_diagnostics_disabled(
           finished.is_diagnostics_disabled());
-    if (reporting_revisions::has_field(changed_reporting,
-                                       reporting_field::Annoying))
+    if (ReportingRevisions::has_field(changed_reporting,
+                                      reporting_field::Annoying))
       runtime_state().set_annoying_diagnostics_enabled(
           finished.is_annoying_diagnostics_enabled());
     if (runtime_state().get_mood() == mimic_mood::Default)
@@ -1526,7 +1524,7 @@ public:
 
   fn
   sorted_variable_assignments() const throws
-      -> SortedArrayList<String, order_comparator<String>>;
+      -> SortedArrayList<String, OrderComparator<String>>;
 
   fn
   expand_word_for_assignment(const Word &word,
@@ -1575,7 +1573,7 @@ public:
   fn
   evaluate_arithmetic_tree_nonzero(
       StringView            expression,
-      const arith_tree     *tree,
+      const ArithTree      *tree,
       const SourceLocation *source_location = nullptr) throws -> bool;
 
   fn
@@ -1675,7 +1673,7 @@ public:
              const FunctionBodyHandle *cached_body          = nullptr,
              return_handling           handling   = return_handling::Consume,
              history_recording         history    = history_recording::Disabled,
-             const trap_definition    *definition = nullptr,
+             const TrapDefinition     *definition = nullptr,
              syntax_error_reach        syntax_reach =
                  syntax_error_reach::Command) throws -> i32;
   fn
@@ -1711,21 +1709,21 @@ public:
 
   fn
   expand_modifier_word(
-      StringView                 word,
-      bool                       should_remove_quotes               = true,
-      bool                       should_strip_escaped_literals      = true,
-      const SourceLocation      *source_location                    = nullptr,
-      bool                       should_expand_process_substitution = false,
-      parameter_word_quoting     quoting   = parameter_word_quoting::Unquoted,
-      const parameter_reference *reference = nullptr) throws -> String;
+      StringView                word,
+      bool                      should_remove_quotes               = true,
+      bool                      should_strip_escaped_literals      = true,
+      const SourceLocation     *source_location                    = nullptr,
+      bool                      should_expand_process_substitution = false,
+      parameter_word_quoting    quoting   = parameter_word_quoting::Unquoted,
+      const ParameterReference *reference = nullptr) throws -> String;
 
   fn
   expand_modifier_word_masked(
-      StringView                 word,
-      Bitset                    &active_out,
-      bool                       should_remove_quotes = true,
-      const SourceLocation      *source_location      = nullptr,
-      const parameter_reference *reference            = nullptr) throws -> String;
+      StringView                word,
+      Bitset                   &active_out,
+      bool                      should_remove_quotes = true,
+      const SourceLocation     *source_location      = nullptr,
+      const ParameterReference *reference            = nullptr) throws -> String;
 
   fn
   expand_modifier_word_fields(
@@ -1735,20 +1733,20 @@ public:
       ArrayList<usize>             &break_out,
       ArrayList<quoted_empty_mark> &mark_out,
       const SourceLocation         *source_location,
-      const parameter_reference    *reference = nullptr) throws -> String;
+      const ParameterReference     *reference = nullptr) throws -> String;
 
   class ModifierWordExpander;
   class ParameterExpander;
 
   fn
   expand_modifier_word_worker(
-      StringView                 word,
-      Bitset                    *active_out,
-      bool                       should_remove_quotes,
-      bool                       is_pattern_word,
-      bool                       should_strip_escaped_literals,
-      const SourceLocation      *source_location,
-      const parameter_reference *reference = nullptr) throws -> String;
+      StringView                word,
+      Bitset                   *active_out,
+      bool                      should_remove_quotes,
+      bool                      is_pattern_word,
+      bool                      should_strip_escaped_literals,
+      const SourceLocation     *source_location,
+      const ParameterReference *reference = nullptr) throws -> String;
 
   fn
   write_xtrace(StringView command) throws -> void;
@@ -1810,9 +1808,9 @@ protected:
   expand_variable(StringView name) const throws -> String;
 
   fn
-  assign_variable(StringView              name,
-                  StringView              value,
-                  Maybe<variable_entry *> entry = None) throws -> void;
+  assign_variable(StringView             name,
+                  StringView             value,
+                  Maybe<VariableEntry *> entry = None) throws -> void;
 
   fn
   force_unset_shell_variable(StringView name) throws -> void;
@@ -1821,12 +1819,12 @@ protected:
 
   fn
   apply_parameter_expansion(
-      StringView                 spec,
-      const SourceLocation      *source_location                    = nullptr,
-      usize                      source_location_offset             = 0,
-      bool                       should_expand_process_substitution = false,
-      parameter_word_quoting     quoting   = parameter_word_quoting::Unquoted,
-      const parameter_reference *reference = nullptr) throws -> String;
+      StringView                spec,
+      const SourceLocation     *source_location                    = nullptr,
+      usize                     source_location_offset             = 0,
+      bool                      should_expand_process_substitution = false,
+      parameter_word_quoting    quoting   = parameter_word_quoting::Unquoted,
+      const ParameterReference *reference = nullptr) throws -> String;
 
   fn
   apply_substring_expansion(
@@ -1924,20 +1922,20 @@ protected:
 
   fn
   matching_prefix_names(StringView prefix) const throws
-      -> SortedArrayList<String, order_comparator<String>>;
+      -> SortedArrayList<String, OrderComparator<String>>;
 
   fn
-  expand_word(const Word &word) throws -> ArrayList<glob_field>;
+  expand_word(const Word &word) throws -> ArrayList<GlobField>;
 
   fn
-  expand_path_once(const glob_field   &field,
+  expand_path_once(const GlobField    &field,
                    glob_expansion_mode expansion_mode) throws
-      -> ArrayList<glob_field>;
+      -> ArrayList<GlobField>;
   fn
-  expand_path_recurse(ArrayList<glob_field> fields) throws
-      -> ArrayList<glob_field>;
+  expand_path_recurse(ArrayList<GlobField> fields) throws
+      -> ArrayList<GlobField>;
   fn
-  expand_path(glob_field field, const SourceLocation &location) throws
+  expand_path(GlobField field, const SourceLocation &location) throws
       -> ArrayList<String>;
   fn
   sort_glob_matches(ArrayList<String> &matches) const throws -> void;

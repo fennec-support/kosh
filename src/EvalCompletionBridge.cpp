@@ -190,7 +190,7 @@ EvalContext::run_completion_function(
     execution_store().completion_function_running() = false;
   };
 
-  let defining_state = definition_state::from(runtime_state());
+  let defining_state = DefinitionState::from(runtime_state());
 
   if (let const *definition_info = body_storage.get_definition_info();
       definition_info != nullptr)

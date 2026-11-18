@@ -72,7 +72,6 @@ Diagnostics:
       readability-identifier-naming.GlobalVariableCase: UPPER_CASE
       readability-identifier-naming.GlobalConstantCase: UPPER_CASE
       readability-identifier-naming.EnumConstantCase: UPPER_CASE
-      readability-identifier-naming.StructCase: CamelCase
       readability-identifier-naming.UnionCase: CamelCase
       readability-identifier-naming.EnumCase: CamelCase
       readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
@@ -95,8 +94,6 @@ Diagnostics:
       readability-identifier-naming.StaticConstantCase: UPPER_CASE
       readability-identifier-naming.ClassConstantCase: UPPER_CASE
       readability-identifier-naming.EnumConstantCase: lower_case
-      readability-identifier-naming.ClassCase: CamelCase
-      readability-identifier-naming.StructCase: lower_case
       readability-identifier-naming.FunctionCase: lower_case
       readability-identifier-naming.MethodCase: lower_case
       readability-identifier-naming.VariableCase: lower_case

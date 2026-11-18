@@ -94,8 +94,8 @@ shopt_reusable_line(StringView          name,
 }
 
 fn
-shopt_is_on(const EvalContext       &cxt,
-            const option_descriptor &option) throws -> bool
+shopt_is_on(const EvalContext      &cxt,
+            const OptionDescriptor &option) throws -> bool
 {
   return read_option_number(cxt, option) != 0;
 }
@@ -199,7 +199,7 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const do_find_or_reject =
       [&](StringView name, const SourceLocation &location)
-          throws -> const option_descriptor * {
+          throws -> const OptionDescriptor * {
     let const *option = find_option_by_shopt_name(name);
 
     if (option != nullptr) return option;

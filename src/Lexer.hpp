@@ -219,9 +219,9 @@ private:
   evaluation_fact_mode m_evaluation_fact_mode{evaluation_fact_mode::Enabled};
 };
 
-struct heredoc_contents
+struct HeredocContents
 {
-  heredoc_contents(Allocator allocator, heredoc_source_mapping source_mapping)
+  HeredocContents(Allocator allocator, heredoc_source_mapping source_mapping)
       : text{allocator}, source_mapping{source_mapping}
   {}
 
@@ -241,7 +241,7 @@ struct lexed_debug_word
 struct heredoc_pending
 {
   String             delimiter;
-  heredoc_contents  *contents;
+  HeredocContents   *contents;
   const BumpArena   *owning_arena;
   usize              registration_index;
   heredoc_tab_policy tab_policy;
@@ -350,13 +350,13 @@ struct nested_substitution
   bool   is_exact{true};
 };
 
-struct substitution_error_key
+struct SubstitutionErrorKey
 {
   u64 span{0};
   u64 message_hash{0};
 
   pure fn
-  operator==(const substitution_error_key &other) const wontthrow -> bool
+  operator==(const SubstitutionErrorKey &other) const wontthrow -> bool
   {
     return span == other.span && message_hash == other.message_hash;
   }
@@ -575,7 +575,7 @@ public:
   register_heredoc(StringView         delimiter,
                    heredoc_tab_policy tab_policy,
                    bool               should_expand) throws
-      -> const heredoc_contents *;
+      -> const HeredocContents *;
 
   pure fn
   pending_heredoc_checkpoint() const wontthrow -> usize
@@ -657,7 +657,7 @@ protected:
   usize                                  m_substitution_nesting_depth{0};
   ArrayList<ErrorWithLocationAndDetails> m_substitution_errors{
       heap_allocator()};
-  ArrayList<lexer::substitution_error_key> m_reported_substitution_error_keys{
+  ArrayList<lexer::SubstitutionErrorKey> m_reported_substitution_error_keys{
       heap_allocator()};
 
   fn

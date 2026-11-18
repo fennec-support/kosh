@@ -30,7 +30,7 @@ enum class format_piece_kind : u8
   Raw,
 };
 
-struct format_piece
+struct FormatPiece
 {
   StringView        text;
   u32               source_position;
@@ -39,12 +39,12 @@ struct format_piece
   bool              should_strip_tabs{false};
   bool              should_keep_blank_line{false};
 
-  format_piece(StringView        text,
-               usize             source_position,
-               format_piece_kind kind,
-               bool              is_at_line_start,
-               bool              should_strip_tabs      = false,
-               bool              should_keep_blank_line = false) wontthrow
+  FormatPiece(StringView        text,
+              usize             source_position,
+              format_piece_kind kind,
+              bool              is_at_line_start,
+              bool              should_strip_tabs      = false,
+              bool              should_keep_blank_line = false) wontthrow
       : text{text}, source_position{static_cast<u32>(source_position)},
         kind{kind}, is_at_line_start{is_at_line_start},
         should_strip_tabs{should_strip_tabs},
@@ -354,13 +354,13 @@ without_trailing_line_continuation(StringView word) wontthrow -> StringView
 }
 
 fn
-scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
+scan_format_pieces(StringView source) throws -> ArrayList<FormatPiece>
 {
-  let pieces = ArrayList<format_piece>{heap_allocator()};
+  let pieces = ArrayList<FormatPiece>{heap_allocator()};
 
   pieces.reserve(source.length / 6 + 1);
 
-  let   pending_heredocs = ArrayList<lexer::pending_heredoc>{heap_allocator()};
+  let   pending_heredocs = ArrayList<lexer::PendingHeredoc>{heap_allocator()};
   usize position         = 0;
   usize line_start       = 0;
   bool  has_code_on_line = false;
@@ -392,8 +392,8 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
     }
 
     if (byte == '\n') {
-      let deferred_heredoc_keyword = Maybe<format_piece>{};
-      let deferred_heredoc_comment = Maybe<format_piece>{};
+      let deferred_heredoc_keyword = Maybe<FormatPiece>{};
+      let deferred_heredoc_comment = Maybe<FormatPiece>{};
 
       if (!pending_heredocs.is_empty()) {
         usize keyword_position = pieces.count();
@@ -428,7 +428,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         }
       }
 
-      pieces.push(format_piece{
+      pieces.push(FormatPiece{
           StringView{"\n", 1},
           position, format_piece_kind::Newline,
           !has_code_on_line
@@ -437,7 +437,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       if (pending_heredocs.is_empty() && has_comment_on_line &&
           position < source.length && source[position] == '\n')
       {
-        pieces.push(format_piece{
+        pieces.push(FormatPiece{
             StringView{"\n", 1},
             position, format_piece_kind::Newline, true,
             false, true
@@ -478,7 +478,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         let const body_end = position;
 
         if (body_end > body_start) {
-          pieces.push(format_piece{
+          pieces.push(FormatPiece{
               source.substring_of_length(body_start, body_end - body_start),
               body_start, format_piece_kind::Raw, true,
               pending.should_strip_tabs});
@@ -492,7 +492,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         pieces.push(deferred_heredoc_keyword.take());
         if (deferred_heredoc_comment.has_value())
           pieces.push(deferred_heredoc_comment.take());
-        pieces.push(format_piece{
+        pieces.push(FormatPiece{
             StringView{"\n", 1},
             position, format_piece_kind::Newline, false
         });
@@ -517,7 +517,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       let const is_at_line_start = !has_code_on_line;
       let const start_position   = is_at_line_start ? line_start : position;
 
-      pieces.push(format_piece{
+      pieces.push(FormatPiece{
           source.substring_of_length(start_position,
                                      end_position - start_position),
           start_position, format_piece_kind::Comment, is_at_line_start});
@@ -531,7 +531,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
     {
       let end_position = position + (byte == '(' ? 1 : 2);
       scan_balanced_region(source, end_position, ')');
-      pieces.push(format_piece{
+      pieces.push(FormatPiece{
           source.substring_of_length(position, end_position - position),
           position, format_piece_kind::Word, !has_code_on_line});
       has_code_on_line = true;
@@ -554,8 +554,8 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         regex_paren_depth--;
       }
 
-      pieces.push(format_piece{text, position, format_piece_kind::Operator,
-                               !has_code_on_line});
+      pieces.push(FormatPiece{text, position, format_piece_kind::Operator,
+                              !has_code_on_line});
       has_code_on_line = true;
       position         = end_position;
       continue;
@@ -582,7 +582,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         source.substring_of_length(position, end_position - position));
 
     if (is_expecting_heredoc_delimiter) {
-      pending_heredocs.push(lexer::pending_heredoc{
+      pending_heredocs.push(lexer::PendingHeredoc{
           lexer::unquote_heredoc_delimiter(text, heap_allocator()),
           should_pending_heredoc_strip_tabs,
           lexer::heredoc_word_joins_lines(text)});
@@ -596,8 +596,8 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       is_in_regex_operand = false;
     }
 
-    pieces.push(format_piece{text, position, format_piece_kind::Word,
-                             !has_code_on_line});
+    pieces.push(FormatPiece{text, position, format_piece_kind::Word,
+                            !has_code_on_line});
     has_code_on_line = true;
     position         = end_position;
   }
@@ -618,8 +618,8 @@ is_redirection_operator(StringView text) wontthrow -> bool
 }
 
 pure fn
-piece_begins_redirection(const ArrayList<format_piece> &pieces,
-                         usize                          index) wontthrow -> bool
+piece_begins_redirection(const ArrayList<FormatPiece> &pieces,
+                         usize                         index) wontthrow -> bool
 {
   if (index >= pieces.count()) return false;
   let const &piece = pieces[index];
@@ -897,7 +897,7 @@ measure_word_layout(StringView word) throws -> word_layout
    time:   O(total length of the word pieces). each word piece belongs to at
            most one segment, and measure_word_layout() visits each one once. */
 fn
-collect_option_wrap_positions(const ArrayList<format_piece> &pieces)
+collect_option_wrap_positions(const ArrayList<FormatPiece> &pieces)
     throws -> ArrayList<option_wrap_position>
 {
   let   positions     = ArrayList<option_wrap_position>{heap_allocator()};
@@ -967,10 +967,10 @@ word_is_unbreakable(StringView word) wontthrow -> bool
 }
 
 fn
-append_long_string_warnings(StringView                     source,
-                            const ArrayList<format_piece> &pieces,
-                            Maybe<StringView>              filename,
-                            ArrayList<String>             &warnings) throws -> void
+append_long_string_warnings(StringView                    source,
+                            const ArrayList<FormatPiece> &pieces,
+                            Maybe<StringView>             filename,
+                            ArrayList<String>            &warnings) throws -> void
 {
   for (let const &piece : pieces) {
     if (piece.kind != format_piece_kind::Word ||
@@ -1003,7 +1003,7 @@ has_prior_test_shadow(Maybe<usize> first_shadow_position,
 }
 
 fn
-first_test_shadow_position(const ArrayList<format_piece> &pieces) throws
+first_test_shadow_position(const ArrayList<FormatPiece> &pieces) throws
     -> Maybe<usize>
 {
   enum class shadow_introducer : u8
@@ -1066,10 +1066,10 @@ first_test_shadow_position(const ArrayList<format_piece> &pieces) throws
 }
 
 fn
-render_format_pieces(const ArrayList<format_piece> &pieces,
-                     usize                          initial_indent,
-                     usize                          recursion_depth,
-                     format_layout                  layout = {}) throws -> String;
+render_format_pieces(const ArrayList<FormatPiece> &pieces,
+                     usize                         initial_indent,
+                     usize                         recursion_depth,
+                     format_layout                 layout = {}) throws -> String;
 
 fn
 format_word_substitutions(StringView word,
@@ -1241,10 +1241,10 @@ format_word_substitutions(StringView word,
            word is classified. format_word_substitutions() adds the cost of
            nested substitution bodies, which recurse into this function. */
 fn
-render_format_pieces(const ArrayList<format_piece> &pieces,
-                     usize                          initial_indent  = 0,
-                     usize                          recursion_depth = 0,
-                     format_layout                  layout) throws -> String
+render_format_pieces(const ArrayList<FormatPiece> &pieces,
+                     usize                         initial_indent  = 0,
+                     usize                         recursion_depth = 0,
+                     format_layout                 layout) throws -> String
 {
   let writer = FormatWriter{};
   writer.set_indent(initial_indent);
@@ -2207,10 +2207,11 @@ validate_formatted_source(StringView         source,
                           BumpArena         *function_arena,
                           mimic_mood         mood) throws -> bool
 {
-  let const mark          = arena.mark();
-  let const function_mark = function_arena != nullptr
-                                ? Maybe<BumpArena::Mark>{function_arena->mark()}
-                                : None;
+  let const mark = arena.mark();
+  let const function_mark =
+      function_arena != nullptr
+          ? Maybe<BumpArena::arena_mark>{function_arena->mark()}
+          : None;
   defer {
     utils::invalidate_line_number_cache_for(source);
     arena.release(mark);

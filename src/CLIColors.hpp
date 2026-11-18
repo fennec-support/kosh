@@ -67,14 +67,14 @@ enum class color_variant : u8
   PromptSoft,
 };
 
-struct color_style
+struct ColorStyle
 {
   color         value{color::None};
   color_variant variant{color_variant::Basic};
 
-  constexpr color_style() = default;
-  constexpr color_style(color         style_value,
-                        color_variant style_variant = color_variant::Basic)
+  constexpr ColorStyle() = default;
+  constexpr ColorStyle(color         style_value,
+                       color_variant style_variant = color_variant::Basic)
       : value(style_value), variant(style_variant)
   {}
 };
@@ -83,7 +83,7 @@ fn
 color_to_sv(color value, color_variant variant = color_variant::Basic) wontthrow
     -> StringView;
 fn
-color_to_sv(color_style style) wontthrow -> StringView;
+color_to_sv(ColorStyle style) wontthrow -> StringView;
 
 fn
 stdout_wants_color() throws -> bool;
@@ -119,7 +119,7 @@ enum class file_entry_type : u8
 pure fn
 file_entry_type_of_mode(u32 mode) wontthrow -> file_entry_type;
 fn
-file_entry_color(file_entry_type type) wontthrow -> color_style;
+file_entry_color(file_entry_type type) wontthrow -> ColorStyle;
 
 fn
 noninteractive_highlight_theme() wontthrow -> const highlight_theme &;

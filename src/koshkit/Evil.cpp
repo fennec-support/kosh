@@ -114,12 +114,12 @@ format_limit_value(u64 value, Allocator allocator) throws -> String
   return String::from(value, allocator);
 }
 
-struct field_section
+struct FieldSection
 {
   ReportTable table;
   Allocator   allocator;
 
-  explicit field_section(Allocator section_allocator)
+  explicit FieldSection(Allocator section_allocator)
       : table(section_allocator), allocator(section_allocator)
   {
     table.set_header_visible(false);
@@ -135,7 +135,7 @@ struct field_section
 };
 
 fn
-append_resource_limit(field_section    &section,
+append_resource_limit(FieldSection     &section,
                       StringView        name,
                       os::resource_kind kind) throws -> void
 {
@@ -152,7 +152,7 @@ append_resource_limit(field_section    &section,
 }
 
 fn
-append_system_configuration(field_section               &section,
+append_system_configuration(FieldSection                &section,
                             StringView                   name,
                             os::system_configuration_key key) throws
     -> void
@@ -177,7 +177,7 @@ struct mapped_library_family
    time:   one list_process_open_files() call, then a scan of the families
            array for each mapped file, O(F * G) for F files and G families. */
 fn
-append_anomaly_report(field_section &section, EvalContext &cxt) throws
+append_anomaly_report(FieldSection &section, EvalContext &cxt) throws
     -> void
 {
   let const allocator = cxt.scratch_allocator();
@@ -297,79 +297,79 @@ append_anomaly_report(field_section &section, EvalContext &cxt) throws
    time:   a fixed number of platform reads, then one loop over METRICS, whose
            length is a compile-time constant. */
 fn
-append_procfs_report(field_section &section) throws -> void
+append_procfs_report(FieldSection &section) throws -> void
 {
-  let const                  allocator = section.allocator;
-  os::system_activity_status activity{};
+  let const                allocator = section.allocator;
+  os::SystemActivityStatus activity{};
 
   if (os::read_system_activity_status(activity)) {
     struct activity_metric
     {
       os::system_activity_field field;
       StringView                label;
-      u64 os::system_activity_status::*value;
+      u64 os::SystemActivityStatus::*value;
     };
     static constexpr activity_metric METRICS[] = {
         {os::system_activity_field::Cpu,                   "CPU user units",
-         &os::system_activity_status::cpu_user_units                                                                                                 },
+         &os::SystemActivityStatus::cpu_user_units                                                                                                 },
         {os::system_activity_field::Cpu,                   "CPU system units",
-         &os::system_activity_status::cpu_system_units                                                                                               },
+         &os::SystemActivityStatus::cpu_system_units                                                                                               },
         {os::system_activity_field::Cpu,                   "CPU idle units",
-         &os::system_activity_status::cpu_idle_units                                                                                                 },
+         &os::SystemActivityStatus::cpu_idle_units                                                                                                 },
         {os::system_activity_field::CpuWait,               "CPU wait units",
-         &os::system_activity_status::cpu_wait_units                                                                                                 },
+         &os::SystemActivityStatus::cpu_wait_units                                                                                                 },
         {os::system_activity_field::CpuStolen,             "CPU stolen units",
-         &os::system_activity_status::cpu_stolen_units                                                                                               },
+         &os::SystemActivityStatus::cpu_stolen_units                                                                                               },
         {os::system_activity_field::Faults,                "Page faults",
-         &os::system_activity_status::page_fault_count                                                                                               },
+         &os::SystemActivityStatus::page_fault_count                                                                                               },
         {os::system_activity_field::MajorFaults,           "Major page faults",
-         &os::system_activity_status::major_page_fault_count                                                                                         },
+         &os::SystemActivityStatus::major_page_fault_count                                                                                         },
         {os::system_activity_field::PageInput,             "Page input bytes",
-         &os::system_activity_status::page_input_byte_count                                                                                          },
+         &os::SystemActivityStatus::page_input_byte_count                                                                                          },
         {os::system_activity_field::PageOutput,            "Page output bytes",
-         &os::system_activity_status::page_output_byte_count                                                                                         },
+         &os::SystemActivityStatus::page_output_byte_count                                                                                         },
         {os::system_activity_field::Runnable,              "Runnable processes",
-         &os::system_activity_status::runnable_process_count                                                                                         },
+         &os::SystemActivityStatus::runnable_process_count                                                                                         },
         {os::system_activity_field::Blocked,               "Blocked processes",
-         &os::system_activity_status::blocked_process_count                                                                                          },
+         &os::SystemActivityStatus::blocked_process_count                                                                                          },
         {os::system_activity_field::Interrupts,            "Interrupts",
-         &os::system_activity_status::interrupt_count                                                                                                },
+         &os::SystemActivityStatus::interrupt_count                                                                                                },
         {os::system_activity_field::ContextSwitches,       "Context switches",
-         &os::system_activity_status::context_switch_count                                                                                           },
+         &os::SystemActivityStatus::context_switch_count                                                                                           },
         {os::system_activity_field::ProcessCreations,      "Processes created",
-         &os::system_activity_status::process_creation_count                                                                                         },
+         &os::SystemActivityStatus::process_creation_count                                                                                         },
         {os::system_activity_field::SoftInterrupts,        "Soft interrupts",
-         &os::system_activity_status::soft_interrupt_count                                                                                           },
+         &os::SystemActivityStatus::soft_interrupt_count                                                                                           },
         {os::system_activity_field::CpuSomeStall,
-         "CPU partial stall microseconds",                                                &os::system_activity_status::cpu_some_stall_microseconds   },
+         "CPU partial stall microseconds",                                                &os::SystemActivityStatus::cpu_some_stall_microseconds   },
         {os::system_activity_field::CpuFullStall,          "CPU full stall microseconds",
-         &os::system_activity_status::cpu_full_stall_microseconds                                                                                    },
+         &os::SystemActivityStatus::cpu_full_stall_microseconds                                                                                    },
         {os::system_activity_field::MemorySomeStall,
-         "Memory partial stall microseconds",                                             &os::system_activity_status::memory_some_stall_microseconds},
+         "Memory partial stall microseconds",                                             &os::SystemActivityStatus::memory_some_stall_microseconds},
         {os::system_activity_field::MemoryFullStall,
-         "Memory full stall microseconds",                                                &os::system_activity_status::memory_full_stall_microseconds},
+         "Memory full stall microseconds",                                                &os::SystemActivityStatus::memory_full_stall_microseconds},
         {os::system_activity_field::IoSomeStall,
-         "IO partial stall microseconds",                                                 &os::system_activity_status::io_some_stall_microseconds    },
+         "IO partial stall microseconds",                                                 &os::SystemActivityStatus::io_some_stall_microseconds    },
         {os::system_activity_field::IoFullStall,           "IO full stall microseconds",
-         &os::system_activity_status::io_full_stall_microseconds                                                                                     },
+         &os::SystemActivityStatus::io_full_stall_microseconds                                                                                     },
         {os::system_activity_field::PageScan,              "Pages scanned",
-         &os::system_activity_status::page_scan_count                                                                                                },
+         &os::SystemActivityStatus::page_scan_count                                                                                                },
         {os::system_activity_field::PageSteal,             "Pages reclaimed",
-         &os::system_activity_status::page_steal_count                                                                                               },
+         &os::SystemActivityStatus::page_steal_count                                                                                               },
         {os::system_activity_field::DirectReclaim,         "Direct reclaim stalls",
-         &os::system_activity_status::direct_reclaim_count                                                                                           },
+         &os::SystemActivityStatus::direct_reclaim_count                                                                                           },
         {os::system_activity_field::CompactionStall,       "Compaction stalls",
-         &os::system_activity_status::compaction_stall_count                                                                                         },
+         &os::SystemActivityStatus::compaction_stall_count                                                                                         },
         {os::system_activity_field::DirtyPages,            "Dirty pages",
-         &os::system_activity_status::dirty_page_count                                                                                               },
+         &os::SystemActivityStatus::dirty_page_count                                                                                               },
         {os::system_activity_field::WritebackPages,        "Writeback pages",
-         &os::system_activity_status::writeback_page_count                                                                                           },
+         &os::SystemActivityStatus::writeback_page_count                                                                                           },
         {os::system_activity_field::OomKills,              "OOM kills",
-         &os::system_activity_status::oom_kill_count                                                                                                 },
+         &os::SystemActivityStatus::oom_kill_count                                                                                                 },
         {os::system_activity_field::NamespaceCount,
-         "Current-process namespaces",                                                    &os::system_activity_status::namespace_count               },
+         "Current-process namespaces",                                                    &os::SystemActivityStatus::namespace_count               },
         {os::system_activity_field::CgroupMembershipCount,
-         "Current-process cgroup memberships",                                            &os::system_activity_status::cgroup_membership_count       },
+         "Current-process cgroup memberships",                                            &os::SystemActivityStatus::cgroup_membership_count       },
     };
 
     for (let const &metric : METRICS) {
@@ -390,7 +390,7 @@ append_procfs_report(field_section &section) throws -> void
     }
   }
 
-  os::memory_status memory{};
+  os::MemoryStatus memory{};
 
   if (os::read_memory_status(memory) &&
       memory.has_field(os::memory_status_field::Total))
@@ -452,13 +452,13 @@ Evil::execute(const ExecContext               &ec,
 
   let const allocator = cxt.scratch_allocator();
   let       output    = String{allocator};
-  let       identity  = field_section{allocator};
-  let       session   = field_section{allocator};
-  let       accounts  = field_section{allocator};
-  let       resources = field_section{allocator};
-  let       limits    = field_section{allocator};
-  let       activity  = field_section{allocator};
-  let       anomalies = field_section{allocator};
+  let       identity  = FieldSection{allocator};
+  let       session   = FieldSection{allocator};
+  let       accounts  = FieldSection{allocator};
+  let       resources = FieldSection{allocator};
+  let       limits    = FieldSection{allocator};
+  let       activity  = FieldSection{allocator};
+  let       anomalies = FieldSection{allocator};
 
   let const host = os::get_hostname();
 
@@ -609,7 +609,7 @@ Evil::execute(const ExecContext               &ec,
   processor_line += String::from(processors.configured_count, allocator).view();
   resources.add("Processor", processor_line.view());
 
-  os::memory_status memory{};
+  os::MemoryStatus memory{};
 
   if (os::read_memory_status(memory) &&
       memory.has_field(os::memory_status_field::Total) && memory.total_kib > 0)

@@ -20,7 +20,7 @@ namespace koshka::language_server {
 
 namespace {
 
-using sorted_uri_list = SortedArrayList<String, order_comparator<String>>;
+using sorted_uri_list = SortedArrayList<String, OrderComparator<String>>;
 
 struct positioned_document
 {
@@ -91,7 +91,7 @@ constexpr static_string_entry<request_method> REQUEST_METHOD_ENTRIES[] = {
 constexpr StaticStringMap REQUEST_METHODS{REQUEST_METHOD_ENTRIES};
 constexpr i64             REQUEST_FAILED_ERROR = -32803;
 
-struct client_capabilities
+struct ClientCapabilities
 {
   position_encoding encoding{position_encoding::Utf16};
   bool              has_document_changes{false};
@@ -104,9 +104,9 @@ struct client_capabilities
 
   static fn
   from_initialize_params(const JsonValue *params) throws
-      -> client_capabilities
+      -> ClientCapabilities
   {
-    client_capabilities client{};
+    ClientCapabilities client{};
 
     if (params == nullptr || params->kind != json_kind::Object) {
       return client;
@@ -502,7 +502,7 @@ private:
   StringMap<String>               m_shell_help_cache{heap_allocator()};
   completion::ShellHighlightCache m_highlight_cache{heap_allocator()};
   Path                            m_workspace_root;
-  client_capabilities             m_client{};
+  ClientCapabilities              m_client{};
   bool                            m_is_initialized{false};
   bool                            m_has_shut_down{false};
 };
@@ -588,7 +588,7 @@ Server::select_document_mood(const Document &document) wontthrow -> void
 {
   m_context.select_mood(document.mood);
   m_context.runtime_state().set_reporting_state(
-      reporting_state{3, false, false});
+      ReportingState{3, false, false});
 }
 
 fn
@@ -612,7 +612,7 @@ Server::initialize(const JsonValue *id, const JsonValue *params) throws
       m_workspace_root = path.take();
   }
 
-  m_client         = client_capabilities::from_initialize_params(params);
+  m_client         = ClientCapabilities::from_initialize_params(params);
   m_is_initialized = true;
 
   let const encoding =
@@ -841,7 +841,7 @@ Server::publish_diagnostics(Document &document) throws -> bool
   let rendered_errors = ArrayList<String>{heap_allocator()};
   let diagnostics     = ArrayList<source_diagnostic>{heap_allocator()};
   let followed_paths  = HashSet{heap_allocator()};
-  let symbol_records  = analysis_symbol_records{};
+  let symbol_records  = AnalysisSymbolRecords{};
   let source_effects  = StringMap<followed_source_effects>{heap_allocator()};
   let const ast =
       parser.construct_ast(rendered_errors, &m_context, &diagnostics);
@@ -862,7 +862,7 @@ Server::publish_diagnostics(Document &document) throws -> bool
         document.format.kind == parser_format_kind::DevContainer;
     let const *format_document =
         is_mixed_command_context ? &document.format : nullptr;
-    let options = analysis_options::from_runtime(m_context.runtime_state());
+    let options = AnalysisOptions::from_runtime(m_context.runtime_state());
 
     options.should_silence_unresolved_commands =
         !is_mixed_command_context &&
@@ -1859,7 +1859,7 @@ append_arithmetic_references(StringView                      text,
 }
 
 static fn
-append_braced_references(const analysis_symbol_records  &records,
+append_braced_references(const AnalysisSymbolRecords    &records,
                          StringView                      text,
                          usize                           start,
                          usize                           end,
@@ -1870,7 +1870,7 @@ append_braced_references(const analysis_symbol_records  &records,
 /* the expansions of a word. An escaped dollar and single-quoted text hold no
    reference, and a quote with no closing partner is a literal byte. */
 static fn
-append_word_references(const analysis_symbol_records  &records,
+append_word_references(const AnalysisSymbolRecords    &records,
                        StringView                      text,
                        usize                           position,
                        usize                           end,
@@ -1953,7 +1953,7 @@ append_word_references(const analysis_symbol_records  &records,
 /* text[start] opens ${. end follows its closing brace or ends the available
    text. */
 static fn
-append_braced_references(const analysis_symbol_records  &records,
+append_braced_references(const AnalysisSymbolRecords    &records,
                          StringView                      text,
                          usize                           start,
                          usize                           end,
@@ -2024,10 +2024,9 @@ append_braced_references(const analysis_symbol_records  &records,
 /* the subscript that starts at position belongs to the array before its
    opening bracket. */
 pure static fn
-is_associative_subscript(StringView                     source,
-                         usize                          position,
-                         const analysis_symbol_records &records)
-    wontthrow -> bool
+is_associative_subscript(StringView                   source,
+                         usize                        position,
+                         const AnalysisSymbolRecords &records) wontthrow -> bool
 {
   if (position == 0 || source[position - 1] != '[') return false;
 
@@ -2429,7 +2428,7 @@ Server::rename(const JsonValue *id, const JsonValue *params) throws
 constexpr usize OUTLINE_FUNCTION_KIND = 12;
 constexpr usize OUTLINE_VARIABLE_KIND = 13;
 
-struct outline_entry
+struct OutlineEntry
 {
   StringView name;
   usize      kind;
@@ -2439,7 +2438,7 @@ struct outline_entry
   usize      selection_end;
 
   pure fn
-  operator<(const outline_entry &other) const wontthrow -> bool
+  operator<(const OutlineEntry &other) const wontthrow -> bool
   {
     if (start != other.start) return start < other.start;
 
@@ -2456,9 +2455,9 @@ struct outline_scope
 
 fn
 document_outline(const Document &document) throws
-    -> SortedArrayList<outline_entry, order_comparator<outline_entry>>
+    -> SortedArrayList<OutlineEntry, OrderComparator<OutlineEntry>>
 {
-  let       entries       = ArrayList<outline_entry>{heap_allocator()};
+  let       entries       = ArrayList<OutlineEntry>{heap_allocator()};
   let const source_length = document.normalized_source.count();
 
   for (let const &record : document.symbol_records.functions) {
@@ -2469,9 +2468,9 @@ document_outline(const Document &document) throws
                              ? record.body_end_position
                              : name_end;
 
-    entries.push(outline_entry{record.name.view(), OUTLINE_FUNCTION_KIND,
-                               record.name_position, end, record.name_position,
-                               name_end});
+    entries.push(OutlineEntry{record.name.view(), OUTLINE_FUNCTION_KIND,
+                              record.name_position, end, record.name_position,
+                              name_end});
   }
 
   let const source = document.normalized_source.view();
@@ -2489,9 +2488,9 @@ document_outline(const Document &document) throws
         source.substring_of_length(record.position, record.name.count()) ==
             record.name.view();
 
-    entries.push(outline_entry{record.name.view(), OUTLINE_VARIABLE_KIND,
-                               record.position, end, record.position,
-                               is_name_verbatim ? name_end : end});
+    entries.push(OutlineEntry{record.name.view(), OUTLINE_VARIABLE_KIND,
+                              record.position, end, record.position,
+                              is_name_verbatim ? name_end : end});
   }
 
   /* e.g. start..end ranges [y 4..6, f 0..20, x 4..9] sort to
@@ -2799,7 +2798,7 @@ clipped_line_span(StringView text,
 
 /* latest position first, so front() is the nearest assignment to the symbol,
    as variable_hover_text() requires. */
-struct reaching_assignment_comparator
+struct ReachingAssignmentComparator
 {
   pure fn
   operator()(const variable_assignment_record *left,
@@ -2813,7 +2812,7 @@ fn
 assignments_reaching(const Document        &document,
                      const document_symbol &symbol) throws
     -> SortedArrayList<const variable_assignment_record *,
-                       reaching_assignment_comparator>
+                       ReachingAssignmentComparator>
 {
   let reaching =
       ArrayList<const variable_assignment_record *>{heap_allocator()};
@@ -2830,7 +2829,7 @@ assignments_reaching(const Document        &document,
 
   /* e.g. symbol.start = 8 and assignments at positions 3, 10, and 7: position
      10 is skipped, and the sorted result is [7, 3]. */
-  return steal(reaching).make_sorted(reaching_assignment_comparator{});
+  return steal(reaching).make_sorted(ReachingAssignmentComparator{});
 }
 
 pure fn

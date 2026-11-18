@@ -383,7 +383,7 @@ private:
             os::stat_path(path.view(), status)
                 ? colors::file_entry_color(
                       colors::file_entry_type_of_mode(status.mode))
-                : colors::color_style{},
+                : colors::ColorStyle{},
             true);
       }
 
@@ -622,8 +622,8 @@ private:
     m_unknown_batch.clear();
 
     for (usize index = 0; index < m_unknown_indices.count(); index++)
-      m_unknown_batch.add(os::batch_operation::lstat(
-          m_unknown_paths[index], m_unknown_statuses[index]));
+      m_unknown_batch.add(os::BatchOperation::lstat(m_unknown_paths[index],
+                                                    m_unknown_statuses[index]));
 
     m_unknown_batch.execute(m_unknown_results,
                             os::batch_deduplication::Disabled);
@@ -919,8 +919,8 @@ Find::execute(const ExecContext               &ec,
   }
 
   for (usize root_index = 0; root_index < roots.count(); root_index++) {
-    batch.add(os::batch_operation::lstat(root_paths[root_index],
-                                         root_statuses[root_index]));
+    batch.add(os::BatchOperation::lstat(root_paths[root_index],
+                                        root_statuses[root_index]));
   }
 
   let const results = batch.execute();

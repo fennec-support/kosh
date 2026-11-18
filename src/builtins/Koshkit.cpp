@@ -65,25 +65,25 @@ enum class utility_section : u8
 };
 
 static pure fn
-get_utility_section(koshkit::Utility::Kind kind) wontthrow -> utility_section
+get_utility_section(koshkit::utility::Kind kind) wontthrow -> utility_section
 {
   switch (kind) {
-  case koshkit::Utility::Kind::Evil:
-  case koshkit::Utility::Kind::EvilFiles:
-  case koshkit::Utility::Kind::EvilFS:
-  case koshkit::Utility::Kind::EvilNet:
-  case koshkit::Utility::Kind::GoodNode:
-  case koshkit::Utility::Kind::EvilPS:
-  case koshkit::Utility::Kind::GoodStat:
-  case koshkit::Utility::Kind::EvilDisk:
-  case koshkit::Utility::Kind::EvilIO:
-  case koshkit::Utility::Kind::EvilLogs:
-  case koshkit::Utility::Kind::EvilIso:
-  case koshkit::Utility::Kind::Meow:
-  case koshkit::Utility::Kind::GoodCore:
-  case koshkit::Utility::Kind::EvilSS:
-  case koshkit::Utility::Kind::Slurp:
-  case koshkit::Utility::Kind::GoodFSW:   return utility_section::Koshka;
+  case koshkit::utility::Kind::Evil:
+  case koshkit::utility::Kind::EvilFiles:
+  case koshkit::utility::Kind::EvilFS:
+  case koshkit::utility::Kind::EvilNet:
+  case koshkit::utility::Kind::GoodNode:
+  case koshkit::utility::Kind::EvilPS:
+  case koshkit::utility::Kind::GoodStat:
+  case koshkit::utility::Kind::EvilDisk:
+  case koshkit::utility::Kind::EvilIO:
+  case koshkit::utility::Kind::EvilLogs:
+  case koshkit::utility::Kind::EvilIso:
+  case koshkit::utility::Kind::Meow:
+  case koshkit::utility::Kind::GoodCore:
+  case koshkit::utility::Kind::EvilSS:
+  case koshkit::utility::Kind::Slurp:
+  case koshkit::utility::Kind::GoodFSW:   return utility_section::Koshka;
   default:                                return utility_section::Posix;
   }
 }
@@ -147,7 +147,7 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const chosen = utility_index < ec.args().count()
                          ? koshkit::find_util(ec.args()[utility_index].view())
-                         : Maybe<koshkit::Utility::Kind>{};
+                         : Maybe<koshkit::utility::Kind>{};
 
   if (chosen.has_value())
     return koshkit::dispatch(ec, cxt, utility_index, chosen);

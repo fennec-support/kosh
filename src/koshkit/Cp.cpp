@@ -89,7 +89,7 @@ enum class cp_symlink_mode : u8
 
 namespace {
 
-struct cp_options
+struct CpOptions
 {
   bool              should_force;
   bool              should_preserve;
@@ -107,7 +107,7 @@ struct cp_options
   HashSet *created_file_targets{nullptr};
 
   fn
-  for_child() const -> cp_options
+  for_child() const -> CpOptions
   {
     let child = *this;
 
@@ -140,7 +140,7 @@ static fn
 copy_file(const ExecContext &ec,
           StringView         source,
           StringView         destination,
-          const cp_options  &options,
+          const CpOptions   &options,
           Allocator          allocator) throws -> void
 {
   copy_file_or_throw(source, destination,
@@ -157,7 +157,7 @@ static fn
 link_file(const ExecContext &ec,
           StringView         source,
           StringView         destination,
-          const cp_options  &options,
+          const CpOptions   &options,
           Allocator          allocator) throws -> void
 {
   let const source_path      = Path{source, allocator};
@@ -301,7 +301,7 @@ source_file_status(StringView source) throws -> Maybe<os::file_status>
 static fn
 apply_copied_attributes(const Maybe<os::file_status> &source_status,
                         StringView                    destination,
-                        const cp_options             &options,
+                        const CpOptions              &options,
                         bool                          did_destination_exist,
                         Allocator                     allocator) throws -> void
 {
@@ -342,7 +342,7 @@ copy_path(const ExecContext                &ec,
           EvalContext                      &cxt,
           StringView                        source,
           StringView                        destination,
-          const cp_options                 &options,
+          const CpOptions                  &options,
           Allocator                         allocator,
           const os::file_status            *known_lstat,
           ArrayList<cp_directory_identity> &active_directories) throws
@@ -768,13 +768,13 @@ Cp::execute(const ExecContext               &ec,
     symlink_mode = cp_symlink_mode::FollowRoot;
   }
 
-  let options = cp_options{FLAG_CP_FORCE.is_enabled(),
-                           FLAG_CP_PRESERVE.is_enabled() || is_archive,
-                           FLAG_CP_VERBOSE.is_enabled(),
-                           recursive_mode,
-                           symlink_mode,
-                           FLAG_CP_ONE_FILE_SYSTEM.is_enabled(),
-                           Maybe<u64>{}};
+  let options = CpOptions{FLAG_CP_FORCE.is_enabled(),
+                          FLAG_CP_PRESERVE.is_enabled() || is_archive,
+                          FLAG_CP_VERBOSE.is_enabled(),
+                          recursive_mode,
+                          symlink_mode,
+                          FLAG_CP_ONE_FILE_SYSTEM.is_enabled(),
+                          Maybe<u64>{}};
 
   options.should_keep_existing = FLAG_CP_NO_CLOBBER.is_enabled();
 
@@ -909,7 +909,7 @@ copy_tree_for_move(const ExecContext &ec,
                    StringView         destination,
                    Allocator          allocator) throws -> bool
 {
-  let const options = cp_options{
+  let const options = CpOptions{
       .should_force               = false,
       .should_preserve            = true,
       .is_verbose                 = false,

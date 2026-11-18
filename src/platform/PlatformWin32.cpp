@@ -1488,9 +1488,9 @@ default_network_interface(Allocator allocator) throws -> Maybe<String>
            O(NumEntries). */
 fn
 read_network_interface_statistics() throws
-    -> ArrayList<network_interface_statistics_entry>
+    -> ArrayList<NetworkInterfaceStatisticsEntry>
 {
-  let result = ArrayList<network_interface_statistics_entry>{heap_allocator()};
+  let result = ArrayList<NetworkInterfaceStatisticsEntry>{heap_allocator()};
   MIB_IF_TABLE2 *table = nullptr;
 
   if (GetIfTable2(&table) != NO_ERROR || table == nullptr) {
@@ -1521,7 +1521,7 @@ read_network_interface_statistics() throws
 
     if (!interface_name.has_value()) continue;
 
-    result.push(network_interface_statistics_entry{
+    result.push(NetworkInterfaceStatisticsEntry{
         steal(*interface_name),
         row.InOctets,
         row.OutOctets,
@@ -1543,7 +1543,7 @@ read_network_interface_statistics() throws
 }
 
 fn
-read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
+read_tcp_statistics(TcpStatistics &statistics) wontthrow -> bool
 {
   bool            has_statistics = false;
   constexpr ULONG FAMILIES[]     = {AF_INET, AF_INET6};
@@ -2663,7 +2663,7 @@ append_subshell_transport_u32(String &output, u32 value) throws -> void
     output.push(static_cast<char>((value >> (byte_position * 8U)) & 0xffU));
 }
 
-struct subshell_transport_header
+struct SubshellTransportHeader
 {
   static constexpr u32   MAGIC                    = 0x4b535442U;
   static constexpr u32   VERSION                  = 5U;
@@ -2678,8 +2678,8 @@ struct subshell_transport_header
   u32 should_use_command_string_status{0};
 
   static fn
-  from_bootstrap(const subshell_bootstrap &bootstrap) wontthrow
-      -> Maybe<subshell_transport_header>
+  from_bootstrap(const SubshellBootstrap &bootstrap) wontthrow
+      -> Maybe<SubshellTransportHeader>
   {
     if (bootstrap.payload.count() > MAXIMUM_TRANSPORT_LENGTH ||
         bootstrap.source_origin.count() > MAXIMUM_TRANSPORT_LENGTH ||
@@ -2688,7 +2688,7 @@ struct subshell_transport_header
       return None;
     }
 
-    let const header = subshell_transport_header{
+    let const header = SubshellTransportHeader{
         .payload_length  = static_cast<u32>(bootstrap.payload.count()),
         .source_length   = bootstrap.source_length,
         .origin_length   = static_cast<u32>(bootstrap.source_origin.count()),
@@ -2705,7 +2705,7 @@ struct subshell_transport_header
 
   static fn
   decode(const char (&bytes)[ENCODED_LENGTH]) wontthrow
-      -> Maybe<subshell_transport_header>
+      -> Maybe<SubshellTransportHeader>
   {
     /* e.g. bytes 42 54 53 4b 05 00 00 00 -> magic 0x4b535442, version 5 */
     if (decode_subshell_transport_u32(bytes) != MAGIC ||
@@ -2714,7 +2714,7 @@ struct subshell_transport_header
       return None;
     }
 
-    let const header = subshell_transport_header{
+    let const header = SubshellTransportHeader{
         .payload_length  = decode_subshell_transport_u32(bytes + 8),
         .source_length   = decode_subshell_transport_u32(bytes + 12),
         .origin_length   = decode_subshell_transport_u32(bytes + 16),
@@ -2762,7 +2762,7 @@ struct subshell_transport_header
   }
 };
 
-static subshell_bootstrap SUBSHELL_BOOTSTRAP{};
+static SubshellBootstrap SUBSHELL_BOOTSTRAP{};
 
 static fn
 read_subshell_transport_exact(descriptor pipe,
@@ -2934,7 +2934,7 @@ receive_subshell_bootstrap() wontthrow -> void
     ExitProcess(1);
   }
 
-  char header_bytes[subshell_transport_header::ENCODED_LENGTH];
+  char header_bytes[SubshellTransportHeader::ENCODED_LENGTH];
 
   if (!read_subshell_transport_exact(pipe, header_bytes, sizeof(header_bytes)))
   {
@@ -2942,7 +2942,7 @@ receive_subshell_bootstrap() wontthrow -> void
     ExitProcess(1);
   }
 
-  let const header = subshell_transport_header::decode(header_bytes);
+  let const header = SubshellTransportHeader::decode(header_bytes);
 
   if (!header.has_value()) {
     CloseHandle(pipe);
@@ -3044,7 +3044,7 @@ initialize_platform_runtime() wontthrow -> void
   SetEnvironmentVariableW(internal::PARENT_PROCESS_ID_WIDE, nullptr);
   if (!is_internal_child) {
     SetEnvironmentVariableW(internal::STATE_NAMED_PIPE_WIDE, nullptr);
-    inherited_subshell_state::clear_environment();
+    InheritedSubshellState::clear_environment();
 
     return;
   }
@@ -3055,7 +3055,7 @@ initialize_platform_runtime() wontthrow -> void
 }
 
 fn
-take_subshell_bootstrap() wontthrow -> subshell_bootstrap
+take_subshell_bootstrap() wontthrow -> SubshellBootstrap
 {
   return steal(SUBSHELL_BOOTSTRAP);
 }

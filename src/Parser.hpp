@@ -380,7 +380,7 @@ private:
   mustuse fn
   build_evaluated_arithmetic_tree(StringView expression,
                                   Allocator  allocator) throws
-      -> const arith_tree *;
+      -> const ArithTree *;
   mustuse fn
   parse_arithmetic_command(Token *open) throws -> Command *;
   mustuse fn

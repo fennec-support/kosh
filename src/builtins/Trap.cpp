@@ -86,7 +86,7 @@ struct listed_trap
   StringView action;
 };
 
-struct listed_trap_comparator
+struct ListedTrapComparator
 {
   pure fn
   operator()(const listed_trap &left, const listed_trap &right) const wontthrow
@@ -291,7 +291,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let collected = ArrayList<listed_trap>{cxt.scratch_allocator()};
 
     cxt.trap_store().list(
-        [&](StringView condition, const trap_definition &trap) {
+        [&](StringView condition, const TrapDefinition &trap) {
           collected.push(listed_trap{trap_listing_order(condition), condition,
                                      trap.action_text.view()});
         });
@@ -331,7 +331,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     /* e.g. INT, RETURN, EXIT, TERM have trap_listing_order() values 2, 1002,
        0, 15 on Linux, so the sorted order is EXIT, INT, TERM, RETURN. */
-    let const listed = steal(collected).make_sorted(listed_trap_comparator{});
+    let const listed = steal(collected).make_sorted(ListedTrapComparator{});
 
     for (usize i = 0; i < listed.count(); i++)
       do_append_listing(listed[i].condition, listed[i].action);

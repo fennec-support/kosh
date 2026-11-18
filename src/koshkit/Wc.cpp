@@ -83,7 +83,7 @@ make_word_byte_table(bool is_utf8) -> word_byte_table
 inline constexpr word_byte_table BYTE_WORD_TABLE = make_word_byte_table(false);
 inline constexpr word_byte_table UTF8_WORD_TABLE = make_word_byte_table(true);
 
-struct wc_counts
+struct WcCounts
 {
   u64 line_count{0};
   u64 word_count{0};
@@ -92,7 +92,7 @@ struct wc_counts
   u64 longest_line_character_count{0};
 
   fn
-  add(const wc_counts &other) wontthrow -> void
+  add(const WcCounts &other) wontthrow -> void
   {
     if (other.longest_line_character_count > longest_line_character_count)
       longest_line_character_count = other.longest_line_character_count;
@@ -106,10 +106,10 @@ struct wc_counts
 
 struct wc_source_state
 {
-  wc_counts counts;
-  i32       error_number{0};
-  u64       line_character_count{0};
-  bool      is_in_word{false};
+  WcCounts counts;
+  i32      error_number{0};
+  u64      line_character_count{0};
+  bool     is_in_word{false};
 };
 
 static fn
@@ -287,7 +287,7 @@ get_wc_field_width(const ExecContext           &ec,
 
 static fn
 append_counts(String            &line,
-              const wc_counts   &counts,
+              const WcCounts    &counts,
               StringView         name,
               usize              field_width,
               wc_count_selection selection) throws -> void
@@ -412,7 +412,7 @@ Wc::execute(const ExecContext               &ec,
 
   if (!stream_sources.is_empty()) {
     let reader = SourceBatchReader{ec, stream_sources, cxt.scratch_allocator()};
-    let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+    let chunks = ArrayList<SourceBatchReader::chunk>{cxt.scratch_allocator()};
 
     loop {
       let const read_result = reader.read_next(chunks);
@@ -436,8 +436,8 @@ Wc::execute(const ExecContext               &ec,
     }
   }
 
-  wc_counts totals;
-  i32       status = 0;
+  WcCounts totals;
+  i32      status = 0;
 
   let const field_width = get_wc_field_width(ec, sources, selection);
   let       output      = String{cxt.scratch_allocator()};

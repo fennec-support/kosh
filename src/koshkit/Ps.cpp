@@ -80,7 +80,7 @@ static const ps_column_spec PS_COLUMNS[] = {
     {"command", "COMMAND", ps_align::Left,  ps_column::Arguments   },
 };
 
-struct ps_selection
+struct PsSelection
 {
   ArrayList<i64>        pids;
   ArrayList<StringView> names;
@@ -167,22 +167,22 @@ ps_cell_text(const os::process_entry &process,
 }
 
 static fn
-ps_state_style(char state) wontthrow -> colors::color_style
+ps_state_style(char state) wontthrow -> colors::ColorStyle
 {
   switch (state) {
   case 'R':
-    return colors::color_style{colors::color::Green,
-                               colors::color_variant::Soft};
+    return colors::ColorStyle{colors::color::Green,
+                              colors::color_variant::Soft};
   case 'D':
-    return colors::color_style{colors::color::Yellow,
-                               colors::color_variant::Soft};
+    return colors::ColorStyle{colors::color::Yellow,
+                              colors::color_variant::Soft};
   case 'T':
   case 't':
-    return colors::color_style{colors::color::Magenta,
-                               colors::color_variant::Soft};
+    return colors::ColorStyle{colors::color::Magenta,
+                              colors::color_variant::Soft};
   case 'Z':
-    return colors::color_style{colors::color::BoldRed,
-                               colors::color_variant::Soft};
+    return colors::ColorStyle{colors::color::BoldRed,
+                              colors::color_variant::Soft};
   default: return {};
   }
 }
@@ -193,7 +193,7 @@ ps_state_style(char state) wontthrow -> colors::color_style
 static fn
 render_ps_columns(const ArrayList<os::process_entry>      &processes,
                   const ArrayList<const ps_column_spec *> &columns,
-                  const ps_selection                      &selection,
+                  const PsSelection                       &selection,
                   String                                  &output,
                   Allocator                                allocator,
                   bool should_escape_text) throws -> usize
@@ -206,9 +206,9 @@ render_ps_columns(const ArrayList<os::process_entry>      &processes,
   for (let const *spec : columns) {
     table.add_column(spec->heading, spec->alignment,
                      spec->column == ps_column::Pid
-                         ? colors::color_style{colors::color::BoldCyan,
-                                               colors::color_variant::Soft}
-                         : colors::color_style{});
+                         ? colors::ColorStyle{colors::color::BoldCyan,
+                                              colors::color_variant::Soft}
+                         : colors::ColorStyle{});
   }
 
   for (let const &process : processes) {
@@ -226,7 +226,7 @@ render_ps_columns(const ArrayList<os::process_entry>      &processes,
       cells.push(
           {texts[index].view(), columns[index]->column == ps_column::State
                                     ? ps_state_style(process.state)
-                                    : colors::color_style{}});
+                                    : colors::ColorStyle{}});
     }
 
     table.add_row(cells);
@@ -256,7 +256,7 @@ Ps::execute(const ExecContext               &ec,
   let const allocator = cxt.scratch_allocator();
   let       columns   = ArrayList<const ps_column_spec *>{allocator};
   let       selection =
-      ps_selection{ArrayList<i64>{allocator}, ArrayList<StringView>{allocator}};
+      PsSelection{ArrayList<i64>{allocator}, ArrayList<StringView>{allocator}};
 
   if (!FLAG_PS_FORMAT.is_empty()) {
     for (usize value_index = 0; value_index < FLAG_PS_FORMAT.count();
@@ -341,8 +341,8 @@ Ps::execute(const ExecContext               &ec,
 
   if (!FLAG_PS_NO_HEADERS.is_enabled()) {
     append_report_text(output, "  PID CMD",
-                       colors::color_style{colors::color::BoldCyan,
-                                           colors::color_variant::Soft},
+                       colors::ColorStyle{colors::color::BoldCyan,
+                                          colors::color_variant::Soft},
                        should_color);
     output += '\n';
   }
@@ -356,8 +356,8 @@ Ps::execute(const ExecContext               &ec,
 
     output.append_repeated(' ', pid.count() < 5 ? 5 - pid.count() : 0);
     append_report_text(output, pid.view(),
-                       colors::color_style{colors::color::BoldCyan,
-                                           colors::color_variant::Soft},
+                       colors::ColorStyle{colors::color::BoldCyan,
+                                          colors::color_variant::Soft},
                        should_color);
     output += ' ';
     if (should_escape_text)

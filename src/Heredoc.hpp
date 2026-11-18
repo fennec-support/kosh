@@ -23,7 +23,7 @@ struct heredoc_join_state
   bool  has_mismatch{false};
 };
 
-struct pending_heredoc
+struct PendingHeredoc
 {
   String                     delimiter;
   bool                       should_strip_tabs{false};
@@ -37,10 +37,10 @@ struct pending_heredoc
   }
 
   mustuse cold fn
-  clone_to(Allocator allocator) const throws -> pending_heredoc
+  clone_to(Allocator allocator) const throws -> PendingHeredoc
   {
-    return pending_heredoc{delimiter.clone_to(allocator), should_strip_tabs,
-                           should_join_lines, join_state};
+    return PendingHeredoc{delimiter.clone_to(allocator), should_strip_tabs,
+                          should_join_lines, join_state};
   }
 };
 
@@ -57,7 +57,7 @@ heredoc_word_joins_lines(StringView word) wontthrow -> bool;
 /* reads the body lines of one heredoc in order, since a line that ends in an
    unescaped backslash joins the next one in an expanding body. */
 fn
-match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
+match_heredoc_line(StringView line, const PendingHeredoc &heredoc) wontthrow
     -> heredoc_line_match;
 
 /* takes one physical line of a logical line with its tabs stripped, and

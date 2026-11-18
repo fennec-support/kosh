@@ -86,7 +86,7 @@ report_unresolved_sort_key(const ExecContext &ec,
 }
 
 flatten fn
-find_util(StringView name) throws -> Maybe<Utility::Kind>
+find_util(StringView name) throws -> Maybe<utility::Kind>
 {
   if (let const kind = KOSHKIT_UTILS.find(name); kind.has_value()) return kind;
 
@@ -136,7 +136,7 @@ static const SynopsisList *KOSHKIT_UTIL_SYNOPSES[KOSHKIT_UTIL_COUNT] = {};
 static StringView KOSHKIT_UTIL_DESCRIPTIONS[KOSHKIT_UTIL_COUNT] = {};
 
 fn
-register_koshkit_util_flags(Utility::Kind       chosen,
+register_koshkit_util_flags(utility::Kind       chosen,
                             const FlagList     *flags,
                             const SynopsisList *synopsis,
                             StringView          description) wontthrow -> void
@@ -147,19 +147,19 @@ register_koshkit_util_flags(Utility::Kind       chosen,
 }
 
 fn
-koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *
+koshkit_util_flag_list(utility::Kind chosen) wontthrow -> const FlagList *
 {
   return KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)];
 }
 
 fn
-koshkit_util_synopsis(Utility::Kind chosen) wontthrow -> const SynopsisList *
+koshkit_util_synopsis(utility::Kind chosen) wontthrow -> const SynopsisList *
 {
   return KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)];
 }
 
 fn
-koshkit_util_description(Utility::Kind chosen) wontthrow -> StringView
+koshkit_util_description(utility::Kind chosen) wontthrow -> StringView
 {
   return KOSHKIT_UTIL_DESCRIPTIONS[static_cast<usize>(chosen)];
 }
@@ -180,7 +180,7 @@ util_names() throws -> const ArrayList<String> &
 }
 
 using sorted_utility_name_list =
-    SortedArrayList<String, order_comparator<String>>;
+    SortedArrayList<String, OrderComparator<String>>;
 
 fn
 sorted_util_names() throws -> const ArrayList<String> &
@@ -289,8 +289,8 @@ print_environment(const ExecContext &ec,
     let const value = os::get_environment_variable(name.view());
 
     append_report_text(output, display_name,
-                       colors::color_style{colors::color::BoldCyan,
-                                           colors::color_variant::Soft},
+                       colors::ColorStyle{colors::color::BoldCyan,
+                                          colors::color_variant::Soft},
                        should_color);
     output += '=';
     if (value.has_value()) output += value->view();
@@ -301,7 +301,7 @@ print_environment(const ExecContext &ec,
 }
 
 static fn
-execute_util_kind(Utility::Kind                    chosen,
+execute_util_kind(utility::Kind                    chosen,
                   const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
@@ -309,7 +309,7 @@ execute_util_kind(Utility::Kind                    chosen,
     -> i32;
 
 fn
-run_util(Utility::Kind                    chosen,
+run_util(utility::Kind                    chosen,
          const ExecContext               &ec,
          EvalContext                     &cxt,
          const ArrayList<String>         &args,
@@ -353,7 +353,7 @@ run_util(Utility::Kind                    chosen,
 }
 
 static fn
-execute_util_kind(Utility::Kind                    chosen,
+execute_util_kind(utility::Kind                    chosen,
                   const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
@@ -396,7 +396,7 @@ fn
 dispatch(const ExecContext   &ec,
          EvalContext         &cxt,
          usize                name_index,
-         Maybe<Utility::Kind> chosen) throws -> i32
+         Maybe<utility::Kind> chosen) throws -> i32
 {
   ASSERT(name_index < ec.args().count());
 
@@ -599,7 +599,7 @@ SourceBatchReader::~SourceBatchReader()
 }
 
 fn
-SourceBatchReader::close_reader(Reader &reader) wontthrow -> void
+SourceBatchReader::close_reader(reader &reader) wontthrow -> void
 {
   if (reader.descriptor_mode == ReaderDescriptorMode::Owned)
     os::close_fd(reader.descriptor);
@@ -697,7 +697,7 @@ SourceBatchReader::fill_readers() throws -> void
     let const source       = m_sources[source_index];
 
     if (m_dash_mode == SourceDashMode::TreatAsStdin && source == "-") {
-      Reader reader;
+      reader reader;
 
       reader.buffer.reserve(m_read_byte_count);
       reader.source_index    = source_index;
@@ -742,8 +742,8 @@ SourceBatchReader::fill_readers() throws -> void
         }
 
         for (usize index = 0; index < m_metadata_paths.count(); index++) {
-          m_batch.add(os::batch_operation::stat(m_metadata_paths[index],
-                                                m_metadata_statuses[index]));
+          m_batch.add(os::BatchOperation::stat(m_metadata_paths[index],
+                                               m_metadata_statuses[index]));
         }
 
         m_batch.execute(m_results);
@@ -774,7 +774,7 @@ SourceBatchReader::fill_readers() throws -> void
         break;
       }
 
-      Reader reader;
+      reader reader;
 
       reader.source_index         = source_index;
       reader.pending_error_number = os::get_last_system_error_number();
@@ -802,7 +802,7 @@ SourceBatchReader::fill_readers() throws -> void
     let const reported_byte_count =
         os::regular_descriptor_file_size(*descriptor);
 
-    Reader reader;
+    reader reader;
 
     reader.buffer.reserve(m_read_byte_count);
     reader.source_index    = source_index;
@@ -846,8 +846,8 @@ SourceBatchReader::read_seekable() throws -> ReadResult
     }
 
     m_batch.add(
-        os::batch_operation::read(reader.descriptor, reader.buffer.begin(),
-                                  reader.read_byte_count, reader.byte_offset));
+        os::BatchOperation::read(reader.descriptor, reader.buffer.begin(),
+                                 reader.read_byte_count, reader.byte_offset));
     m_reader_positions.push(reader_index);
   }
 
@@ -941,7 +941,7 @@ SourceBatchReader::read_sequential() throws -> ReadResult
 }
 
 fn
-SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
+SourceBatchReader::append_pending_chunks(ArrayList<chunk> &chunks,
                                          ChunkEmitMode     emit_mode) throws
     -> void
 {
@@ -954,7 +954,7 @@ SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
 
   chunks.reserve(emit_capacity);
 
-  let const do_append = [&](Reader &reader) throws -> bool {
+  let const do_append = [&](reader &reader) throws -> bool {
     if (reader.chunk_state != ReaderChunkState::Pending) return false;
 
     chunks.push({
@@ -983,7 +983,7 @@ SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
 }
 
 fn
-SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
+SourceBatchReader::read_next_internal(ArrayList<chunk> &chunks,
                                       ChunkEmitMode     emit_mode) throws
     -> ReadResult
 {
@@ -1013,14 +1013,14 @@ SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
 }
 
 fn
-SourceBatchReader::read_next(ArrayList<Chunk> &chunks) throws
+SourceBatchReader::read_next(ArrayList<chunk> &chunks) throws
     -> ReadResult
 {
   return read_next_internal(chunks, ChunkEmitMode::All);
 }
 
 fn
-SourceBatchReader::read_next_ordered(ArrayList<Chunk> &chunks) throws
+SourceBatchReader::read_next_ordered(ArrayList<chunk> &chunks) throws
     -> ReadResult
 {
   return read_next_internal(chunks, ChunkEmitMode::One);
@@ -1040,7 +1040,7 @@ read_named_or_stdin_batch(const ExecContext           &ec,
     results.push({None, 0, source_completion_state::Pending});
 
   let reader = SourceBatchReader{ec, sources, allocator};
-  let chunks = ArrayList<SourceBatchReader::Chunk>{allocator};
+  let chunks = ArrayList<SourceBatchReader::chunk>{allocator};
 
   loop {
     let const read_result = reader.read_next(chunks);
@@ -1282,25 +1282,25 @@ parse_count_with_size_suffix(StringView text) throws -> ErrorOr<u64>
 #else
 
 fn
-find_util(StringView) throws -> Maybe<Utility::Kind>
+find_util(StringView) throws -> Maybe<utility::Kind>
 {
   return {};
 }
 
 fn
-koshkit_util_flag_list(Utility::Kind) wontthrow -> const FlagList *
+koshkit_util_flag_list(utility::Kind) wontthrow -> const FlagList *
 {
   return nullptr;
 }
 
 fn
-koshkit_util_synopsis(Utility::Kind) wontthrow -> const SynopsisList *
+koshkit_util_synopsis(utility::Kind) wontthrow -> const SynopsisList *
 {
   return nullptr;
 }
 
 fn
-koshkit_util_description(Utility::Kind) wontthrow -> StringView
+koshkit_util_description(utility::Kind) wontthrow -> StringView
 {
   return StringView{};
 }
@@ -1334,17 +1334,17 @@ collect_makefile_targets(EvalContext &cxt, const Path &) throws
 
 fn
 parse_makefile_shell_sources(StringView, Allocator allocator) throws
-    -> SortedArrayList<make_shell_source_range,
-                       order_comparator<make_shell_source_range>>
+    -> SortedArrayList<MakeShellSourceRange,
+                       OrderComparator<MakeShellSourceRange>>
 {
-  return SortedArrayList<make_shell_source_range,
-                         order_comparator<make_shell_source_range>>{
+  return SortedArrayList<MakeShellSourceRange,
+                         OrderComparator<MakeShellSourceRange>>{
       allocator, sort_order::ascending};
 }
 
 fn
 makefile_shell_analysis_source(StringView,
-                               const make_shell_source_range &) throws
+                               const MakeShellSourceRange &) throws
     -> String
 {
   return String{heap_allocator()};
@@ -1354,13 +1354,13 @@ fn
 dispatch(const ExecContext &,
          EvalContext &,
          usize,
-         Maybe<Utility::Kind>) throws -> i32
+         Maybe<utility::Kind>) throws -> i32
 {
   return 127;
 }
 
 fn
-run_util(Utility::Kind,
+run_util(utility::Kind,
          const ExecContext &,
          EvalContext &,
          const ArrayList<String> &,
@@ -1447,7 +1447,7 @@ render_multicall_error(const ErrorWithLocation &error,
 
 fn
 run_as_multicall(StringView           util_name,
-                 Maybe<Utility::Kind> chosen,
+                 Maybe<utility::Kind> chosen,
                  ArrayList<String>    operands,
                  EvalContext         &cxt) throws -> i32
 {
@@ -1477,7 +1477,7 @@ run_as_multicall(StringView           util_name,
 
   let ec = ExecContext::make_from_resolved(
       SourceLocation{0, source_length},
-      ResolvedCommand::from_builtin(Builtin::Kind::Koshkit), steal(args),
+      ResolvedCommand::from_builtin(builtin::Kind::Koshkit), steal(args),
       steal(arg_locations));
 
   ec.is_multicall = true;
@@ -1566,7 +1566,7 @@ make_directories(const Path &directory, u32 mode) wontthrow -> bool
   return true;
 }
 
-struct signal_number_comparator
+struct SignalNumberComparator
 {
   pure fn
   operator()(const utils::signal_pair &left,
@@ -1621,7 +1621,7 @@ format_signal_list() throws -> String
     }
   }
 
-  let const numbered = steal(collected).make_sorted(signal_number_comparator{});
+  let const numbered = steal(collected).make_sorted(SignalNumberComparator{});
 
   let out = String{heap_allocator()};
 
@@ -1755,17 +1755,17 @@ scaled_filesystem_blocks(u64 block_count,
 }
 
 fn
-usage_style(u64 percent) wontthrow -> colors::color_style
+usage_style(u64 percent) wontthrow -> colors::ColorStyle
 {
   if (percent >= 90)
-    return colors::color_style{colors::color::BoldRed,
-                               colors::color_variant::Soft};
+    return colors::ColorStyle{colors::color::BoldRed,
+                              colors::color_variant::Soft};
   if (percent >= 75)
-    return colors::color_style{colors::color::BoldYellow,
-                               colors::color_variant::Soft};
+    return colors::ColorStyle{colors::color::BoldYellow,
+                              colors::color_variant::Soft};
 
-  return colors::color_style{colors::color::BoldGreen,
-                             colors::color_variant::Soft};
+  return colors::ColorStyle{colors::color::BoldGreen,
+                            colors::color_variant::Soft};
 }
 
 fn

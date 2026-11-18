@@ -16,10 +16,10 @@
 
 namespace koshka {
 
-class Ok
+class ok
 {};
 
-inline constexpr Ok Success{};
+inline constexpr ok Success{};
 
 template <class T>
 class mustuse ErrorOr

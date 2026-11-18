@@ -410,13 +410,13 @@ trim_matching(const EvalContext   &cxt,
 
 static fn
 trim_value_with_modifier(
-    EvalContext               &cxt,
-    StringView                 value,
-    StringView                 word,
-    char                       op,
-    bool                       is_doubled,
-    const SourceLocation      *source_location,
-    const parameter_reference *reference = nullptr) throws -> String
+    EvalContext              &cxt,
+    StringView                value,
+    StringView                word,
+    char                      op,
+    bool                      is_doubled,
+    const SourceLocation     *source_location,
+    const ParameterReference *reference = nullptr) throws -> String
 {
   LOG(All, "trimming a value of %zu bytes with the pattern word '%.*s'",
       value.length, static_cast<int>(word.length), word.data);
@@ -435,11 +435,11 @@ trim_value_with_modifier(
 
 fn
 EvalContext::expand_modifier_word_masked(
-    StringView                 word,
-    Bitset                    &active_out,
-    bool                       should_remove_quotes,
-    const SourceLocation      *source_location,
-    const parameter_reference *reference) throws -> String
+    StringView                word,
+    Bitset                   &active_out,
+    bool                      should_remove_quotes,
+    const SourceLocation     *source_location,
+    const ParameterReference *reference) throws -> String
 {
   return expand_modifier_word_worker(word, &active_out, should_remove_quotes,
                                      true, false, source_location, reference);
@@ -700,7 +700,7 @@ public:
   }
 
   fn
-  set_reference(const parameter_reference *reference) wontthrow -> void
+  set_reference(const ParameterReference *reference) wontthrow -> void
   {
     m_reference      = reference;
     m_reference_word = m_word;
@@ -709,7 +709,7 @@ public:
 private:
   EvalContext                  &m_context;
   StringView                    m_word;
-  const parameter_reference    *m_reference = nullptr;
+  const ParameterReference     *m_reference = nullptr;
   StringView                    m_reference_word;
   Bitset                       *m_active_out;
   String                        m_out;
@@ -2012,13 +2012,13 @@ EvalContext::ModifierWordExpander::expand_current_word() throws -> void
 
 fn
 EvalContext::expand_modifier_word_worker(
-    StringView                 word,
-    Bitset                    *active_out,
-    bool                       should_remove_quotes,
-    bool                       is_pattern_word,
-    bool                       should_strip_escaped_literals,
-    const SourceLocation      *source_location,
-    const parameter_reference *reference) throws -> String
+    StringView                word,
+    Bitset                   *active_out,
+    bool                      should_remove_quotes,
+    bool                      is_pattern_word,
+    bool                      should_strip_escaped_literals,
+    const SourceLocation     *source_location,
+    const ParameterReference *reference) throws -> String
 {
   LOG(All, "expanding a modifier word of %zu bytes", word.length);
 
@@ -2035,13 +2035,13 @@ EvalContext::expand_modifier_word_worker(
 
 fn
 EvalContext::expand_modifier_word(
-    StringView                 word,
-    bool                       should_remove_quotes,
-    bool                       should_strip_escaped_literals,
-    const SourceLocation      *source_location,
-    bool                       should_expand_process_substitution,
-    parameter_word_quoting     quoting,
-    const parameter_reference *reference) throws -> String
+    StringView                word,
+    bool                      should_remove_quotes,
+    bool                      should_strip_escaped_literals,
+    const SourceLocation     *source_location,
+    bool                      should_expand_process_substitution,
+    parameter_word_quoting    quoting,
+    const ParameterReference *reference) throws -> String
 {
   let expander =
       ModifierWordExpander{*this,          word,
@@ -2065,7 +2065,7 @@ EvalContext::expand_modifier_word_fields(
     ArrayList<usize>             &break_out,
     ArrayList<quoted_empty_mark> &mark_out,
     const SourceLocation         *source_location,
-    const parameter_reference    *reference) throws -> String
+    const ParameterReference     *reference) throws -> String
 {
   let expander = ModifierWordExpander{*this, word, &active_out,    true,
                                       false, true, source_location};
@@ -2080,11 +2080,11 @@ EvalContext::expand_modifier_word_fields(
 class EvalContext::ParameterExpander
 {
 public:
-  ParameterExpander(EvalContext               &context,
-                    StringView                 spec,
-                    const parameter_reference &reference,
-                    const SourceLocation      *source_location,
-                    usize                      source_location_offset,
+  ParameterExpander(EvalContext              &context,
+                    StringView                spec,
+                    const ParameterReference &reference,
+                    const SourceLocation     *source_location,
+                    usize                     source_location_offset,
                     bool                   should_expand_process_substitution,
                     parameter_word_quoting quoting) wontthrow
       : m_context(context), m_spec(spec), m_reference(reference),
@@ -2105,17 +2105,17 @@ public:
   }
 
 private:
-  EvalContext               &m_context;
-  StringView                 m_spec;
-  const parameter_reference &m_reference;
-  const SourceLocation      *m_source_location;
-  usize                      m_source_location_offset;
-  bool                       m_should_expand_process_substitution;
-  parameter_word_quoting     m_quoting;
-  bool                       m_is_reference_target   = false;
-  bool                       m_has_written_subscript = false;
-  StringView                 m_name;
-  StringView                 m_rest;
+  EvalContext              &m_context;
+  StringView                m_spec;
+  const ParameterReference &m_reference;
+  const SourceLocation     *m_source_location;
+  usize                     m_source_location_offset;
+  bool                      m_should_expand_process_substitution;
+  parameter_word_quoting    m_quoting;
+  bool                      m_is_reference_target   = false;
+  bool                      m_has_written_subscript = false;
+  StringView                m_name;
+  StringView                m_rest;
 
   fn
   get_location_for(StringView part, SourceLocation &storage) const wontthrow
@@ -2137,7 +2137,7 @@ private:
   expand_subscripted() throws -> String;
   fn
   get_operand_reference(StringView word) const wontthrow
-      -> const parameter_reference *
+      -> const ParameterReference *
   {
     return m_reference.is_operand(m_spec, word) ? &m_reference : nullptr;
   }
@@ -3377,7 +3377,7 @@ EvalContext::ParameterExpander::expand_operator() throws -> String
 
   let const is_all_parameters = m_name == "@" || m_name == "*";
 
-  if (m_reference.kind == parameter_reference::Form::Slice) {
+  if (m_reference.kind == ParameterReference::Form::Slice) {
     return is_all_parameters ? expand_positional_slice()
                              : expand_substring_form();
   }
@@ -3465,7 +3465,7 @@ is_operator_after_hash(StringView spec) wontthrow -> bool
 fn
 EvalContext::ParameterExpander::expand() throws -> String
 {
-  using form = parameter_reference::Form;
+  using form = ParameterReference::Form;
 
   switch (m_reference.kind) {
   case form::Empty:
@@ -3495,12 +3495,12 @@ EvalContext::ParameterExpander::expand() throws -> String
 
 hot fn
 EvalContext::apply_parameter_expansion(
-    StringView                 spec,
-    const SourceLocation      *source_location,
-    usize                      source_location_offset,
-    bool                       should_expand_process_substitution,
-    parameter_word_quoting     quoting,
-    const parameter_reference *reference) throws -> String
+    StringView                spec,
+    const SourceLocation     *source_location,
+    usize                     source_location_offset,
+    bool                      should_expand_process_substitution,
+    parameter_word_quoting    quoting,
+    const ParameterReference *reference) throws -> String
 {
   LOG(All, "applying the parameter expansion '${%.*s}'",
       static_cast<int>(spec.length), spec.data);
@@ -3524,7 +3524,7 @@ EvalContext::apply_parameter_expansion(
     }
   }
 
-  let analyzed = parameter_reference{};
+  let analyzed = ParameterReference{};
 
   if (reference == nullptr) {
     analyze_parameter_reference(spec, analyzed);
@@ -4896,7 +4896,7 @@ is_element_modifier_operator(char op) wontthrow -> bool
    prefix for !name@ or !name*, a keys list for !name[@] or !name[*], and an
    indirection otherwise. */
 static pure fn
-bang_reference_form(StringView text) wontthrow -> parameter_reference::Form
+bang_reference_form(StringView text) wontthrow -> ParameterReference::Form
 {
   let const length = text.length;
   let const last   = text[length - 1];
@@ -4904,25 +4904,25 @@ bang_reference_form(StringView text) wontthrow -> parameter_reference::Form
   if (length > 2 && (last == '@' || last == '*') &&
       lexer::word_is_variable_name(text.substring_of_length(1, length - 2)))
   {
-    return parameter_reference::Form::PrefixNames;
+    return ParameterReference::Form::PrefixNames;
   }
 
   if (length >= 5 && last == ']' && text[length - 3] == '[' &&
       (text[length - 2] == '@' || text[length - 2] == '*') &&
       lexer::is_variable_name_start(text[1]))
   {
-    return parameter_reference::Form::Keys;
+    return ParameterReference::Form::Keys;
   }
 
-  return parameter_reference::Form::Indirect;
+  return ParameterReference::Form::Indirect;
 }
 
 static fn
-analyze_word_routes(StringView           text,
-                    usize                variable_name_end,
-                    parameter_reference &reference) wontthrow -> void
+analyze_word_routes(StringView          text,
+                    usize               variable_name_end,
+                    ParameterReference &reference) wontthrow -> void
 {
-  using reference_type = parameter_reference;
+  using reference_type = ParameterReference;
 
   let const length        = text.length;
   let const first         = text[0];
@@ -5053,16 +5053,16 @@ analyze_word_routes(StringView           text,
 }
 
 static fn
-analyze_operator(StringView           modifier,
-                 usize                offset,
-                 parameter_reference &reference) wontthrow -> void
+analyze_operator(StringView          modifier,
+                 usize               offset,
+                 ParameterReference &reference) wontthrow -> void
 {
   if (modifier.is_empty()) return;
 
   let const is_colon = modifier[0] == ':';
   let const op_index = is_colon ? usize{1} : usize{0};
 
-  reference.set_bit(parameter_reference::BIT_COLON, is_colon);
+  reference.set_bit(ParameterReference::BIT_COLON, is_colon);
   if (op_index >= modifier.length) return;
 
   let const op = modifier[op_index];
@@ -5081,8 +5081,8 @@ analyze_operator(StringView           modifier,
                          (op == '#' || op == '%');
   let const start = op_index + (is_doubled ? 2 : 1);
 
-  reference.set_bit(parameter_reference::BIT_DOUBLED, is_doubled);
-  reference.set_bit(parameter_reference::BIT_OPERAND, true);
+  reference.set_bit(ParameterReference::BIT_DOUBLED, is_doubled);
+  reference.set_bit(ParameterReference::BIT_OPERAND, true);
   reference.operand_offset = static_cast<u32>(offset + start);
   reference.operand_length = static_cast<u32>(modifier.length - start);
 }
@@ -5108,10 +5108,10 @@ is_literal_operand(StringView word) wontthrow -> bool
 }
 
 fn
-analyze_parameter_reference(StringView           text,
-                            parameter_reference &reference) wontthrow -> void
+analyze_parameter_reference(StringView          text,
+                            ParameterReference &reference) wontthrow -> void
 {
-  using form = parameter_reference::Form;
+  using form = ParameterReference::Form;
 
   reference.text_length = static_cast<u32>(text.length);
 
@@ -5208,18 +5208,18 @@ analyze_parameter_reference(StringView           text,
 
   let const operand = reference.get_operand(text);
 
-  reference.set_bit(parameter_reference::BIT_LITERAL_OPERAND,
+  reference.set_bit(ParameterReference::BIT_LITERAL_OPERAND,
                     is_literal_operand(operand));
-  reference.set_bit(parameter_reference::BIT_FIELD_SENSITIVE_OPERAND,
+  reference.set_bit(ParameterReference::BIT_FIELD_SENSITIVE_OPERAND,
                     is_field_sensitive_word(operand));
 }
 
 static fn
-build_operand_word(StringView           word,
-                   Allocator            allocator,
-                   bool                 is_function_arena,
-                   Maybe<usize>         source_position,
-                   parameter_reference &reference) throws -> void
+build_operand_word(StringView          word,
+                   Allocator           allocator,
+                   bool                is_function_arena,
+                   Maybe<usize>        source_position,
+                   ParameterReference &reference) throws -> void
 {
   let *const operand = new (allocator.alloc_array<Word>(1)) Word{};
 
@@ -5364,7 +5364,7 @@ static constexpr usize NAME_REFERENCE_COUNT = 64;
 
 struct name_reference_table
 {
-  parameter_reference entries[NAME_REFERENCE_COUNT];
+  ParameterReference entries[NAME_REFERENCE_COUNT];
 };
 
 static constexpr fn
@@ -5373,10 +5373,10 @@ make_name_reference_table() wontthrow -> name_reference_table
   name_reference_table table{};
 
   for (u32 length = 1; length < NAME_REFERENCE_COUNT; length++) {
-    parameter_reference &entry = table.entries[length];
+    ParameterReference &entry = table.entries[length];
 
     entry.text_length        = length;
-    entry.kind               = parameter_reference::Form::Name;
+    entry.kind               = ParameterReference::Form::Name;
     entry.name_length        = length;
     entry.rest_offset        = length;
     entry.alternate_name_end = length;
@@ -5389,7 +5389,7 @@ static constinit name_reference_table NAME_REFERENCES =
     make_name_reference_table();
 
 static pure fn
-is_shared_name_reference(const parameter_reference *reference) wontthrow -> bool
+is_shared_name_reference(const ParameterReference *reference) wontthrow -> bool
 {
   return reference >= NAME_REFERENCES.entries &&
          reference < NAME_REFERENCES.entries + NAME_REFERENCE_COUNT;
@@ -5407,7 +5407,7 @@ build_parameter_reference(StringView   text,
                           Allocator    allocator,
                           bool         is_function_arena,
                           Maybe<usize> source_position) throws
-    -> parameter_reference *
+    -> ParameterReference *
 {
   if (text.length < NAME_REFERENCE_COUNT && !text.is_empty() &&
       lexer::is_variable_name_start(text[0]) &&
@@ -5417,7 +5417,7 @@ build_parameter_reference(StringView   text,
   }
 
   let *const reference =
-      new (allocator.alloc_array<parameter_reference>(1)) parameter_reference{};
+      new (allocator.alloc_array<ParameterReference>(1)) ParameterReference{};
 
   analyze_parameter_reference(text, *reference);
   if (!reference->has_operand()) return reference;
@@ -5443,7 +5443,7 @@ build_parameter_reference(StringView   text,
 }
 
 fn
-destroy_parameter_reference(parameter_reference *reference) wontthrow -> void
+destroy_parameter_reference(ParameterReference *reference) wontthrow -> void
 {
   if (reference == nullptr || is_shared_name_reference(reference)) {
     return;

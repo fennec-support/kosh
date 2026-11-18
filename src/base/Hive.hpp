@@ -18,7 +18,7 @@ namespace koshka {
 template <class T>
 class Hive
 {
-  struct Block;
+  struct block;
 
 public:
   static_assert(is_nothrow_destructible_v<T>);
@@ -60,7 +60,7 @@ public:
 
   ~Hive() { destroy_all(); }
 
-  /* memory: a fresh Block when all slots are taken and a doubled block table
+  /* memory: a fresh block when all slots are taken and a doubled block table
              when full. destruction releases heap storage; arena storage
              remains owned by the arena.
      time:   T construction plus O(block count) when the table grows. */
@@ -176,7 +176,7 @@ public:
       let const *first =
           reinterpret_cast<const unsigned char *>(m_blocks[block_index]->slots);
 
-      if (bytes >= first && bytes < first + sizeof(Block::slots)) {
+      if (bytes >= first && bytes < first + sizeof(block::slots)) {
         return block_index * BLOCK_SLOT_COUNT +
                static_cast<usize>(bytes - first) / sizeof(Slot);
       }
@@ -346,19 +346,19 @@ public:
 private:
   /* an erased slot keeps its index and a pointer to the next erased slot,
      so a live element carries no bookkeeping beyond one bit of its block. */
-  struct FreeLink
+  struct free_link
   {
-    usize     index;
-    FreeLink *next;
+    usize      index;
+    free_link *next;
   };
 
   union Slot
   {
     alignas(T) unsigned char bytes[sizeof(T)];
-    FreeLink link;
+    free_link link;
   };
 
-  struct Block
+  struct block
   {
     Slot slots[BLOCK_SLOT_COUNT];
     u64  live_mask;
@@ -399,7 +399,7 @@ private:
   {
     if (m_block_count == m_block_capacity) {
       let const  capacity = m_block_capacity == 0 ? 4 : m_block_capacity * 2;
-      let *const table    = m_allocator.alloc_array<Block *>(capacity);
+      let *const table    = m_allocator.alloc_array<block *>(capacity);
 
       for (usize i = 0; i < m_block_count; i++)
         table[i] = m_blocks[i];
@@ -409,7 +409,7 @@ private:
       m_block_capacity = capacity;
     }
 
-    let *const added = m_allocator.alloc_array<Block>(1);
+    let *const added = m_allocator.alloc_array<block>(1);
 
     added->live_mask          = 0;
     m_blocks[m_block_count++] = added;
@@ -468,13 +468,13 @@ private:
     m_count          = 0;
   }
 
-  Allocator m_allocator;
-  Block   **m_blocks{nullptr};
-  usize     m_block_count{0};
-  usize     m_block_capacity{0};
-  usize     m_slot_end{0};
-  FreeLink *m_free{nullptr};
-  usize     m_count{0};
+  Allocator  m_allocator;
+  block    **m_blocks{nullptr};
+  usize      m_block_count{0};
+  usize      m_block_capacity{0};
+  usize      m_slot_end{0};
+  free_link *m_free{nullptr};
+  usize      m_count{0};
 };
 
 } /* namespace koshka */

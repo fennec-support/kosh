@@ -303,10 +303,10 @@ append_candidate_suffix(String    &candidate,
 
 pure fn
 internal::shell_syntax_candidate_is_unchanged(
-    StringView                       raw_token,
-    const utils::decoded_shell_word &decoded_word,
-    StringView                       decoded_candidate,
-    bool                             should_quote_words) wontthrow -> bool
+    StringView                     raw_token,
+    const utils::DecodedShellWord &decoded_word,
+    StringView                     decoded_candidate,
+    bool                           should_quote_words) wontthrow -> bool
 {
   if (decoded_word.quote_character != 0 ||
       decoded_word.last_quote_character != 0)
@@ -330,10 +330,10 @@ internal::shell_syntax_candidate_is_unchanged(
            each. */
 fn
 internal::rebuild_shell_syntax_candidate(
-    StringView                       raw_token,
-    const utils::decoded_shell_word &decoded_word,
-    StringView                       decoded_candidate,
-    bool                             should_quote_words) throws -> String
+    StringView                     raw_token,
+    const utils::DecodedShellWord &decoded_word,
+    StringView                     decoded_candidate,
+    bool                           should_quote_words) throws -> String
 {
   let       candidate            = String{completion_allocator()};
   let const content_start        = decoded_word.last_quote_content_start;

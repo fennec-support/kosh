@@ -107,7 +107,7 @@ struct sparse_array_entry
   String value;
 };
 
-struct sparse_array_entry_comparator
+struct SparseArrayEntryComparator
 {
   pure fn
   operator()(const sparse_array_entry &left,
@@ -121,7 +121,7 @@ static fn
 collect_sparse_array_entries(const StringMap<String> &sparse,
                              StringView               name,
                              Allocator                allocator) throws
-    -> SortedArrayList<sparse_array_entry, sparse_array_entry_comparator>
+    -> SortedArrayList<sparse_array_entry, SparseArrayEntryComparator>
 {
   let out = ArrayList<sparse_array_entry>{allocator};
 
@@ -131,7 +131,7 @@ collect_sparse_array_entries(const StringMap<String> &sparse,
         out.push(sparse_array_entry{index, value.clone_to(allocator)});
       });
 
-  return steal(out).make_sorted(sparse_array_entry_comparator{});
+  return steal(out).make_sorted(SparseArrayEntryComparator{});
 }
 
 fn
@@ -1681,7 +1681,7 @@ EvalContext::array_element_is_set(StringView name,
 
 fn
 EvalContext::matching_prefix_names(StringView prefix) const throws
-    -> SortedArrayList<String, order_comparator<String>>
+    -> SortedArrayList<String, OrderComparator<String>>
 {
   LOG(All, "listing variables with the prefix '%.*s'",
       static_cast<int>(prefix.length), prefix.data);

@@ -65,7 +65,7 @@ static constexpr usize PR_TAB_WIDTH          = 8;
 static constexpr usize PR_NUMBER_DIGIT_COUNT = 5;
 static constexpr usize PR_NUMBER_FIELD_WIDTH = 8;
 
-struct pr_layout
+struct PrLayout
 {
   usize      offset{0};
   usize      column_width{0};
@@ -210,10 +210,10 @@ private:
 };
 
 static fn
-append_pr_number(PrRowWriter     &writer,
-                 const pr_layout &layout,
-                 u64              number,
-                 Allocator        allocator) throws -> void
+append_pr_number(PrRowWriter    &writer,
+                 const PrLayout &layout,
+                 u64             number,
+                 Allocator       allocator) throws -> void
 {
   let const digits = String::from(number, allocator);
   let const shown =
@@ -242,10 +242,10 @@ append_pr_number(PrRowWriter     &writer,
 }
 
 static fn
-append_pr_text(PrRowWriter     &writer,
-               const pr_layout &layout,
-               StringView       text,
-               usize            input_position) throws -> void
+append_pr_text(PrRowWriter    &writer,
+               const PrLayout &layout,
+               StringView      text,
+               usize           input_position) throws -> void
 {
   let const has_width_limit = layout.is_aligned;
 
@@ -297,7 +297,7 @@ append_pr_text(PrRowWriter     &writer,
 
 static fn
 append_pr_row(PrRowWriter                   &writer,
-              const pr_layout               &layout,
+              const PrLayout                &layout,
               const ArrayList<pr_row_entry> &row,
               Allocator                      allocator) throws -> void
 {
@@ -646,7 +646,7 @@ Pr::execute(const ExecContext               &ec,
     separator = separator_text.is_empty() ? StringView{"\t"} : separator_text;
   }
 
-  let layout = pr_layout{};
+  let layout = PrLayout{};
 
   layout.offset             = offset;
   layout.separator          = separator;

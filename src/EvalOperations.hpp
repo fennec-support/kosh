@@ -18,11 +18,11 @@
 namespace koshka {
 
 class EvalContext;
-struct arith_tree;
+struct ArithTree;
 
 fn
 build_arithmetic_tree(StringView expression, Allocator allocator) throws
-    -> const arith_tree *;
+    -> const ArithTree *;
 fn
 evaluate_constant_arithmetic(StringView expression) throws -> i64;
 fn
@@ -35,8 +35,9 @@ pure fn
 obvious_xor_power_operator_position(StringView expression) wontthrow
     -> Maybe<usize>;
 pure fn
-arithmetic_has_side_effect(StringView        expression,
-                           const arith_tree *tree) wontthrow -> bool;
+arithmetic_has_side_effect(StringView expression, const ArithTree *tree)
+    wontthrow
+    -> bool;
 
 struct arithmetic_syntax_problem
 {

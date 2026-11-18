@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the terminal and header parts of the shared live view
- * driver, the pager behind more and less, and live_report_options. It manages
+ * driver, the pager behind more and less, and LiveReportOptions. It manages
  * the alternate screen, raw key input, the styled header line, and the single
  * write that delivers each frame. Redirected output receives a plain header or
  * the copied pager input without escape sequences.
@@ -330,13 +330,13 @@ LiveView::get_wait_nanoseconds(u64 now_nanoseconds,
 }
 
 fn
-live_report_options::parse_window_seconds(const ExecContext &ec,
-                                          EvalContext       &cxt,
-                                          StringView         text,
-                                          SourceLocation     location,
-                                          StringView         title,
-                                          StringView         note,
-                                          Allocator          allocator) throws
+LiveReportOptions::parse_window_seconds(const ExecContext &ec,
+                                        EvalContext       &cxt,
+                                        StringView         text,
+                                        SourceLocation     location,
+                                        StringView         title,
+                                        StringView         note,
+                                        Allocator          allocator) throws
     -> Maybe<f64>
 {
   let const seconds = parse_koshkit_duration_seconds(text, location, allocator);
@@ -351,15 +351,15 @@ live_report_options::parse_window_seconds(const ExecContext &ec,
 }
 
 fn
-live_report_options::parse_with_window(const ExecContext       &ec,
-                                       EvalContext             &cxt,
-                                       const FlagOptionalValue &live_flag,
-                                       bool                     is_cumulative,
-                                       f64                      window_seconds,
-                                       Allocator                allocator) throws
-    -> Maybe<live_report_options>
+LiveReportOptions::parse_with_window(const ExecContext       &ec,
+                                     EvalContext             &cxt,
+                                     const FlagOptionalValue &live_flag,
+                                     bool                     is_cumulative,
+                                     f64                      window_seconds,
+                                     Allocator                allocator) throws
+    -> Maybe<LiveReportOptions>
 {
-  live_report_options options{};
+  LiveReportOptions options{};
 
   options.is_live        = live_flag.is_enabled();
   options.is_cumulative  = is_cumulative;
@@ -378,12 +378,12 @@ live_report_options::parse_with_window(const ExecContext       &ec,
 }
 
 fn
-live_report_options::parse(const ExecContext       &ec,
-                           EvalContext             &cxt,
-                           const FlagOptionalValue &live_flag,
-                           const FlagOptionalValue &cumulative_flag,
-                           Allocator                allocator) throws
-    -> Maybe<live_report_options>
+LiveReportOptions::parse(const ExecContext       &ec,
+                         EvalContext             &cxt,
+                         const FlagOptionalValue &live_flag,
+                         const FlagOptionalValue &cumulative_flag,
+                         Allocator                allocator) throws
+    -> Maybe<LiveReportOptions>
 {
   let options = parse_with_window(ec, cxt, live_flag,
                                   cumulative_flag.is_enabled(), 1.0, allocator);
@@ -425,8 +425,7 @@ LiveView::get_dimensions() const wontthrow -> live_view_dimensions
 }
 
 fn
-live_view_scroll::handle_key(live_view_key key)
-    wontthrow -> live_view_key_action
+LiveViewScroll::handle_key(live_view_key key) wontthrow -> live_view_key_action
 {
   switch (key.special) {
   case live_view_special_key::Up:        scroll_up(1); break;

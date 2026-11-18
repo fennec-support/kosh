@@ -439,7 +439,7 @@ enum class particle_kind : u8
   Sparkle,
 };
 
-struct noise_source
+struct NoiseSource
 {
   u64 state{0x9e3779b97f4a7c15ULL};
 
@@ -543,7 +543,7 @@ struct yarn_ball
 
 struct scene_state
 {
-  noise_source  noise{};
+  NoiseSource   noise{};
   cat_state     cats[MAXIMUM_CAT_COUNT]{};
   usize         cat_count{1};
   particle      particles[PARTICLE_COUNT]{};
@@ -562,7 +562,7 @@ struct scene_state
   bool          is_paused{false};
 };
 
-struct scene_canvas
+struct SceneCanvas
 {
   ArrayList<char> cells;
   ArrayList<u16>  styles;
@@ -1254,7 +1254,7 @@ advance_scene(scene_state &scene, f64 step_seconds) wontthrow -> void
 }
 
 fn
-draw_starfield(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
+draw_starfield(SceneCanvas &canvas, const scene_state &scene) wontthrow -> void
 {
   let const twinkle_epoch =
       static_cast<u64>(scene.elapsed_seconds / TWINKLE_PERIOD_SECONDS);
@@ -1286,7 +1286,7 @@ draw_starfield(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
 }
 
 fn
-draw_moon(scene_canvas &canvas) wontthrow -> void
+draw_moon(SceneCanvas &canvas) wontthrow -> void
 {
   if (canvas.column_count < 50 || canvas.row_count < 14) {
     return;
@@ -1321,7 +1321,7 @@ draw_moon(scene_canvas &canvas) wontthrow -> void
 }
 
 fn
-draw_shooting_stars(scene_canvas &canvas, const scene_state &scene) wontthrow
+draw_shooting_stars(SceneCanvas &canvas, const scene_state &scene) wontthrow
     -> void
 {
   for (let const &star : scene.shooting_stars) {
@@ -1340,7 +1340,7 @@ draw_shooting_stars(scene_canvas &canvas, const scene_state &scene) wontthrow
 }
 
 fn
-draw_yarn(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
+draw_yarn(SceneCanvas &canvas, const scene_state &scene) wontthrow -> void
 {
   let const &yarn = scene.yarn;
 
@@ -1467,7 +1467,7 @@ cat_eye_color(const cat_state &cat) wontthrow -> u8
 }
 
 fn
-draw_pixels(scene_canvas      &canvas,
+draw_pixels(SceneCanvas       &canvas,
             isize              pixel_row,
             isize              origin_column,
             usize              sprite_width,
@@ -1491,7 +1491,7 @@ draw_pixels(scene_canvas      &canvas,
 }
 
 fn
-draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
+draw_cat(SceneCanvas &canvas, const cat_state &cat) wontthrow -> void
 {
   let const &palette   = cat.palette;
   let const &art       = *cat.art;
@@ -1596,8 +1596,7 @@ draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
 }
 
 fn
-draw_explosions(scene_canvas &canvas, const scene_state &scene)
-    wontthrow -> void
+draw_explosions(SceneCanvas &canvas, const scene_state &scene) wontthrow -> void
 {
   for (let const &blast : scene.explosions) {
     if (!blast.is_active) continue;
@@ -1646,7 +1645,7 @@ draw_explosions(scene_canvas &canvas, const scene_state &scene)
 }
 
 fn
-draw_particles(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
+draw_particles(SceneCanvas &canvas, const scene_state &scene) wontthrow -> void
 {
   for (let const &each_particle : scene.particles) {
     if (each_particle.seconds_left <= 0.0) continue;
@@ -1688,7 +1687,7 @@ draw_particles(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
 /* memory: text and its numeric fragments fit in inline String storage.
    time:   O(1). */
 fn
-draw_notice(scene_canvas      &canvas,
+draw_notice(SceneCanvas       &canvas,
             const scene_state &scene,
             Allocator          allocator) throws -> void
 {
@@ -1756,8 +1755,8 @@ render_scene(String      &frame,
   let const row_count    = scene.row_count;
   let const cell_count   = column_count * row_count;
   let       canvas =
-      scene_canvas{ArrayList<char>{allocator}, ArrayList<u16>{allocator},
-                   ArrayList<u8>{allocator}, column_count, row_count};
+      SceneCanvas{ArrayList<char>{allocator}, ArrayList<u16>{allocator},
+                  ArrayList<u8>{allocator}, column_count, row_count};
 
   canvas.cells.reserve(cell_count);
   canvas.styles.reserve(cell_count);

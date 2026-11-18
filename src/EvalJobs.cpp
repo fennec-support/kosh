@@ -94,9 +94,9 @@ JobTable::inherit_parent_jobs(bool should_keep_finished_statuses) wontthrow
 {
   if (!should_keep_finished_statuses) forget_finished_statuses();
 
-  for (job &entry : m_jobs) {
+  for (Job &entry : m_jobs) {
     entry.is_inherited =
-        !should_keep_finished_statuses || entry.state != job::State::Done;
+        !should_keep_finished_statuses || entry.state != Job::State::Done;
   }
 }
 
@@ -151,14 +151,14 @@ JobTable::register_job(os::process pid,
                        StringView  command,
                        i64         process_group_id) throws -> i32
 {
-  let new_job = job{m_jobs.allocator()};
+  let new_job = Job{m_jobs.allocator()};
 
   new_job.id               = claim_job_id();
   new_job.pid              = pid;
   new_job.process_id       = os::process_id_of(pid);
   new_job.process_group_id = process_group_id;
   new_job.command          = String{m_jobs.allocator(), command};
-  new_job.state            = job::State::Running;
+  new_job.state            = Job::State::Running;
   m_jobs.push(steal(new_job));
   ASSERT(!m_jobs.is_empty());
   LOG(Info, "registered job %d", m_jobs.back().id);
@@ -172,7 +172,7 @@ JobTable::register_pipeline_job(const ArrayList<os::process> &processes,
                                 StringView                    command,
                                 i64 process_group_id) throws -> i32
 {
-  let new_job = job{m_jobs.allocator()};
+  let new_job = Job{m_jobs.allocator()};
 
   new_job.id               = claim_job_id();
   new_job.pid              = primary_process;
@@ -207,9 +207,9 @@ JobTable::register_stopped_job(os::process pid,
                                i64         process_group_id) throws -> i32
 {
   let const id         = register_job(pid, command, process_group_id);
-  job      &registered = m_jobs.back();
+  Job      &registered = m_jobs.back();
 
-  registered.state          = job::State::Stopped;
+  registered.state          = Job::State::Stopped;
   registered.stopped_status = status;
 
   return id;
@@ -232,18 +232,18 @@ JobTable::notify_stopped_job(i32 id) throws -> void
 }
 
 static fn
-describe_job_state(const job             &entry,
+describe_job_state(const Job             &entry,
                    const job_line_format &format) throws -> String
 {
   switch (entry.state) {
-  case job::State::Running: return String{heap_allocator(), "Running"};
-  case job::State::Stopped:
+  case Job::State::Running: return String{heap_allocator(), "Running"};
+  case Job::State::Stopped:
     if (format.should_show_process_id && entry.stopped_status > 128) {
       return os::signal_description_from_number(entry.stopped_status - 128);
     }
 
     return String{heap_allocator(), "Stopped"};
-  case job::State::Done: break;
+  case Job::State::Done: break;
   }
 
   if (entry.termination.signal_number != 0) {
@@ -301,12 +301,12 @@ JobTable::append_status_line(String                &out,
                                ? STATE_COLUMN_WIDTH - state.count()
                                : 1);
 
-  if (entry.state == job::State::Done && entry.termination.did_dump_core) {
+  if (entry.state == Job::State::Done && entry.termination.did_dump_core) {
     out += "(core dumped) ";
   }
 
   out.append(entry.command.view());
-  if (entry.state == job::State::Running) out += " &";
+  if (entry.state == Job::State::Running) out += " &";
 }
 
 /* memory: none allocated. exited entries are removed from processes.
@@ -342,8 +342,8 @@ JobTable::update_jobs() throws -> void
 {
   unused(poll_owned_processes(m_detached_job_processes));
 
-  for (job &job : m_jobs) {
-    if (job.state == job::State::Done || job.is_inherited) {
+  for (Job &job : m_jobs) {
+    if (job.state == Job::State::Done || job.is_inherited) {
       continue;
     }
 
@@ -351,9 +351,9 @@ JobTable::update_jobs() throws -> void
         poll_owned_processes(job.earlier_pipeline_processes);
 
     if (earlier_stopped_status.has_value()) {
-      if (job.state != job::State::Stopped)
+      if (job.state != Job::State::Stopped)
         job.has_unreported_state_change = true;
-      job.state          = job::State::Stopped;
+      job.state          = Job::State::Stopped;
       job.stopped_status = *earlier_stopped_status;
     }
 
@@ -376,17 +376,17 @@ JobTable::update_jobs() throws -> void
         break;
 
       case os::process_state::Stopped:
-        if (job.state != job::State::Stopped)
+        if (job.state != Job::State::Stopped)
           job.has_unreported_state_change = true;
-        job.state          = job::State::Stopped;
+        job.state          = Job::State::Stopped;
         job.stopped_status = status;
         break;
 
       case os::process_state::Running:
         if (!earlier_stopped_status.has_value()) {
-          if (job.state != job::State::Running)
+          if (job.state != Job::State::Running)
             job.has_unreported_state_change = true;
-          job.state = job::State::Running;
+          job.state = Job::State::Running;
         }
 
         break;
@@ -399,7 +399,7 @@ JobTable::update_jobs() throws -> void
         job.earlier_pipeline_processes.is_empty())
     {
       LOG(Info, "job %d finished with status %d", job.id, job.last_status);
-      job.state                       = job::State::Done;
+      job.state                       = Job::State::Done;
       job.has_unreported_state_change = true;
     }
   }
@@ -413,17 +413,17 @@ JobTable::update_jobs() throws -> void
            pipeline processes, unless a stop is reported first. */
 fn
 JobTable::wait_for_job_processes(
-    job  &job,
+    Job  &job,
     bool *was_stopped,
     bool  should_wait_for_termination) throws -> i32
 {
-  if (job.state == job::State::Done) {
+  if (job.state == Job::State::Done) {
     if (was_stopped != nullptr) *was_stopped = false;
 
     return job.last_status;
   }
 
-  if (job.state == job::State::Stopped && !should_wait_for_termination) {
+  if (job.state == Job::State::Stopped && !should_wait_for_termination) {
     if (was_stopped != nullptr) *was_stopped = true;
 
     return job.stopped_status;
@@ -434,13 +434,13 @@ JobTable::wait_for_job_processes(
   if constexpr (os::HAS_CHILD_STATE_CHANGE_WAIT) {
     loop {
       update_jobs();
-      if (job.state == job::State::Done) {
+      if (job.state == Job::State::Done) {
         if (was_stopped != nullptr) *was_stopped = false;
 
         return job.last_status;
       }
 
-      if (job.state == job::State::Stopped && !should_wait_for_termination) {
+      if (job.state == Job::State::Stopped && !should_wait_for_termination) {
         if (was_stopped != nullptr) *was_stopped = true;
 
         return job.stopped_status;
@@ -468,7 +468,7 @@ JobTable::wait_for_job_processes(
         os::wait_and_monitor_process(fallback_process, &was_process_stopped);
 
     if (was_process_stopped) {
-      job.state          = job::State::Stopped;
+      job.state          = Job::State::Stopped;
       job.stopped_status = process_status;
       if (was_stopped != nullptr) *was_stopped = true;
 
@@ -493,7 +493,7 @@ JobTable::wait_for_job_processes(
     if (!job.is_primary_process_active &&
         job.earlier_pipeline_processes.is_empty())
     {
-      job.state = job::State::Done;
+      job.state = Job::State::Done;
       if (was_stopped != nullptr) *was_stopped = false;
 
       return job.last_status;
@@ -523,10 +523,10 @@ JobTable::wait_for_next_job(const ArrayList<i32> &job_ids,
         continue;
       }
 
-      if (entry.state == job::State::Done)
+      if (entry.state == Job::State::Done)
         return next_job_wait{entry.id, entry.process_id, entry.last_status};
 
-      if (entry.state == job::State::Running || should_wait_for_termination) {
+      if (entry.state == Job::State::Running || should_wait_for_termination) {
         has_waitable_job = true;
       }
     }
@@ -594,7 +594,7 @@ JobTable::find_job_index_by_spec(StringView spec) throws -> Maybe<usize>
 }
 
 fn
-JobTable::find_job_by_spec(StringView spec) throws -> job *
+JobTable::find_job_by_spec(StringView spec) throws -> Job *
 {
   if (let const index = find_job_index_by_spec(spec); index.has_value())
     return &m_jobs[*index];
@@ -603,11 +603,11 @@ JobTable::find_job_by_spec(StringView spec) throws -> job *
 }
 
 fn
-JobTable::most_recent_job() wontthrow -> job *
+JobTable::most_recent_job() wontthrow -> Job *
 {
   for (usize i = m_jobs.count(); i > 0; i--) {
     ASSERT(i - 1 < m_jobs.count());
-    if (m_jobs[i - 1].state != job::State::Done) return &m_jobs[i - 1];
+    if (m_jobs[i - 1].state != Job::State::Done) return &m_jobs[i - 1];
   }
 
   return nullptr;
@@ -620,10 +620,10 @@ JobTable::most_recent_job() wontthrow -> job *
 fn
 JobTable::forget_done_jobs() throws -> void
 {
-  let kept = ArrayList<job>{m_jobs.allocator()};
+  let kept = ArrayList<Job>{m_jobs.allocator()};
 
-  for (job &job : m_jobs) {
-    if (job.state == job::State::Done && !job.is_inherited) {
+  for (Job &job : m_jobs) {
+    if (job.state == Job::State::Done && !job.is_inherited) {
       if (!job.was_waited)
         remember_finished_status(job.process_id, job.last_status);
 
@@ -648,7 +648,7 @@ JobTable::forget_done_job(i32 id) throws -> void
   for (usize position = 0; position < m_jobs.count(); position++) {
     if (m_jobs[position].id != id) continue;
 
-    if (m_jobs[position].state != job::State::Done) return;
+    if (m_jobs[position].state != Job::State::Done) return;
 
     if (!m_jobs[position].was_waited)
       remember_finished_status(m_jobs[position].process_id,
@@ -662,7 +662,7 @@ JobTable::forget_done_job(i32 id) throws -> void
 fn
 JobTable::mark_job_waited(i32 id, bool should_remember_status) wontthrow -> void
 {
-  for (job &entry : m_jobs) {
+  for (Job &entry : m_jobs) {
     if (entry.id != id) continue;
 
     mark_job_waited(entry, should_remember_status);
@@ -672,10 +672,10 @@ JobTable::mark_job_waited(i32 id, bool should_remember_status) wontthrow -> void
 }
 
 fn
-JobTable::mark_job_waited(job &entry, bool should_remember_status) wontthrow
+JobTable::mark_job_waited(Job &entry, bool should_remember_status) wontthrow
     -> void
 {
-  if (entry.state != job::State::Done || entry.was_waited) {
+  if (entry.state != Job::State::Done || entry.was_waited) {
     return;
   }
 
@@ -750,7 +750,7 @@ JobTable::format_done_job_notifications(StringView line_ending,
   for (usize i = 0; i < m_jobs.count(); i++) {
     let const &job = m_jobs[i];
 
-    if (job.state != job::State::Done || job.was_waited) {
+    if (job.state != Job::State::Done || job.was_waited) {
       continue;
     }
 

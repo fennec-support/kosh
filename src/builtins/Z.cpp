@@ -40,7 +40,7 @@ struct frecency_entry
   i64    last_access;
 };
 
-struct frecency_rank_comparator
+struct FrecencyRankComparator
 {
   pure fn
   operator()(const frecency_entry &left,
@@ -258,7 +258,7 @@ record_directory_access(StringView directory,
     };
 
   if (entries.count() >= Z_FRECENCY_MAX) {
-    let strongest = steal(entries).make_sorted(frecency_rank_comparator{});
+    let strongest = steal(entries).make_sorted(FrecencyRankComparator{});
 
     strongest.truncate(Z_FRECENCY_MAX - 1);
     entries = steal(strongest);

@@ -110,13 +110,13 @@ public:
   }
 
   fn
-  option_mutations() wontthrow -> shell_option_mutations &
+  option_mutations() wontthrow -> ShellOptionMutations &
   {
     return m_mutations.options;
   }
 
   pure fn
-  option_mutations() const wontthrow -> const shell_option_mutations &
+  option_mutations() const wontthrow -> const ShellOptionMutations &
   {
     return m_mutations.options;
   }
@@ -151,8 +151,9 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            runtime_control_wire      &wire) wontthrow -> bool;
+  from_wire(SubshellBootstrapReader &reader, runtime_control_wire &wire)
+      wontthrow
+      -> bool;
   fn
   apply_wire(const runtime_control_wire &wire) wontthrow -> void
   {
@@ -334,7 +335,7 @@ public:
   fn
   begin_alias_expansion(StringView name, usize depth) throws -> void
   {
-    m_expanding_aliases.push(ExpandingAlias{
+    m_expanding_aliases.push(expanding_alias{
         String{heap_allocator(), name},
         depth
     });
@@ -378,7 +379,7 @@ public:
           sorted:    ["ll='ls -l'", "say='echo it'\''s'"] */
   fn
   alias_definitions() const throws
-      -> SortedArrayList<String, order_comparator<String>>
+      -> SortedArrayList<String, OrderComparator<String>>
   {
     let out = ArrayList<String>{heap_allocator()};
     m_aliases.read().for_each([&out](StringView key, const String &value) {
@@ -436,7 +437,7 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader           &reader,
+  from_wire(SubshellBootstrapReader             &reader,
             ArrayList<ArrayList<local_binding>> &local_scopes) throws
       -> bool;
   fn
@@ -456,13 +457,13 @@ public:
 private:
   CopyOnWrite<StringMap<String>> m_aliases{heap_allocator(),
                                            StringMap<String>{heap_allocator()}};
-  struct ExpandingAlias
+  struct expanding_alias
   {
     String name;
     usize  depth;
   };
 
-  ArrayList<ExpandingAlias> m_expanding_aliases{heap_allocator()};
+  ArrayList<expanding_alias> m_expanding_aliases{heap_allocator()};
 
   ArrayList<ArrayList<local_binding>>   m_local_scopes{heap_allocator()};
   ArrayList<Maybe<saved_scope_options>> m_saved_scope_shell_options{
@@ -636,8 +637,8 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            execution_wire            &wire) throws -> bool;
+  from_wire(SubshellBootstrapReader &reader,
+            execution_wire          &wire) throws -> bool;
   fn
   apply_wire(execution_wire wire) wontthrow -> void
   {
@@ -1341,11 +1342,11 @@ enum class bash_argument_frame_flag : u8
   HasSourceArguments = 1 << 2,
 };
 
-struct bash_argument_frame
+struct BashArgumentFrame
 {
-  bash_argument_frame *previous{nullptr};
-  StringView           source_path{};
-  u8                   flags{0};
+  BashArgumentFrame *previous{nullptr};
+  StringView         source_path{};
+  u8                 flags{0};
 
   pure fn
   has_flag(bash_argument_frame_flag flag) const wontthrow -> bool
@@ -1382,13 +1383,13 @@ public:
   }
 
   pure fn
-  get_context() const wontthrow -> bash_argument_frame *
+  get_context() const wontthrow -> BashArgumentFrame *
   {
     return m_context;
   }
 
   fn
-  set_context(bash_argument_frame *context) wontthrow -> void
+  set_context(BashArgumentFrame *context) wontthrow -> void
   {
     m_context = context;
   }
@@ -1474,14 +1475,14 @@ public:
   }
 
 private:
-  ArrayList<String>    m_values{heap_allocator()};
-  ArrayList<u32>       m_frame_counts{heap_allocator()};
-  bash_argument_frame *m_context{nullptr};
+  ArrayList<String>  m_values{heap_allocator()};
+  ArrayList<u32>     m_frame_counts{heap_allocator()};
+  BashArgumentFrame *m_context{nullptr};
   /* m_context points here after adopt_inherited_context(), so a copy of the
      stack would hold a pointer into the original object. */
-  bash_argument_frame m_inherited_context{};
-  String              m_inherited_source_path{heap_allocator()};
-  bool                m_is_active{false};
+  BashArgumentFrame m_inherited_context{};
+  String            m_inherited_source_path{heap_allocator()};
+  bool              m_is_active{false};
 };
 
 class ScalarVariables
@@ -1534,7 +1535,7 @@ public:
   for_each(Callback do_callback) const throws -> void
   {
     m_table->for_each(
-        [&](StringView name, const variable_entry &entry) throws {
+        [&](StringView name, const VariableEntry &entry) throws {
           if (entry.has_value) do_callback(name, entry.value);
         });
   }
@@ -1605,7 +1606,7 @@ public:
   for_each(Callback do_callback) const throws -> void
   {
     m_table->for_each(
-        [&](StringView name, const variable_entry &entry) throws {
+        [&](StringView name, const VariableEntry &entry) throws {
           if (entry.is_indexed_array) do_callback(name, entry.elements);
         });
   }
@@ -1806,7 +1807,7 @@ public:
   for_each_marked(variable_attribute attribute, Callback do_callback) const throws -> void
   {
     m_table->for_each(
-        [&](StringView name, const variable_entry &entry) throws {
+        [&](StringView name, const VariableEntry &entry) throws {
           if ((entry.attribute_bits & static_cast<u8>(attribute)) != 0)
             do_callback(name);
         });
@@ -1817,7 +1818,7 @@ public:
   for_each_name(Callback do_callback) const throws -> void
   {
     m_table->for_each(
-        [&](StringView name, const variable_entry &entry) throws {
+        [&](StringView name, const VariableEntry &entry) throws {
           if (entry.attribute_bits != 0) do_callback(name);
         });
   }
@@ -1918,14 +1919,14 @@ public:
   }
 
   hot pure fn
-  find_variable(StringView name) const wontthrow -> Maybe<const variable_entry *>
+  find_variable(StringView name) const wontthrow -> Maybe<const VariableEntry *>
   {
     return m_variables.find(name);
   }
 
   hot fn
   find_variable_for_write(StringView name) throws
-      -> Maybe<variable_entry *>
+      -> Maybe<VariableEntry *>
   {
     return m_variables.find_for_write(name);
   }
@@ -2132,8 +2133,8 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            variable_wire             &wire) throws -> bool;
+  from_wire(SubshellBootstrapReader &reader, variable_wire &wire) throws
+      -> bool;
   fn
   apply_wire_masks(const variable_wire &wire) wontthrow -> void
   {
@@ -2178,33 +2179,33 @@ class CompletionStore
 {
 public:
   fn
-  register_spec(StringView command, completion_spec spec) throws -> void
+  register_spec(StringView command, CompletionSpec spec) throws -> void
   {
     m_data.write().specs.set(command, steal(spec));
   }
 
   fn
   register_slot_spec(completion_spec_slot slot,
-                     completion_spec      spec) throws -> void
+                     CompletionSpec       spec) throws -> void
   {
     get_slot(slot) = steal(spec);
   }
 
   pure fn
-  lookup_spec(StringView command) const wontthrow -> const completion_spec *
+  lookup_spec(StringView command) const wontthrow -> const CompletionSpec *
   {
     return m_data.read().specs.find(command).value_or(nullptr);
   }
 
   fn
-  lookup_spec(StringView command) throws -> completion_spec *
+  lookup_spec(StringView command) throws -> CompletionSpec *
   {
     return m_data.write().specs.find(command).value_or(nullptr);
   }
 
   pure fn
   get_slot_spec(completion_spec_slot slot) const wontthrow
-      -> const completion_spec *
+      -> const CompletionSpec *
   {
     let const &spec = get_slot(slot);
 
@@ -2212,7 +2213,7 @@ public:
   }
 
   fn
-  get_slot_spec(completion_spec_slot slot) throws -> completion_spec *
+  get_slot_spec(completion_spec_slot slot) throws -> CompletionSpec *
   {
     let &spec = get_slot(slot);
 
@@ -2243,23 +2244,23 @@ public:
   fn
   remove_all_specs() throws -> void
   {
-    m_data.assign(completion_snapshot{});
+    m_data.assign(CompletionSnapshot{});
   }
 
   pure fn
-  specs() const wontthrow -> const StringMap<completion_spec> &
+  specs() const wontthrow -> const StringMap<CompletionSpec> &
   {
     return m_data.read().specs;
   }
 
   fn
-  snapshot() const wontthrow -> CopyOnWrite<completion_snapshot>
+  snapshot() const wontthrow -> CopyOnWrite<CompletionSnapshot>
   {
     return m_data;
   }
 
   fn
-  restore(CopyOnWrite<completion_snapshot> snapshot) wontthrow -> void
+  restore(CopyOnWrite<CompletionSnapshot> snapshot) wontthrow -> void
   {
     m_data = steal(snapshot);
   }
@@ -2267,12 +2268,12 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            completion_snapshot       &wire) throws -> bool;
+  from_wire(SubshellBootstrapReader &reader,
+            CompletionSnapshot      &wire) throws -> bool;
 
 private:
   fn
-  get_slot(completion_spec_slot slot) throws -> Maybe<completion_spec> &
+  get_slot(completion_spec_slot slot) throws -> Maybe<CompletionSpec> &
   {
     let &data = m_data.write();
 
@@ -2286,7 +2287,7 @@ private:
 
   pure fn
   get_slot(completion_spec_slot slot) const wontthrow
-      -> const Maybe<completion_spec> &
+      -> const Maybe<CompletionSpec> &
   {
     let const &data = m_data.read();
 
@@ -2298,8 +2299,8 @@ private:
     unreachable();
   }
 
-  CopyOnWrite<completion_snapshot> m_data{heap_allocator(),
-                                          completion_snapshot{}};
+  CopyOnWrite<CompletionSnapshot> m_data{heap_allocator(),
+                                         CompletionSnapshot{}};
 };
 
 struct function_call_frame
@@ -2339,7 +2340,7 @@ public:
 
   mustuse fn
   sorted_names() const throws
-      -> SortedArrayList<String, order_comparator<String>>
+      -> SortedArrayList<String, OrderComparator<String>>
   {
     let out = ArrayList<String>{heap_allocator()};
     out.reserve(m_definitions.read().count());
@@ -2377,7 +2378,7 @@ public:
 
   mustuse fn
   sorted_readonly_names() const throws
-      -> SortedArrayList<String, order_comparator<String>>
+      -> SortedArrayList<String, OrderComparator<String>>
   {
     let out = ArrayList<String>{heap_allocator()};
     out.reserve(m_readonly.count());
@@ -2461,8 +2462,8 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            function_wire             &wire) throws -> bool;
+  from_wire(SubshellBootstrapReader &reader, function_wire &wire) throws
+      -> bool;
   fn
   apply_wire_depth(const function_wire &wire) wontthrow -> void
   {
@@ -2483,7 +2484,7 @@ class TrapStore
 {
 public:
   fn
-  set(StringView condition, trap_definition definition) throws -> void
+  set(StringView condition, TrapDefinition definition) throws -> void
   {
     m_traps.write().set(condition, steal(definition));
     if (condition == StringView{"EXIT", 4}) m_held_exit_action = None;
@@ -2493,7 +2494,7 @@ public:
   fn
   set_action(StringView condition, StringView action) throws -> void
   {
-    set(condition, trap_definition{
+    set(condition, TrapDefinition{
                        String{heap_allocator(), action},
                        String{heap_allocator()},
                        SourceLocation{},
@@ -2528,14 +2529,14 @@ public:
   }
 
   pure fn
-  find(StringView condition) const wontthrow -> Maybe<const trap_definition *>
+  find(StringView condition) const wontthrow -> Maybe<const TrapDefinition *>
   {
     return m_traps.read().find(condition);
   }
 
   pure fn
   find_active(StringView condition) const wontthrow
-      -> Maybe<const trap_definition *>
+      -> Maybe<const TrapDefinition *>
   {
     let const found = m_traps.read().find(condition);
     if (found.has_value() && found.value()->action_text.count() > 0) {
@@ -2546,7 +2547,7 @@ public:
   }
 
   pure fn
-  find_definition(StringView condition) const wontthrow -> Maybe<trap_definition>
+  find_definition(StringView condition) const wontthrow -> Maybe<TrapDefinition>
   {
     let const found = m_traps.read().find(condition);
     if (!found.has_value() || !found.value()->has_location) {
@@ -2555,7 +2556,7 @@ public:
     /* at this point: found holds a trap with a source location. */
 
     try {
-      return trap_definition{*found.value()};
+      return TrapDefinition{*found.value()};
     } catch (...) {
       return None;
     }
@@ -2578,7 +2579,7 @@ public:
   discard_signal_traps() throws -> void
   {
     ArrayList<String> discarded{heap_allocator()};
-    m_traps.read().for_each([&](StringView condition, const trap_definition &) {
+    m_traps.read().for_each([&](StringView condition, const TrapDefinition &) {
       if (!os::signal_number_from_name(condition).has_value()) return;
       discarded.push_managed(condition);
     });
@@ -2608,8 +2609,8 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            u64                       &startup_ignored_signals) wontthrow -> bool;
+  from_wire(SubshellBootstrapReader &reader,
+            u64                     &startup_ignored_signals) wontthrow -> bool;
   fn
   cached_bodies() wontthrow -> StringMap<FunctionBodyHandle> &
   {
@@ -2719,7 +2720,7 @@ public:
   }
 
   pure fn
-  action_frame() const wontthrow -> const trap_action_frame &
+  action_frame() const wontthrow -> const TrapActionFrame &
   {
     return m_action_frame;
   }
@@ -2770,7 +2771,7 @@ private:
   friend class TrapActionScope;
 
   mustuse fn
-  enter_action(Maybe<i32> saved_exit_status) wontthrow -> trap_action_frame
+  enter_action(Maybe<i32> saved_exit_status) wontthrow -> TrapActionFrame
   {
     let previous = m_action_frame;
     m_action_frame.depth += 1;
@@ -2784,7 +2785,7 @@ private:
                          usize trigger_line_number,
                          usize source_frame_count,
                          usize function_depth,
-                         i32   saved_exit_status) wontthrow -> trap_action_frame
+                         i32   saved_exit_status) wontthrow -> TrapActionFrame
   {
     let previous = enter_action(saved_exit_status);
     m_action_frame.running_conditions |= condition_bit;
@@ -2796,7 +2797,7 @@ private:
   }
 
   mustuse fn
-  leave_action_for_subshell() wontthrow -> trap_action_frame
+  leave_action_for_subshell() wontthrow -> TrapActionFrame
   {
     let previous                      = m_action_frame;
     m_action_frame.depth              = 0;
@@ -2807,7 +2808,7 @@ private:
   }
 
   fn
-  restore_action_frame(const trap_action_frame &previous) wontthrow -> void
+  restore_action_frame(const TrapActionFrame &previous) wontthrow -> void
   {
     m_action_frame = previous;
   }
@@ -2825,18 +2826,18 @@ private:
     os::set_child_trap_armed(arming);
   }
 
-  bool                                    m_has_debug_trap{false};
-  bool                                    m_has_err_trap{false};
-  trap_install_state                      m_install_state{};
-  bool                                    m_is_replaying_inherited_state{false};
-  bool                                    m_did_exit_trap_run{false};
-  u64                                     m_startup_ignored_signals{0};
-  u32                                     m_pending_child_trap_count{0};
-  trap_action_frame                       m_action_frame{};
-  i32                                     m_last_trap_action_status{0};
-  i32                                     m_status_before_return{0};
-  CopyOnWrite<StringMap<trap_definition>> m_traps{
-      heap_allocator(), StringMap<trap_definition>{heap_allocator()}};
+  bool                                   m_has_debug_trap{false};
+  bool                                   m_has_err_trap{false};
+  trap_install_state                     m_install_state{};
+  bool                                   m_is_replaying_inherited_state{false};
+  bool                                   m_did_exit_trap_run{false};
+  u64                                    m_startup_ignored_signals{0};
+  u32                                    m_pending_child_trap_count{0};
+  TrapActionFrame                        m_action_frame{};
+  i32                                    m_last_trap_action_status{0};
+  i32                                    m_status_before_return{0};
+  CopyOnWrite<StringMap<TrapDefinition>> m_traps{
+      heap_allocator(), StringMap<TrapDefinition>{heap_allocator()}};
   Maybe<String>                 m_held_exit_action;
   StringMap<FunctionBodyHandle> m_cached_bodies{heap_allocator()};
 };
@@ -2877,12 +2878,12 @@ public:
   ~TrapActionScope() { m_store.restore_action_frame(m_previous); }
 
 private:
-  TrapActionScope(TrapStore &store, const trap_action_frame &previous)
+  TrapActionScope(TrapStore &store, const TrapActionFrame &previous)
       : m_store(store), m_previous(previous)
   {}
 
-  TrapStore        &m_store;
-  trap_action_frame m_previous;
+  TrapStore      &m_store;
+  TrapActionFrame m_previous;
 };
 
 class ExpansionStore
@@ -3050,19 +3051,19 @@ public:
   }
 
   fn
-  get_getopts_cursor() wontthrow -> getopts_cursor &
+  get_getopts_cursor() wontthrow -> GetoptsCursor &
   {
     return m_getopts_cursor;
   }
 
   pure fn
-  get_getopts_cursor() const wontthrow -> const getopts_cursor &
+  get_getopts_cursor() const wontthrow -> const GetoptsCursor &
   {
     return m_getopts_cursor;
   }
 
   fn
-  set_getopts_cursor(const getopts_cursor &cursor) wontthrow -> void
+  set_getopts_cursor(const GetoptsCursor &cursor) wontthrow -> void
   {
     m_getopts_cursor = cursor;
   }
@@ -3085,7 +3086,7 @@ private:
   usize                           m_array_subscript_depth{0};
   usize                           m_parameter_expansion_depth{0};
   usize                           m_data_expansion_depth{0};
-  getopts_cursor                  m_getopts_cursor{};
+  GetoptsCursor                   m_getopts_cursor{};
   bool                            m_is_glob_exempt_for_test{false};
   bool                            m_is_expanding_here_document{false};
   bool                            m_is_expanding_assignment_value{false};
@@ -3438,13 +3439,13 @@ public:
   }
 
   fn
-  source_frames() wontthrow -> ArrayList<source_frame> &
+  source_frames() wontthrow -> ArrayList<SourceFrame> &
   {
     return m_source_frames;
   }
 
   pure fn
-  source_frames() const wontthrow -> const ArrayList<source_frame> &
+  source_frames() const wontthrow -> const ArrayList<SourceFrame> &
   {
     return m_source_frames;
   }
@@ -3466,7 +3467,7 @@ private:
   String                      m_current_origin{heap_allocator()};
   SourceLocation              m_current_location{};
   bool                        m_is_script_run{false};
-  ArrayList<source_frame>     m_source_frames{heap_allocator()};
+  ArrayList<SourceFrame>      m_source_frames{heap_allocator()};
   ArrayList<embedded_source>  m_embedded_sources{heap_allocator()};
   ArrayList<source_line_base> m_line_bases{heap_allocator()};
   u64   m_current_source_generation{EXTERNAL_SOURCE_GENERATION};
@@ -3512,13 +3513,13 @@ class SubshellStore
 {
 public:
   fn
-  coprocess() wontthrow -> coprocess_descriptors &
+  coprocess() wontthrow -> CoprocessDescriptors &
   {
     return m_coprocess;
   }
 
   pure fn
-  coprocess() const wontthrow -> const coprocess_descriptors &
+  coprocess() const wontthrow -> const CoprocessDescriptors &
   {
     return m_coprocess;
   }
@@ -3530,7 +3531,7 @@ public:
   }
 
 private:
-  coprocess_descriptors                m_coprocess{};
+  CoprocessDescriptors                 m_coprocess{};
   ArrayList<subshell_saved_descriptor> m_saved_descriptors{heap_allocator()};
 };
 
@@ -3562,13 +3563,13 @@ public:
   }
 
   fn
-  confined_clock() wontthrow -> dynamic_clock_state &
+  confined_clock() wontthrow -> DynamicClockState &
   {
     return m_confined_clock;
   }
 
   pure fn
-  confined_clock() const wontthrow -> const dynamic_clock_state &
+  confined_clock() const wontthrow -> const DynamicClockState &
   {
     return m_confined_clock;
   }
@@ -3584,7 +3585,7 @@ public:
 
 private:
   usize                             m_confined_write_depth{0};
-  dynamic_clock_state               m_confined_clock{};
+  DynamicClockState                 m_confined_clock{};
   ArrayList<environment_undo_entry> m_environment_undo_log{heap_allocator()};
   ArrayList<environment_undo_entry> m_confined_write_log{heap_allocator()};
 };
@@ -3643,8 +3644,8 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            startup_wire              &wire) throws -> bool;
+  from_wire(SubshellBootstrapReader &reader, startup_wire &wire) throws
+      -> bool;
 
 private:
   String m_init_moods{heap_allocator()};
@@ -3679,8 +3680,8 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            bool                      &is_source_traces_enabled) wontthrow -> bool;
+  from_wire(SubshellBootstrapReader &reader,
+            bool                    &is_source_traces_enabled) wontthrow -> bool;
   fn
   diagnostic_highlight_cache() wontthrow -> completion::ShellHighlightCache *&
   {
@@ -3747,13 +3748,13 @@ public:
   }
 
   pure fn
-  get_clock() const wontthrow -> const dynamic_clock_state &
+  get_clock() const wontthrow -> const DynamicClockState &
   {
     return m_clock;
   }
 
   fn
-  set_clock(const dynamic_clock_state &clock) wontthrow -> void
+  set_clock(const DynamicClockState &clock) wontthrow -> void
   {
     m_clock = clock;
   }
@@ -3766,8 +3767,8 @@ public:
 #endif
 
 private:
-  mutable dynamic_clock_state m_clock{};
-  mutable u64                 m_random_reseed_count{0};
+  mutable DynamicClockState m_clock{};
+  mutable u64               m_random_reseed_count{0};
 #if !defined NDEBUG
   mutable usize m_debug_variable_name_enumeration_count{0};
 #endif

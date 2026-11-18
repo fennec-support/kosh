@@ -168,7 +168,7 @@ public:
   operator=(const ScopedCompletionScratch &) = delete;
 
 private:
-  BumpArena::Mark m_saved;
+  BumpArena::arena_mark m_saved;
 };
 
 enum class shell_lexical_frame_kind : u8
@@ -225,14 +225,14 @@ struct shell_lexical_frame
 
 static_assert(sizeof(usize) != 8 || sizeof(shell_lexical_frame) == 40);
 
-struct shell_lexical_state
+struct ShellLexicalState
 {
-  explicit shell_lexical_state(Allocator allocator)
+  explicit ShellLexicalState(Allocator allocator)
       : frames{allocator}, pending_heredocs{allocator}, constructs{allocator}
   {}
 
   ArrayList<shell_lexical_frame>     frames;
-  ArrayList<lexer::pending_heredoc>  pending_heredocs;
+  ArrayList<lexer::PendingHeredoc>   pending_heredocs;
   ArrayList<shell_lexical_construct> constructs;
   shell_lexical_frame root_frame{0, 0, 0, 0, shell_lexical_frame_kind::command,
                                  0};

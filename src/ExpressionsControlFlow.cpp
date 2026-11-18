@@ -140,7 +140,7 @@ Command::evaluate_async_with(EvalContext &cxt,
 
   let const child_source =
       expanded_child_source.is_empty() ? command_text : expanded_child_source;
-  let       bootstrap = os::subshell_bootstrap{};
+  let       bootstrap = os::SubshellBootstrap{};
   let const should_use_command_string_status =
       does_async_child_use_command_string_status(cxt, *this);
   let const evaluator = cxt.make_child_evaluator_state(bootstrap);
@@ -291,7 +291,7 @@ IfClause::write_ast(AstWriter &out) const throws -> void
 }
 
 hot fn
-IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   cxt.execution_store().is_terminal_exec_allowed() = false;
 
@@ -348,7 +348,7 @@ IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
 
   let saved_tested_command_names = actx.tested_command_names.clone();
   let condition_failure_names    = saved_tested_command_names.clone();
-  let merged_occurrences         = variable_occurrence_pair{};
+  let merged_occurrences         = VariableOccurrencePair{};
   let has_merged_occurrence_exit = false;
   let did_skip_exiting_branch    = false;
   let is_first_branch            = true;
@@ -542,7 +542,7 @@ internal::resolve_loop_control(EvalContext &cxt) throws
 }
 
 hot fn
-WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_condition != nullptr);
   ASSERT(m_body != nullptr);
@@ -572,7 +572,7 @@ WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws ->
 
   defer { cxt.cleanup_loop_redirect_fds(redirect_fd_mark); };
 
-  status_result result{};
+  StatusResult result{};
 
   loop {
     i64 condition_status;
@@ -731,7 +731,7 @@ SelectLoop::write_ast(AstWriter &out) const throws -> void
 }
 
 fn
-SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_body != nullptr);
 
@@ -771,8 +771,8 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
 
   defer { cxt.cleanup_loop_redirect_fds(redirect_fd_mark); };
 
-  status_result result{};
-  bool          should_reprint_menu = true;
+  StatusResult result{};
+  bool         should_reprint_menu = true;
 
   loop {
     if (should_reprint_menu) {
@@ -871,7 +871,7 @@ ForLoop::write_ast(AstWriter &out) const throws -> void
 }
 
 hot fn
-ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_body != nullptr);
 
@@ -927,8 +927,8 @@ ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> s
 
   defer { cxt.cleanup_loop_redirect_fds(redirect_fd_mark); };
 
-  let           loop_header_text = published_command_text{};
-  status_result result{};
+  let          loop_header_text = PublishedCommandText{};
+  StatusResult result{};
 
   for (let const &value : values) {
     cxt.source_store().set_current_location(source_location());
@@ -1192,7 +1192,7 @@ CaseClause::write_ast(AstWriter &out) const throws -> void
 }
 
 fn
-CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_word != nullptr);
 
@@ -1312,9 +1312,9 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
     return false;
   };
 
-  status_result result{};
-  bool          did_run_a_body = false;
-  usize         i              = 0;
+  StatusResult result{};
+  bool         did_run_a_body = false;
+  usize        i              = 0;
 
   while (i < m_items.count()) {
     if (!do_arm_matches(m_items[i])) {
@@ -1577,7 +1577,7 @@ BraceGroup::write_ast(AstWriter &out) const throws -> void
 }
 
 fn
-BraceGroup::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+BraceGroup::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_body != nullptr);
 
@@ -1631,7 +1631,7 @@ CoprocCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
 static constexpr i32 COPROCESS_FD_FLOOR = 10;
 
 fn
-CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_body != nullptr);
 
@@ -1664,7 +1664,7 @@ CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
   LOG(Debug, "launching the coprocess '%.*s'", static_cast<int>(m_name.length),
       m_name.data);
 
-  let       bootstrap = os::subshell_bootstrap{};
+  let       bootstrap = os::SubshellBootstrap{};
   let const evaluator = cxt.make_child_evaluator_state(bootstrap);
 
   cxt.set_child_source_origin(bootstrap, body_text, body_location);

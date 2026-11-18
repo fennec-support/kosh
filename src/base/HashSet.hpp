@@ -39,7 +39,7 @@ public:
   hot fn
   add(StringView key) throws -> bool
   {
-    return m_map.insert(key, Nothing{});
+    return m_map.insert(key, nothing{});
   }
 
   cold fn
@@ -81,11 +81,11 @@ public:
   for_each(Fn callback) const throws -> void
   {
     m_map.for_each(
-        [&callback](StringView key, const Nothing &) { callback(key); });
+        [&callback](StringView key, const nothing &) { callback(key); });
   }
 
 private:
-  StringMap<Nothing> m_map;
+  StringMap<nothing> m_map;
 };
 
 } /* namespace koshka */

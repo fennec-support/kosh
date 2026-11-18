@@ -191,19 +191,19 @@ enum class completion_spec_slot : u8
   Initial,
 };
 
-struct completion_spec
+struct CompletionSpec
 {
-  String           function_name{heap_allocator()};
-  String           word_list{heap_allocator()};
-  String           glob_pattern{heap_allocator()};
-  String           filter_pattern{heap_allocator()};
-  String           prefix{heap_allocator()};
-  String           suffix{heap_allocator()};
-  String           command{heap_allocator()};
-  u32              action_mask{0};
-  u32              option_mask{0};
-  u32              argument_mask{0};
-  definition_state defining_state;
+  String          function_name{heap_allocator()};
+  String          word_list{heap_allocator()};
+  String          glob_pattern{heap_allocator()};
+  String          filter_pattern{heap_allocator()};
+  String          prefix{heap_allocator()};
+  String          suffix{heap_allocator()};
+  String          command{heap_allocator()};
+  u32             action_mask{0};
+  u32             option_mask{0};
+  u32             argument_mask{0};
+  DefinitionState defining_state;
 
   pure fn
   has_action(compgen_action action) const wontthrow -> bool
@@ -224,15 +224,15 @@ struct completion_spec
   }
 
   fn
-  clone() const throws -> completion_spec
+  clone() const throws -> CompletionSpec
   {
     return clone_to(heap_allocator());
   }
 
   fn
-  clone_to(Allocator allocator) const throws -> completion_spec
+  clone_to(Allocator allocator) const throws -> CompletionSpec
   {
-    let copy = completion_spec{};
+    let copy = CompletionSpec{};
 
     copy.function_name  = function_name.clone_to(allocator);
     copy.word_list      = word_list.clone_to(allocator);
@@ -268,23 +268,23 @@ struct variable_snapshot
   bool                                        is_field_separators_unset;
 };
 
-struct completion_snapshot
+struct CompletionSnapshot
 {
-  StringMap<completion_spec> specs{heap_allocator()};
-  Maybe<completion_spec>     default_spec{};
-  Maybe<completion_spec>     empty_spec{};
-  Maybe<completion_spec>     initial_spec{};
+  StringMap<CompletionSpec> specs{heap_allocator()};
+  Maybe<CompletionSpec>     default_spec{};
+  Maybe<CompletionSpec>     empty_spec{};
+  Maybe<CompletionSpec>     initial_spec{};
 
   fn
-  clone() const throws -> completion_snapshot
+  clone() const throws -> CompletionSnapshot
   {
     return clone_to(specs.allocator());
   }
 
   fn
-  clone_to(Allocator allocator) const throws -> completion_snapshot
+  clone_to(Allocator allocator) const throws -> CompletionSnapshot
   {
-    return completion_snapshot{
+    return CompletionSnapshot{
         specs.clone_to(allocator), default_spec.clone_to(allocator),
         empty_spec.clone_to(allocator), initial_spec.clone_to(allocator)};
   }
@@ -313,8 +313,8 @@ struct execution_snapshot
 
 struct trap_snapshot
 {
-  CopyOnWrite<StringMap<trap_definition>> traps;
-  trap_install_state                      install;
+  CopyOnWrite<StringMap<TrapDefinition>> traps;
+  trap_install_state                     install;
 };
 
 struct runtime_control_snapshot
@@ -334,16 +334,16 @@ struct runtime_control_wire
 struct eval_state_snapshot
 {
   variable_snapshot                          variables;
-  CopyOnWrite<completion_snapshot>           completion;
+  CopyOnWrite<CompletionSnapshot>            completion;
   CopyOnWrite<StringMap<FunctionBodyHandle>> functions;
   scope_snapshot                             scopes;
   execution_snapshot                         execution;
   trap_snapshot                              traps;
   runtime_control_snapshot                   control;
-  dynamic_clock_state                        clock;
+  DynamicClockState                          clock;
   job_table_snapshot                         jobs;
-  getopts_cursor                             getopts;
-  coprocess_descriptors                      coprocess;
+  GetoptsCursor                              getopts;
+  CoprocessDescriptors                       coprocess;
   usize                                      environment_undo_mark;
   RuntimeState                               runtime;
   EnabledCommandStore                        enabled_commands;

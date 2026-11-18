@@ -306,7 +306,7 @@ read_current_directory() throws -> Path
 }
 
 fn
-change_current_directory(StringView path) throws -> ErrorOr<Ok>
+change_current_directory(StringView path) throws -> ErrorOr<ok>
 {
   const String path_string{heap_allocator(), path};
 
@@ -481,7 +481,7 @@ list_directory_status_fallback(StringView dir,
   }
 
   for (usize index = 0; index < entries.count(); index++)
-    batch.add(batch_operation::lstat(paths[index], entries[index].status));
+    batch.add(BatchOperation::lstat(paths[index], entries[index].status));
 
   let const results = batch.execute(batch_deduplication::Disabled);
 
@@ -1707,7 +1707,7 @@ remove_tree(StringView                path,
                            path_string.c_str(), path, false, 0, is_kept);
 }
 
-struct tree_walk_state
+struct TreeWalkState
 {
   const tree_walk_options           &options;
   const tree_walk_hooks             &hooks;
@@ -1740,7 +1740,7 @@ struct tree_walk_state
            REMOVE_TREE_HELD_DESCRIPTOR_DEPTH that is not a followed symlink adds
            one openat() of "..". total: O(entries) syscalls. */
 static fn
-walk_tree_entry(tree_walk_state   &walk,
+walk_tree_entry(TreeWalkState     &walk,
                 int               &parent_descriptor,
                 const struct stat &parent_status,
                 const char        *name,
@@ -1908,7 +1908,7 @@ walk_tree(StringView               path,
           const tree_walk_hooks   &hooks) throws -> bool
 {
   let const   path_string       = String{heap_allocator(), path};
-  let         walk              = tree_walk_state{options, hooks};
+  let         walk              = TreeWalkState{options, hooks};
   int         working_directory = AT_FDCWD;
   struct stat working_status{};
 

@@ -145,8 +145,8 @@ WordSegment::get_exact_constant_arithmetic_text(
 }
 
 fn
-WordSegment::set_arithmetic_tree(const arith_tree *tree,
-                                 BumpArena        *cache_arena) const throws
+WordSegment::set_arithmetic_tree(const ArithTree *tree,
+                                 BumpArena       *cache_arena) const throws
     -> void
 {
   if (m_eval_cache == nullptr && cache_arena != nullptr) {
@@ -156,7 +156,7 @@ WordSegment::set_arithmetic_tree(const arith_tree *tree,
 
   let &cache = get_eval_cache(cache_arena);
 
-  arith_tree::release(cache.arithmetic_tree);
+  ArithTree::release(cache.arithmetic_tree);
   cache.arithmetic_tree = tree;
 }
 
@@ -189,7 +189,7 @@ WordSegment::release_eval_cache() wontthrow -> void
   if (kind == Kind::VariableReference) {
     if (!is_eval_cache_in_arena) destroy_parameter_reference(m_parameter);
   } else {
-    arith_tree::release(m_eval_cache->arithmetic_tree);
+    ArithTree::release(m_eval_cache->arithmetic_tree);
     if (!is_eval_cache_in_arena) heap_allocator().free_array(m_eval_cache, 1);
   }
 
@@ -198,8 +198,8 @@ WordSegment::release_eval_cache() wontthrow -> void
 }
 
 fn
-WordSegment::set_parameter_reference(parameter_reference *reference,
-                                     bool                 is_in_arena) throws -> void
+WordSegment::set_parameter_reference(ParameterReference *reference,
+                                     bool                is_in_arena) throws -> void
 {
   ASSERT(kind == Kind::VariableReference);
 
@@ -231,7 +231,7 @@ WordSegment::move_resources_to_arena(BumpArena &arena) throws -> void
 
   if (tree != nullptr && !allocator.owns(tree)) {
     m_eval_cache->arithmetic_tree = tree->clone_to(allocator);
-    arith_tree::release(tree);
+    ArithTree::release(tree);
   }
 
   if (allocator.owns(m_eval_cache)) return;

@@ -157,20 +157,20 @@ struct tree_node
   bool   is_search_visible{true};
 };
 
-struct live_process_cpu_row
+struct LiveProcessCpuRow
 {
-  explicit live_process_cpu_row(Allocator allocator) : history(allocator) {}
+  explicit LiveProcessCpuRow(Allocator allocator) : history(allocator) {}
 
-  i64                  pid{0};
-  u64                  start_token{0};
-  rolling_history<u64> history;
+  i64                 pid{0};
+  u64                 start_token{0};
+  RollingHistory<u64> history;
 };
 
 fn
-set_cpu_percentage(tree_node                  &node,
-                   const live_process_cpu_row &row,
-                   u64                         window_start_nanoseconds,
-                   u64                         now_nanoseconds) wontthrow -> void
+set_cpu_percentage(tree_node               &node,
+                   const LiveProcessCpuRow &row,
+                   u64                      window_start_nanoseconds,
+                   u64                      now_nanoseconds) wontthrow -> void
 {
   if (row.history.timestamps.count() < 2) return;
 
@@ -198,17 +198,17 @@ set_cpu_percentage(tree_node                  &node,
 }
 
 fn
-update_cpu_history(ArrayList<tree_node>            &nodes,
-                   ArrayList<live_process_cpu_row> &history,
-                   u64                              now_nanoseconds,
-                   u64                              window_nanoseconds) throws -> void
+update_cpu_history(ArrayList<tree_node>         &nodes,
+                   ArrayList<LiveProcessCpuRow> &history,
+                   u64                           now_nanoseconds,
+                   u64                           window_nanoseconds) throws -> void
 {
   let const window_start_nanoseconds =
       rolling_window_start(now_nanoseconds, window_nanoseconds);
   let const allocator = history.allocator();
 
   let const do_get_key = [](const auto &item) {
-    return live_process_identity{item.pid, item.start_token};
+    return LiveProcessIdentity{item.pid, item.start_token};
   };
 
   let const do_get_value = [](const tree_node &node) -> const u64 & {
@@ -218,7 +218,7 @@ update_cpu_history(ArrayList<tree_node>            &nodes,
   let const do_is_reset = [](u64 before, u64 after) { return after < before; };
 
   let const do_make_row = [&](const tree_node &node) {
-    live_process_cpu_row fresh{allocator};
+    LiveProcessCpuRow fresh{allocator};
 
     fresh.pid         = node.pid;
     fresh.start_token = node.start_token;
@@ -226,7 +226,7 @@ update_cpu_history(ArrayList<tree_node>            &nodes,
     return fresh;
   };
 
-  let const do_updated = [&](tree_node &node, live_process_cpu_row &row) {
+  let const do_updated = [&](tree_node &node, LiveProcessCpuRow &row) {
     set_cpu_percentage(node, row, window_start_nanoseconds, now_nanoseconds);
   };
 
@@ -288,7 +288,7 @@ compare_nodes(const tree_node             &left,
   return left.pid < right.pid;
 }
 
-struct tree_node_comparator
+struct TreeNodeComparator
 {
   const evilps_render_options *options;
 
@@ -303,9 +303,9 @@ struct tree_node_comparator
 fn
 sort_nodes(ArrayList<tree_node>         nodes,
            const evilps_render_options &options) throws
-    -> SortedArrayList<tree_node, tree_node_comparator>
+    -> SortedArrayList<tree_node, TreeNodeComparator>
 {
-  return steal(nodes).make_sorted(tree_node_comparator{&options});
+  return steal(nodes).make_sorted(TreeNodeComparator{&options});
 }
 
 fn
@@ -415,16 +415,16 @@ append_label(String                      &output,
   let const should_color = options.should_color;
   let const sort_key     = options.sort_key;
 
-  append_report_text(output, node.name.view(),
-                     colors::color_style{colors::color::BoldGreen,
-                                         colors::color_variant::Soft},
-                     should_color);
+  append_report_text(
+      output, node.name.view(),
+      colors::ColorStyle{colors::color::BoldGreen, colors::color_variant::Soft},
+      should_color);
 
   if (FLAG_EVILPS_ALL.is_enabled() || FLAG_EVILPS_PIDS.is_enabled()) {
     output += "(";
     append_report_text(
         output, String::from(static_cast<u64>(node.pid), allocator).view(),
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft},
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft},
         should_color);
     output += ")";
   }
@@ -435,7 +435,7 @@ append_label(String                      &output,
     output += ",";
     append_report_text(
         output, owner.view(),
-        colors::color_style{colors::color::Yellow, colors::color_variant::Soft},
+        colors::ColorStyle{colors::color::Yellow, colors::color_variant::Soft},
         should_color);
   }
 
@@ -450,8 +450,8 @@ append_label(String                      &output,
     output += " [";
     if (should_show_cpu) {
       append_report_text(output, "CPU",
-                         colors::color_style{colors::color::BoldCyan,
-                                             colors::color_variant::Soft},
+                         colors::ColorStyle{colors::color::BoldCyan,
+                                            colors::color_variant::Soft},
                          should_color);
       output += " ";
       append_cpu_value(output, node, allocator, options.sampling);
@@ -463,8 +463,8 @@ append_label(String                      &output,
 
     if (should_show_memory) {
       append_report_text(output, "MEM",
-                         colors::color_style{colors::color::BoldCyan,
-                                             colors::color_variant::Soft},
+                         colors::ColorStyle{colors::color::BoldCyan,
+                                            colors::color_variant::Soft},
                          should_color);
       output += " ";
       output += format_human_size(node.resident_kib * 1024, allocator).view();
@@ -557,11 +557,11 @@ render_process_relatives(String                      &output,
 
     append_report_text(
         output, prefix.view(),
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft},
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft},
         should_color);
     append_report_text(
         output, connector.branch,
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft},
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft},
         should_color);
     append_label(output, nodes[position], allocator, options);
     rendered_count++;
@@ -806,7 +806,7 @@ render_process_snapshot(const ExecContext               &ec,
   return 0;
 }
 
-struct evilps_live_state
+struct EvilPSLiveState
 {
   String                 input;
   String                 search;
@@ -814,10 +814,10 @@ struct evilps_live_state
   bool                   should_sample_cpu;
   evilps_resource_mode   resource_mode;
 
-  evilps_live_state(Allocator              allocator,
-                    Maybe<evilps_sort_key> initial_sort_key,
-                    bool                   should_sample_cpu_initially,
-                    evilps_resource_mode   initial_resource_mode)
+  EvilPSLiveState(Allocator              allocator,
+                  Maybe<evilps_sort_key> initial_sort_key,
+                  bool                   should_sample_cpu_initially,
+                  evilps_resource_mode   initial_resource_mode)
       : input(allocator), search(allocator), sort_key(initial_sort_key),
         should_sample_cpu(should_sample_cpu_initially),
         resource_mode(initial_resource_mode)
@@ -828,7 +828,7 @@ struct evilps_live_state
 };
 
 fn
-evilps_live_state::handle_key(live_view_key key) throws
+EvilPSLiveState::handle_key(live_view_key key) throws
     -> live_view_key_action
 {
   let const is_editing = !input.is_empty() && input[0] == '/';
@@ -983,7 +983,7 @@ EvilPS::execute(const ExecContext               &ec,
   let const            should_escape_text =
       os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT));
 
-  let const report_options = live_report_options::parse(
+  let const report_options = LiveReportOptions::parse(
       ec, cxt, FLAG_EVILPS_LIVE, FLAG_EVILPS_CUMULATIVE, allocator);
 
   if (!report_options.has_value()) return 1;
@@ -1005,7 +1005,7 @@ EvilPS::execute(const ExecContext               &ec,
 
   if (report_options->is_live) {
     let const live_allocator = heap_allocator();
-    let       history        = ArrayList<live_process_cpu_row>{live_allocator};
+    let       history        = ArrayList<LiveProcessCpuRow>{live_allocator};
     let       nodes =
         read_process_nodes(live_allocator, resource_mode, should_escape_text);
     let const started_at_nanoseconds = os::monotonic_nanos();
@@ -1014,8 +1014,8 @@ EvilPS::execute(const ExecContext               &ec,
       update_cpu_history(nodes, history, started_at_nanoseconds,
                          window_nanoseconds);
 
-    let state = evilps_live_state{live_allocator, sort_key, should_sample_cpu,
-                                  resource_mode};
+    let state = EvilPSLiveState{live_allocator, sort_key, should_sample_cpu,
+                                resource_mode};
 
     let const do_sample = [&](u64 now, Allocator) -> Maybe<i32> {
       nodes = read_process_nodes(live_allocator, state.resource_mode,
@@ -1093,7 +1093,7 @@ EvilPS::execute(const ExecContext               &ec,
   report_sampling_mode sampling = report_sampling_mode::Instant;
 
   if (report_options->is_cumulative) {
-    let       history            = ArrayList<live_process_cpu_row>{allocator};
+    let       history            = ArrayList<LiveProcessCpuRow>{allocator};
     let const before_nanoseconds = os::monotonic_nanos();
 
     if (should_sample_cpu)

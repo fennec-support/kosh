@@ -33,10 +33,13 @@ Boolean names start with is_, should_, was_, did_, or has_. Counts end with
 _count. Byte counts end with _byte_count. Measurement variables include their
 units. Lambdas start with do_. Accessors start with get_ or set_.
 
-Free structs and enums use lower snake case. Classes and nested types use camel
-case. File operations accept Path. Project-owned C and C++ files carry the
-license notice and a description of at most three sentences. Vendored files do
-not receive the notice.
+Structs and classes with explicitly declared or inherited methods use PascalCase.
+Types without methods use lower_snake_case. This rule also applies to nested
+types. Constructors, destructors, operators, and static member functions count
+as methods. Implicit compiler-generated special members do not. Free enums
+retain lower_snake_case. File operations accept Path. Project-owned C and C++
+files carry the license notice and a description of at most three sentences.
+Vendored files do not receive the notice.
 
 .clang-format defines the layout, and make fmt applies it. Lines hold at most
 80 columns and indent by two spaces. fn stands on its own line above the
@@ -119,7 +122,7 @@ Substitution bodies use validation parsing where diagnostics need outer source
 coordinates. Analysis reparses each body in its owning node and walks it in the
 correct subshell scope.
 
-The lexer stores a parameter_reference on each VariableReference segment in the
+The lexer stores a ParameterReference on each VariableReference segment in the
 slot that other segment kinds use for their eval cache. The record holds the
 form, name, subscript, and operator offsets, the routes that expand_word takes,
 and the operand parsed into a Word whose substitutions use the segment caches.
@@ -176,7 +179,7 @@ standard output is not a terminal.
 
 ## Startup
 
-kosh_main builds command_line, invocation_identity, inherited_shell, startup
+kosh_main builds CommandLine, invocation_identity, InheritedShell, startup
 configuration, input_plan, and session_config in that order. It seeds session
 variables, applies startup configuration, then runs startup and finishes startup.
 
@@ -191,8 +194,8 @@ or a file with another shebang in that mood and restores the kosh mood
 afterwards.
 
 A koshkit utility runs through run_as_multicall before shell startup. The chunk
-loop uses script_cursor, interactive_session, and lint_run. For an interactive
-shell over a script operand or a stdin that is not a terminal, script_cursor
+loop uses ScriptCursor, InteractiveSession, and LintRun. For an interactive
+shell over a script operand or a stdin that is not a terminal, ScriptCursor
 takes one complete command at a time, and count_complete_commands decides when
 a command is complete. run_script_contents parses, analyzes, and evaluates one
 script run plan.

@@ -45,9 +45,9 @@ namespace koshka {
 namespace {
 
 fn
-find_job_by_process(JobTable &table, i64 process_id) wontthrow -> job *
+find_job_by_process(JobTable &table, i64 process_id) wontthrow -> Job *
 {
-  for (job &entry : table.jobs()) {
+  for (Job &entry : table.jobs()) {
     if (entry.process_id == process_id) return &entry;
 
     for (let const process : entry.earlier_pipeline_processes)
@@ -147,10 +147,10 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     return 127;
   };
 
-  let const do_find_target_job = [&](usize i) throws -> job * {
+  let const do_find_target_job = [&](usize i) throws -> Job * {
     let const &target = args[i];
 
-    job *matched = nullptr;
+    Job *matched = nullptr;
 
     if (!target.is_empty() && target[0] == '%') {
       matched = table.find_job_by_spec(target);
@@ -202,7 +202,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     let unknown_targets = ArrayList<usize>{cxt.scratch_allocator()};
 
     for (usize i = 1; i < args.count(); i++) {
-      if (job *const matched = do_find_target_job(i); matched != nullptr) {
+      if (Job *const matched = do_find_target_job(i); matched != nullptr) {
         job_ids.push(matched->id);
 
         continue;
@@ -239,7 +239,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
       table.update_jobs();
 
       for (let const &entry : table.jobs()) {
-        if (entry.state == job::State::Done && !entry.was_waited &&
+        if (entry.state == Job::State::Done && !entry.was_waited &&
             job_ids.find(entry.id).has_value())
         {
           return true;
@@ -307,12 +307,12 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
       table.update_jobs();
 
       for (let const &job : table.jobs())
-        if (job.state == job::State::Done && !job.is_inherited) {
+        if (job.state == Job::State::Done && !job.is_inherited) {
           finished_before_ids.push(job.id);
         }
     }
 
-    for (job &job : table.jobs()) {
+    for (Job &job : table.jobs()) {
       if (job.is_inherited) continue;
 
       unused(table.wait_for_job_processes(job, nullptr,
@@ -336,7 +336,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
 
     usize finished_before_position = 0;
 
-    for (job &waited : table.jobs()) {
+    for (Job &waited : table.jobs()) {
       if (finished_before_position < finished_before_ids.count() &&
           finished_before_ids[finished_before_position] == waited.id)
       {
@@ -360,7 +360,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
   for (usize i = 1; i < args.count(); i++) {
     LOG(Debug, "wait blocking on target '%s'", args[i].c_str());
 
-    if (job *const matched = do_find_target_job(i); matched != nullptr) {
+    if (Job *const matched = do_find_target_job(i); matched != nullptr) {
       let const job_id     = matched->id;
       let const process_id = matched->process_id;
 

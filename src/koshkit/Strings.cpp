@@ -120,7 +120,7 @@ Strings::execute(const ExecContext               &ec,
   let output = String{cxt.scratch_allocator()};
   let run    = String{cxt.scratch_allocator()};
   let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-  let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+  let chunks = ArrayList<SourceBatchReader::chunk>{cxt.scratch_allocator()};
   u64 byte_offset = 0;
   u64 run_offset  = 0;
   i32 status      = 0;

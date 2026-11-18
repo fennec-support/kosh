@@ -931,7 +931,7 @@ read_current_directory() throws -> Path
 }
 
 fn
-change_current_directory(StringView path) throws -> ErrorOr<Ok>
+change_current_directory(StringView path) throws -> ErrorOr<ok>
 {
   const String path_string{heap_allocator(), path};
   let const    wide_path = path_to_wide(path, heap_allocator());
@@ -1086,7 +1086,7 @@ list_directory_status(StringView dir, Allocator allocator) throws
   }
 
   for (usize index = 0; index < entries.count(); index++)
-    batch.add(batch_operation::lstat(paths[index], entries[index].status));
+    batch.add(BatchOperation::lstat(paths[index], entries[index].status));
 
   let const results = batch.execute();
 
@@ -2805,7 +2805,7 @@ execute_shared_positioned_file_operation(const batched_syscall  &operation,
   LARGE_INTEGER zero{};
   LARGE_INTEGER saved_position{};
 
-  if (SetFilePointerEx(batch_operation_access::get_descriptor(operation), zero,
+  if (SetFilePointerEx(BatchOperationAccess::get_descriptor(operation), zero,
                        &saved_position, FILE_CURRENT) == FALSE)
   {
     result.error_number = static_cast<i32>(GetLastError());
@@ -2815,7 +2815,7 @@ execute_shared_positioned_file_operation(const batched_syscall  &operation,
 
   defer {
     let const was_restored =
-        SetFilePointerEx(batch_operation_access::get_descriptor(operation),
+        SetFilePointerEx(BatchOperationAccess::get_descriptor(operation),
                          saved_position, nullptr, FILE_BEGIN);
     if (was_restored == FALSE && result.error_number == 0) {
       result.error_number = static_cast<i32>(GetLastError());
@@ -2825,7 +2825,7 @@ execute_shared_positioned_file_operation(const batched_syscall  &operation,
   LARGE_INTEGER requested_position{};
 
   requested_position.QuadPart = static_cast<LONGLONG>(operation.byte_offset);
-  if (SetFilePointerEx(batch_operation_access::get_descriptor(operation),
+  if (SetFilePointerEx(BatchOperationAccess::get_descriptor(operation),
                        requested_position, nullptr, FILE_BEGIN) == FALSE)
   {
     result.error_number = static_cast<i32>(GetLastError());
@@ -2836,12 +2836,12 @@ execute_shared_positioned_file_operation(const batched_syscall  &operation,
   /* at this point: the descriptor file pointer is at byte_offset, and the
      defer restores saved_position on return. */
   let const transferred =
-      batch_operation_access::get_kind(operation) == batched_syscall_id::Read
-          ? read_fd(batch_operation_access::get_descriptor(operation),
-                    batch_operation_access::get_output_buffer(operation),
+      BatchOperationAccess::get_kind(operation) == batched_syscall_id::Read
+          ? read_fd(BatchOperationAccess::get_descriptor(operation),
+                    BatchOperationAccess::get_output_buffer(operation),
                     operation.byte_count)
-          : write_fd(batch_operation_access::get_descriptor(operation),
-                     batch_operation_access::get_input_buffer(operation),
+          : write_fd(BatchOperationAccess::get_descriptor(operation),
+                     BatchOperationAccess::get_input_buffer(operation),
                      operation.byte_count);
 
   if (transferred.has_value()) {
@@ -2882,12 +2882,12 @@ submit_positioned_file_operation(const batched_syscall  &operation,
                                  batched_syscall_result &result,
                                  win32_batch_request    &request) wontthrow -> void
 {
-  let const operation_kind = batch_operation_access::get_kind(operation);
+  let const operation_kind = BatchOperationAccess::get_kind(operation);
   let const desired_access =
       operation_kind == batched_syscall_id::Read ? GENERIC_READ : GENERIC_WRITE;
 
   request.positioned_handle = ReOpenFile(
-      batch_operation_access::get_descriptor(operation), desired_access,
+      BatchOperationAccess::get_descriptor(operation), desired_access,
       FILE_SHARE_READ | FILE_SHARE_WRITE, FILE_FLAG_OVERLAPPED);
   if (request.positioned_handle == INVALID_HANDLE_VALUE) {
     execute_shared_positioned_file_operation(operation, result);
@@ -2912,10 +2912,10 @@ submit_positioned_file_operation(const batched_syscall  &operation,
   let const was_started =
       operation_kind == batched_syscall_id::Read
           ? ReadFile(request.positioned_handle,
-                     batch_operation_access::get_output_buffer(operation),
+                     BatchOperationAccess::get_output_buffer(operation),
                      requested_byte_count, nullptr, &request.control)
           : WriteFile(request.positioned_handle,
-                      batch_operation_access::get_input_buffer(operation),
+                      BatchOperationAccess::get_input_buffer(operation),
                       requested_byte_count, nullptr, &request.control);
 
   if (was_started == FALSE) {
@@ -2962,8 +2962,7 @@ finish_positioned_file_operation(const batched_syscall  &operation,
   {
     let const error_number = GetLastError();
 
-    if (batch_operation_access::get_kind(operation) ==
-            batched_syscall_id::Read &&
+    if (BatchOperationAccess::get_kind(operation) == batched_syscall_id::Read &&
         error_number == ERROR_HANDLE_EOF)
     {
       close_win32_batch_request(request);
@@ -2985,10 +2984,9 @@ static fn
 execute_current_file_operation(const batched_syscall  &operation,
                                batched_syscall_result &result) wontthrow -> void
 {
-  let const transferred =
-      write_fd(batch_operation_access::get_descriptor(operation),
-               batch_operation_access::get_input_buffer(operation),
-               operation.byte_count);
+  let const transferred = write_fd(
+      BatchOperationAccess::get_descriptor(operation),
+      BatchOperationAccess::get_input_buffer(operation), operation.byte_count);
 
   if (transferred.has_value()) {
     result.transferred_byte_count = *transferred;
@@ -3039,7 +3037,7 @@ execute_batch_operations(const batched_syscall  *operations,
 
       let const &operation      = operations[operation_index];
       let       &result         = results[operation_index];
-      let const  operation_kind = batch_operation_access::get_kind(operation);
+      let const  operation_kind = BatchOperationAccess::get_kind(operation);
 
       result = {operation.request_id, 0, 0};
       if (operation.byte_count > static_cast<usize>(MAXDWORD) ||
@@ -3055,10 +3053,10 @@ execute_batch_operations(const batched_syscall  *operations,
       case batched_syscall_id::WriteCurrent: {
         let const buffer =
             operation_kind == batched_syscall_id::Read
-                ? batch_operation_access::get_output_buffer(operation)
-                : batch_operation_access::get_input_buffer(operation);
+                ? BatchOperationAccess::get_output_buffer(operation)
+                : BatchOperationAccess::get_input_buffer(operation);
 
-        if (batch_operation_access::get_descriptor(operation) ==
+        if (BatchOperationAccess::get_descriptor(operation) ==
                 KOSH_INVALID_FD ||
             (buffer == nullptr && operation.byte_count != 0))
         {
@@ -3076,19 +3074,19 @@ execute_batch_operations(const batched_syscall  *operations,
       }
 
       case batched_syscall_id::Exists:
-        if (batch_operation_access::get_path(operation) == nullptr) {
+        if (BatchOperationAccess::get_path(operation) == nullptr) {
           result.error_number = ERROR_INVALID_PARAMETER;
           continue;
         }
 
         result.is_existing = path_exists(
-            batch_operation_access::get_path(operation)->text().view());
+            BatchOperationAccess::get_path(operation)->text().view());
         break;
 
       case batched_syscall_id::Lstat:
       case batched_syscall_id::Stat:
-        if (batch_operation_access::get_path(operation) == nullptr ||
-            batch_operation_access::get_status(operation) == nullptr)
+        if (BatchOperationAccess::get_path(operation) == nullptr ||
+            BatchOperationAccess::get_status(operation) == nullptr)
         {
           result.error_number = ERROR_INVALID_PARAMETER;
           continue;
@@ -3096,15 +3094,15 @@ execute_batch_operations(const batched_syscall  *operations,
 
         SetLastError(ERROR_SUCCESS);
         if (!(operation_kind == batched_syscall_id::Lstat
-                  ? stat_path(batch_operation_access::get_path(operation)
+                  ? stat_path(BatchOperationAccess::get_path(operation)
                                   ->text()
                                   .view(),
-                              *batch_operation_access::get_status(operation))
+                              *BatchOperationAccess::get_status(operation))
                   : stat_path_following(
-                        batch_operation_access::get_path(operation)
+                        BatchOperationAccess::get_path(operation)
                             ->text()
                             .view(),
-                        *batch_operation_access::get_status(operation))))
+                        *BatchOperationAccess::get_status(operation))))
         {
           result.error_number = static_cast<i32>(GetLastError());
           if (result.error_number == 0) result.error_number = ERROR_GEN_FAILURE;

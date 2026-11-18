@@ -150,11 +150,11 @@ action_short_flag(compgen_action action) wontthrow -> char
 }
 
 static fn
-append_quoted_spec_argument(String                &output,
-                            const completion_spec &spec,
-                            completion_argument    argument,
-                            StringView             flag,
-                            StringView             value) throws -> void
+append_quoted_spec_argument(String               &output,
+                            const CompletionSpec &spec,
+                            completion_argument   argument,
+                            StringView            flag,
+                            StringView            value) throws -> void
 {
   if (!spec.has_argument(argument)) return;
 
@@ -165,9 +165,9 @@ append_quoted_spec_argument(String                &output,
 }
 
 static fn
-append_completion_specification_line(String                &output,
-                                     StringView             command,
-                                     const completion_spec &spec) throws
+append_completion_specification_line(String               &output,
+                                     StringView            command,
+                                     const CompletionSpec &spec) throws
     -> void
 {
   output += "complete ";
@@ -250,7 +250,7 @@ completion_specification_reusable_lines(const EvalContext &cxt) throws
   let collected_names = ArrayList<String>{heap_allocator()};
 
   cxt.completion_store().specs().for_each(
-      [&](StringView command, const completion_spec &) -> void {
+      [&](StringView command, const CompletionSpec &) -> void {
         collected_names.push_managed(command);
       });
 
@@ -469,8 +469,8 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   do_add_argument_if(FLAG_COMPLETE_COMMAND, completion_argument::Command);
   do_add_argument_if(FLAG_COMPLETE_FUNCTION, completion_argument::Function);
 
-  let const do_make_spec = [&]() throws -> completion_spec {
-    let spec = completion_spec{};
+  let const do_make_spec = [&]() throws -> CompletionSpec {
+    let spec = CompletionSpec{};
 
     spec.function_name  = String{heap_allocator(), function_name};
     spec.word_list      = String{heap_allocator(), word_list};
@@ -483,7 +483,7 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     spec.action_mask    = action_mask;
     spec.option_mask    = option_mask;
     spec.argument_mask  = argument_mask;
-    spec.defining_state = definition_state::from(cxt.runtime_state());
+    spec.defining_state = DefinitionState::from(cxt.runtime_state());
 
     return spec;
   };

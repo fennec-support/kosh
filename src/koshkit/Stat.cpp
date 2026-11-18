@@ -831,11 +831,11 @@ Stat::execute(const ExecContext               &ec,
 
     for (usize index = 0; index < operands.count(); index++) {
       if (should_follow) {
-        batch.add(os::batch_operation::stat(operand_paths[index],
-                                            file_statuses[index]));
+        batch.add(os::BatchOperation::stat(operand_paths[index],
+                                           file_statuses[index]));
       } else {
-        batch.add(os::batch_operation::lstat(operand_paths[index],
-                                             file_statuses[index]));
+        batch.add(os::BatchOperation::lstat(operand_paths[index],
+                                            file_statuses[index]));
       }
     }
 

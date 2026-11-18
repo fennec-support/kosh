@@ -157,7 +157,7 @@ internal::best_tier_matches(StringView                   token,
 class BorrowedStringSet
 {
 public:
-  /* memory: slots holds a table of Slot in completion_allocator(). grow()
+  /* memory: slots holds a table of slot in completion_allocator(). grow()
              allocates a table with twice the capacity, or 16 slots when empty.
      time:   place() probes linearly from hash & mask. grow() rehashes every
              slot, O(capacity), when adding would reach 3/4 of capacity. */
@@ -172,7 +172,7 @@ public:
   }
 
 private:
-  struct Slot
+  struct slot
   {
     StringView value{};
     u64        hash{0};
@@ -180,7 +180,7 @@ private:
   };
 
   fn
-  place(ArrayList<Slot> &destination, StringView value, u64 hash) wontthrow
+  place(ArrayList<slot> &destination, StringView value, u64 hash) wontthrow
       -> bool
   {
     let const mask     = destination.count() - 1;
@@ -205,7 +205,7 @@ private:
   fn
   grow() throws -> void
   {
-    let       fresh    = ArrayList<Slot>{completion_allocator()};
+    let       fresh    = ArrayList<slot>{completion_allocator()};
     let const capacity = slots.is_empty() ? 16 : slots.count() * 2;
 
     fresh.reserve(capacity);
@@ -221,7 +221,7 @@ private:
     slots = steal(fresh);
   }
 
-  ArrayList<Slot> slots{completion_allocator()};
+  ArrayList<slot> slots{completion_allocator()};
   usize           entry_count{0};
 };
 
@@ -691,10 +691,10 @@ struct eligible_filesystem_entry
 };
 
 static fn
-open_filesystem_listing(const utils::decoded_shell_word &decoded_word,
-                        const Path                      &base_directory,
-                        EvalContext                     &context,
-                        utils::directory_validation      validation) throws
+open_filesystem_listing(const utils::DecodedShellWord &decoded_word,
+                        const Path                    &base_directory,
+                        EvalContext                   &context,
+                        utils::directory_validation    validation) throws
     -> Maybe<filesystem_listing>
 {
   let const parts     = split_path_token(decoded_word.text.view());
@@ -753,14 +753,14 @@ check_filesystem_entry(
 }
 
 static fn
-build_filesystem_candidate(StringView                       directory_part,
-                           StringView                       raw_directory_part,
-                           StringView                       name,
-                           bool                             is_directory,
-                           StringView                       raw_token,
-                           const utils::decoded_shell_word &decoded_word,
-                           directory_suffix_mode            suffix_mode,
-                           path_text_mode                   text_mode) throws -> String
+build_filesystem_candidate(StringView                     directory_part,
+                           StringView                     raw_directory_part,
+                           StringView                     name,
+                           bool                           is_directory,
+                           StringView                     raw_token,
+                           const utils::DecodedShellWord &decoded_word,
+                           directory_suffix_mode          suffix_mode,
+                           path_text_mode                 text_mode) throws -> String
 {
   let const is_inside_quote = text_mode != path_text_mode::ShellSyntax;
   let const should_preserve_directory_spelling =
@@ -879,7 +879,7 @@ resolve_symlink_entry_kinds(const filesystem_listing &listing,
   }
 
   for (usize position = 0; position < paths.count(); position++)
-    batch.add(os::batch_operation::stat(paths[position], statuses[position]));
+    batch.add(os::BatchOperation::stat(paths[position], statuses[position]));
 
   let results = ArrayList<os::batch_result>{completion_allocator()};
   let kinds   = ArrayList<Maybe<Path::EntryKind>>{completion_allocator()};
@@ -922,15 +922,15 @@ resolve_symlink_entry_kinds(const filesystem_listing &listing,
 template <typename Collector>
 static fn
 collect_filesystem_matches(
-    StringView                       token,
-    const utils::decoded_shell_word &decoded_word,
-    const Path                      &base_directory,
-    EvalContext                     &context,
-    Collector                       &collector,
-    path_text_mode                   text_mode,
-    filesystem_entry_filter          filter,
-    directory_suffix_mode            suffix_mode,
-    utils::directory_validation      validation) throws -> void
+    StringView                     token,
+    const utils::DecodedShellWord &decoded_word,
+    const Path                    &base_directory,
+    EvalContext                   &context,
+    Collector                     &collector,
+    path_text_mode                 text_mode,
+    filesystem_entry_filter        filter,
+    directory_suffix_mode          suffix_mode,
+    utils::directory_validation    validation) throws -> void
 {
   let const is_inside_quote = text_mode != path_text_mode::ShellSyntax;
   let const listing = open_filesystem_listing(decoded_word, base_directory,
@@ -1064,18 +1064,18 @@ collect_filesystem_matches(
 template <typename Collector>
 static fn
 complete_filesystem_with(
-    StringView                       token,
-    const Path                      &base_directory,
-    EvalContext                     &context,
-    Collector                        collector,
-    const utils::decoded_shell_word *decoded   = nullptr,
-    path_text_mode                   text_mode = path_text_mode::ShellSyntax,
-    filesystem_entry_filter          filter    = filesystem_entry_filter::All,
-    directory_suffix_mode       suffix_mode    = directory_suffix_mode::Marked,
-    utils::directory_validation validation =
+    StringView                     token,
+    const Path                    &base_directory,
+    EvalContext                   &context,
+    Collector                      collector,
+    const utils::DecodedShellWord *decoded     = nullptr,
+    path_text_mode                 text_mode   = path_text_mode::ShellSyntax,
+    filesystem_entry_filter        filter      = filesystem_entry_filter::All,
+    directory_suffix_mode          suffix_mode = directory_suffix_mode::Marked,
+    utils::directory_validation    validation =
         utils::directory_validation::Cached) throws -> Collector
 {
-  let decoded_storage = utils::decoded_shell_word{completion_allocator()};
+  let decoded_storage = utils::DecodedShellWord{completion_allocator()};
 
   if (decoded == nullptr) {
     if (text_mode != path_text_mode::ShellSyntax)
@@ -1093,10 +1093,10 @@ complete_filesystem_with(
 }
 
 static fn
-complete_filesystem(StringView                       token,
-                    const Path                      &base_directory,
-                    EvalContext                     &context,
-                    const utils::decoded_shell_word *decoded = nullptr,
+complete_filesystem(StringView                     token,
+                    const Path                    &base_directory,
+                    EvalContext                   &context,
+                    const utils::DecodedShellWord *decoded = nullptr,
                     path_text_mode text_mode = path_text_mode::ShellSyntax,
                     filesystem_entry_filter filter =
                         filesystem_entry_filter::All) throws
@@ -1171,12 +1171,12 @@ visit_cdpath_directories(EvalContext &context,
 template <typename Collector>
 static fn
 collect_directory_change_operand(
-    StringView                       token,
-    const Path                      &base_directory,
-    EvalContext                     &context,
-    const utils::decoded_shell_word &decoded,
-    Collector                        collector,
-    utils::directory_validation      cdpath_validation) throws -> Collector
+    StringView                     token,
+    const Path                    &base_directory,
+    EvalContext                   &context,
+    const utils::DecodedShellWord &decoded,
+    Collector                      collector,
+    utils::directory_validation    cdpath_validation) throws -> Collector
 {
   collector = complete_filesystem_with<Collector>(
       token, base_directory, context, steal(collector), &decoded,
@@ -1221,12 +1221,12 @@ ScopedCompletionScratch::~ScopedCompletionScratch()
 
 static fn
 complete_filesystem_prefix(
-    StringView                       token,
-    const Path                      &base_directory,
-    EvalContext                     &context,
-    const utils::decoded_shell_word *decoded   = nullptr,
-    path_text_mode                   text_mode = path_text_mode::ShellSyntax,
-    filesystem_entry_filter          filter =
+    StringView                     token,
+    const Path                    &base_directory,
+    EvalContext                   &context,
+    const utils::DecodedShellWord *decoded   = nullptr,
+    path_text_mode                 text_mode = path_text_mode::ShellSyntax,
+    filesystem_entry_filter        filter =
         filesystem_entry_filter::All) throws -> GhostPrefixCollector
 {
   return complete_filesystem_with<GhostPrefixCollector>(
@@ -1235,11 +1235,11 @@ complete_filesystem_prefix(
 }
 
 static fn
-complete_glob(StringView                       token,
-              const Path                      &base_directory,
-              EvalContext                     &context,
-              const utils::decoded_shell_word &decoded_word,
-              filesystem_entry_filter          filter) throws
+complete_glob(StringView                     token,
+              const Path                    &base_directory,
+              EvalContext                   &context,
+              const utils::DecodedShellWord &decoded_word,
+              filesystem_entry_filter        filter) throws
     -> ArrayList<String>
 {
   let       candidates = ArrayList<String>{completion_allocator()};

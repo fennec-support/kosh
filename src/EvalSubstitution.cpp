@@ -461,7 +461,7 @@ EvalContext::capture_command_substitution(
      non-null. */
   let const ast_mark =
       cache == nullptr
-          ? Maybe<BumpArena::Mark>{arena_store().parse_arena()->mark()}
+          ? Maybe<BumpArena::arena_mark>{arena_store().parse_arena()->mark()}
           : None;
 
   defer {
@@ -579,7 +579,7 @@ EvalContext::setup_process_substitution(
       cache_arena->is_lifetime_valid(cache->substitution_lifetime);
   let const ast_mark =
       cache == nullptr
-          ? Maybe<BumpArena::Mark>{arena_store().parse_arena()->mark()}
+          ? Maybe<BumpArena::arena_mark>{arena_store().parse_arena()->mark()}
           : None;
 
   defer {
@@ -631,7 +631,7 @@ EvalContext::setup_process_substitution(
 
   ASSERT(ast != nullptr);
 
-  let bootstrap = os::subshell_bootstrap{};
+  let bootstrap = os::SubshellBootstrap{};
 
   let const do_launch =
       [&]() throws -> os::process_substitution_launch {
@@ -1050,7 +1050,7 @@ EvalContext::push_substitution_source_frame(const SourceLocation &location,
     return false;
   }
 
-  source_store().source_frames().push(source_frame{
+  source_store().source_frames().push(SourceFrame{
       String{heap_allocator(), origin},
       location,
       source_store().current_source(),

@@ -20,8 +20,8 @@ inline constexpr StringView KOSHCONF_VARIABLE_NAME{"KOSHCONF"};
 
 struct koshconf_setting
 {
-  const option_descriptor *option;
-  String                   value;
+  const OptionDescriptor *option;
+  String                  value;
 };
 
 struct koshconf_reading
@@ -66,20 +66,20 @@ fn
 parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
     -> Maybe<StringView>;
 fn
-find_koshconf_value_problem(const option_descriptor &option,
-                            StringView               value) throws -> Maybe<String>;
+find_koshconf_value_problem(const OptionDescriptor &option,
+                            StringView              value) throws -> Maybe<String>;
 
 pure fn
-koshconf_option_takes_count(const option_descriptor &option) wontthrow -> bool;
+koshconf_option_takes_count(const OptionDescriptor &option) wontthrow -> bool;
 fn
 suggest_koshconf_option_name(StringView name) throws -> Maybe<String>;
 
 fn
-format_koshconf_line(const option_descriptor &option,
-                     StringView               value) throws -> String;
+format_koshconf_line(const OptionDescriptor &option,
+                     StringView              value) throws -> String;
 fn
-format_koshconf_display_line(const option_descriptor &option,
-                             StringView               value) throws -> String;
+format_koshconf_display_line(const OptionDescriptor &option,
+                             StringView              value) throws -> String;
 
 fn
 make_koshconf_preset(mimic_mood preset) throws -> String;
@@ -89,9 +89,9 @@ fn
 write_koshconf_file(const Path &path, StringView contents) throws
     -> void;
 fn
-persist_koshconf_setting(const Path              &path,
-                         const option_descriptor &option,
-                         StringView               value) throws -> void;
+persist_koshconf_setting(const Path             &path,
+                         const OptionDescriptor &option,
+                         StringView              value) throws -> void;
 /* replaces the file with a snapshot of the current settings and keeps every
    setting line whose option this build does not recognize. */
 fn

@@ -70,12 +70,12 @@ enum class eviliso_collection_mode : u8
   Collect,
 };
 
-struct namespace_process
+struct NamespaceProcess
 {
-  namespace_process(i64        process_id,
-                    StringView name,
-                    bool       is_self,
-                    Allocator  allocator)
+  NamespaceProcess(i64        process_id,
+                   StringView name,
+                   bool       is_self,
+                   Allocator  allocator)
       : process_id(process_id), name(allocator, name), is_self(is_self)
   {}
 
@@ -84,9 +84,9 @@ struct namespace_process
   bool   is_self{false};
 };
 
-struct namespace_relation
+struct NamespaceRelation
 {
-  explicit namespace_relation(Allocator allocator)
+  explicit NamespaceRelation(Allocator allocator)
       : identifier(allocator), name(allocator), reason(allocator)
   {}
 
@@ -134,10 +134,10 @@ namespace_identifier(StringView target, Allocator allocator) throws
    time:   O(P) readlink() calls for P processes, 8 per process, and O(R log R)
            for the sort of R = 8 * P relations. */
 fn
-append_namespace_report(String                      &output,
-                        bool                         should_color,
-                        ArrayList<namespace_process> processes,
-                        eviliso_detail_mode          detail) throws -> void
+append_namespace_report(String                     &output,
+                        bool                        should_color,
+                        ArrayList<NamespaceProcess> processes,
+                        eviliso_detail_mode         detail) throws -> void
 {
   constexpr StringView names[]        = {"cgroup", "ipc",  "mnt",  "net",
                                          "pid",    "time", "user", "uts"};
@@ -148,10 +148,10 @@ append_namespace_report(String                      &output,
   if (!Path{namespace_path.view(), allocator}.is_directory()) {
     processes.clear();
     processes.push(
-        namespace_process{os::get_current_process_id(), "-", true, allocator});
+        NamespaceProcess{os::get_current_process_id(), "-", true, allocator});
   }
 
-  let relations = ArrayList<namespace_relation>{allocator};
+  let relations = ArrayList<NamespaceRelation>{allocator};
 
   relations.reserve(processes.count() * NAME_COUNT);
 
@@ -191,7 +191,7 @@ append_namespace_report(String                      &output,
                                        ? namespace_identifier(target->view(), allocator)
                                        : String{allocator, "unavailable"};
       let const identifier_value = identifier.view().to<u64>();
-      let       relation         = namespace_relation{allocator};
+      let       relation         = NamespaceRelation{allocator};
 
       relation.type       = type;
       relation.type_index = type_index;
@@ -210,7 +210,7 @@ append_namespace_report(String                      &output,
   }
 
   let const sorted_relations = steal(relations).make_sorted(
-      [](const namespace_relation &left, const namespace_relation &right) {
+      [](const NamespaceRelation &left, const NamespaceRelation &right) {
         if (left.type_index != right.type_index)
           return left.type_index < right.type_index;
         if (left.is_available != right.is_available) return left.is_available;
@@ -254,18 +254,18 @@ append_namespace_report(String                      &output,
 
       cells.clear();
       cells.push({
-          relation.type, colors::color_style{colors::color::BoldMagenta,
-                                             colors::color_variant::Soft}
+          relation.type, colors::ColorStyle{colors::color::BoldMagenta,
+                                            colors::color_variant::Soft}
       });
       cells.push({relation.identifier.view(), colors::color::Reset});
       cells.push({
-          process_id.view(), colors::color_style{colors::color::BoldGreen,
-                                                 colors::color_variant::Soft}
+          process_id.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                                colors::color_variant::Soft}
       });
       cells.push({relation.name.view(), colors::color::Reset});
       cells.push({
-          relation.role, colors::color_style{colors::color::BoldMagenta,
-                                             colors::color_variant::Soft}
+          relation.role, colors::ColorStyle{colors::color::BoldMagenta,
+                                            colors::color_variant::Soft}
       });
       table.add_row(cells);
     }
@@ -298,13 +298,13 @@ append_namespace_report(String                      &output,
 
       cells.clear();
       cells.push({
-          first.type, colors::color_style{colors::color::BoldMagenta,
-                                          colors::color_variant::Soft}
+          first.type, colors::ColorStyle{colors::color::BoldMagenta,
+                                         colors::color_variant::Soft}
       });
       cells.push({first.identifier.view(), colors::color::Reset});
       cells.push({
-          count.view(), colors::color_style{colors::color::BoldGreen,
-                                            colors::color_variant::Soft}
+          count.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                           colors::color_variant::Soft}
       });
       table.add_row(cells);
       relation_index = group_end;
@@ -357,17 +357,16 @@ append_namespace_report(String                      &output,
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     cells.push({
-        first.type, colors::color_style{colors::color::BoldMagenta,
-                                        colors::color_variant::Soft}
+        first.type, colors::ColorStyle{colors::color::BoldMagenta,
+                                       colors::color_variant::Soft}
     });
     cells.push({
-        process_count.view(),
-        colors::color_style{colors::color::BoldGreen,
-                            colors::color_variant::Soft}
+        process_count.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                                 colors::color_variant::Soft}
     });
     cells.push({
-        "Unavailable", colors::color_style{colors::color::BoldYellow,
-                                           colors::color_variant::Soft}
+        "Unavailable", colors::ColorStyle{colors::color::BoldYellow,
+                                          colors::color_variant::Soft}
     });
     cells.push({reason, colors::color::Reset});
     failure_table.add_row(cells);
@@ -379,13 +378,13 @@ append_namespace_report(String                      &output,
                                failure_table, should_color);
 }
 
-struct cgroup_membership
+struct CgroupMembership
 {
-  cgroup_membership(StringView hierarchy,
-                    u64        hierarchy_value,
-                    StringView controller,
-                    StringView path,
-                    Allocator  allocator)
+  CgroupMembership(StringView hierarchy,
+                   u64        hierarchy_value,
+                   StringView controller,
+                   StringView path,
+                   Allocator  allocator)
       : hierarchy(allocator, hierarchy), hierarchy_value(hierarchy_value),
         controller(allocator, controller), path(allocator, path)
   {}
@@ -421,9 +420,9 @@ kubernetes_service_account_path(StringView name,
 
 fn
 parse_cgroup_memberships(StringView text, Allocator allocator) throws
-    -> ArrayList<cgroup_membership>
+    -> ArrayList<CgroupMembership>
 {
-  let memberships = ArrayList<cgroup_membership>{allocator};
+  let memberships = ArrayList<CgroupMembership>{allocator};
 
   /* e.g. text "12:cpu,cpuacct:/user.slice" and "0::/init.scope" on two lines
      -> {12, "cpu,cpuacct", "/user.slice"}, then {0, "unified", "/init.scope"}
@@ -465,8 +464,8 @@ parse_cgroup_memberships(StringView text, Allocator allocator) throws
     }
 
     if (is_known) continue;
-    memberships.push(cgroup_membership{hierarchy, hierarchy_value.value(),
-                                       controller_name, path, allocator});
+    memberships.push(CgroupMembership{hierarchy, hierarchy_value.value(),
+                                      controller_name, path, allocator});
   }
 
   return memberships;
@@ -492,19 +491,19 @@ process_snapshot_identity_is_valid(process_snapshot_status status) wontthrow
          status != process_snapshot_status::Unverifiable;
 }
 
-struct process_cgroup_snapshot
+struct ProcessCgroupSnapshot
 {
-  explicit process_cgroup_snapshot(Allocator allocator)
+  explicit ProcessCgroupSnapshot(Allocator allocator)
       : name(allocator), command(allocator), memberships(allocator),
         evidence(allocator)
   {}
 
-  i64                          process_id{0};
-  u64                          start_token{0};
-  u32                          owner_id{0};
-  String                       name;
-  String                       command;
-  ArrayList<cgroup_membership> memberships;
+  i64                         process_id{0};
+  u64                         start_token{0};
+  u32                         owner_id{0};
+  String                      name;
+  String                      command;
+  ArrayList<CgroupMembership> memberships;
 
   struct IdentityEvidence
   {
@@ -629,9 +628,9 @@ normalized_pod_uid(StringView component, Allocator allocator) throws
            checked against fixed tables and a 36-byte or 64-byte identifier. */
 fn
 parse_cgroup_identity(StringView path, Allocator allocator) throws
-    -> process_cgroup_snapshot::IdentityEvidence
+    -> ProcessCgroupSnapshot::IdentityEvidence
 {
-  let result = process_cgroup_snapshot::IdentityEvidence{path, allocator};
+  let result = ProcessCgroupSnapshot::IdentityEvidence{path, allocator};
   static constexpr static_string_entry<StringView> RUNTIME_ENTRIES[] = {
       {SSK("docker"),     "docker"    },
       {SSK("containerd"), "containerd"},
@@ -734,17 +733,17 @@ parse_cgroup_identity(StringView path, Allocator allocator) throws
 fn
 collect_process_cgroup_snapshot(
     Allocator allocator, eviliso_collection_mode collection) throws
-    -> ArrayList<process_cgroup_snapshot>
+    -> ArrayList<ProcessCgroupSnapshot>
 {
   let candidates = os::enumerate_processes(os::process_detail::ResourceStats);
-  let snapshot   = ArrayList<process_cgroup_snapshot>{allocator};
+  let snapshot   = ArrayList<ProcessCgroupSnapshot>{allocator};
 
   snapshot.reserve(candidates.count());
 
   let const self_process_id = os::get_current_process_id();
 
   for (let const &process : candidates) {
-    let record = process_cgroup_snapshot{allocator};
+    let record = ProcessCgroupSnapshot{allocator};
 
     record.process_id  = process.pid;
     record.start_token = process.start_token;
@@ -825,16 +824,16 @@ collect_process_cgroup_snapshot(
   return snapshot;
 }
 
-struct cgroup_report_row
+struct CgroupReportRow
 {
-  cgroup_report_row(StringView                     hierarchy,
-                    u64                            hierarchy_value,
-                    StringView                     controller,
-                    StringView                     path,
-                    const process_cgroup_snapshot &process,
-                    StringView                     role,
-                    StringView                     status,
-                    Allocator                      allocator)
+  CgroupReportRow(StringView                   hierarchy,
+                  u64                          hierarchy_value,
+                  StringView                   controller,
+                  StringView                   path,
+                  const ProcessCgroupSnapshot &process,
+                  StringView                   role,
+                  StringView                   status,
+                  Allocator                    allocator)
       : hierarchy(allocator, hierarchy), hierarchy_value(hierarchy_value),
         controller(allocator, controller), path(allocator, path),
         process_id(String::from(process.process_id, allocator)),
@@ -879,8 +878,8 @@ enum class cgroup_failure_fallback : u8
 fn
 append_cgroup_failure_report(String &output,
                              bool    should_color,
-                             const ArrayList<process_cgroup_snapshot> &snapshot,
-                             cgroup_failure_fallback                   fallback) throws
+                             const ArrayList<ProcessCgroupSnapshot> &snapshot,
+                             cgroup_failure_fallback                 fallback) throws
     -> void
 {
   let const allocator = snapshot.allocator();
@@ -909,15 +908,14 @@ append_cgroup_failure_report(String &output,
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     cells.push({
-        process_count.view(),
-        colors::color_style{colors::color::BoldGreen,
-                            colors::color_variant::Soft}
+        process_count.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                                 colors::color_variant::Soft}
     });
     cells.push({
         process_snapshot_status_name(
             static_cast<process_snapshot_status>(status_index)),
-        colors::color_style{colors::color::BoldYellow,
-                            colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::BoldYellow,
+                           colors::color_variant::Soft}
     });
     table.add_row(cells);
   }
@@ -927,12 +925,12 @@ append_cgroup_failure_report(String &output,
 
     cells.reserve(2);
     cells.push({
-        "self", colors::color_style{colors::color::BoldGreen,
-                                    colors::color_variant::Soft}
+        "self", colors::ColorStyle{colors::color::BoldGreen,
+                                   colors::color_variant::Soft}
     });
     cells.push({
-        "Unavailable", colors::color_style{colors::color::BoldYellow,
-                                           colors::color_variant::Soft}
+        "Unavailable", colors::ColorStyle{colors::color::BoldYellow,
+                                          colors::color_variant::Soft}
     });
     table.add_row(cells);
   }
@@ -944,10 +942,10 @@ append_cgroup_failure_report(String &output,
 }
 
 fn
-append_cgroup_report(String                                   &output,
-                     bool                                      should_color,
-                     const ArrayList<process_cgroup_snapshot> &snapshot,
-                     eviliso_detail_mode                       detail) throws -> void
+append_cgroup_report(String                                 &output,
+                     bool                                    should_color,
+                     const ArrayList<ProcessCgroupSnapshot> &snapshot,
+                     eviliso_detail_mode                     detail) throws -> void
 {
   let const allocator       = snapshot.allocator();
   let       table           = ReportTable{allocator};
@@ -969,13 +967,13 @@ append_cgroup_report(String                                   &output,
   }
 
   let const &self = snapshot[*self_index];
-  let        rows = ArrayList<cgroup_report_row>{allocator};
+  let        rows = ArrayList<CgroupReportRow>{allocator};
 
   for (let const &membership : self.memberships) {
-    rows.push(cgroup_report_row{
-        membership.hierarchy.view(), membership.hierarchy_value,
-        membership.controller.view(), membership.path.view(), self, "self",
-        "available", allocator});
+    rows.push(
+        CgroupReportRow{membership.hierarchy.view(), membership.hierarchy_value,
+                        membership.controller.view(), membership.path.view(),
+                        self, "self", "available", allocator});
   }
 
   if (detail == eviliso_detail_mode::All) {
@@ -991,7 +989,7 @@ append_cgroup_report(String                                   &output,
             continue;
           }
 
-          rows.push(cgroup_report_row{
+          rows.push(CgroupReportRow{
               membership.hierarchy.view(), membership.hierarchy_value,
               membership.controller.view(), membership.path.view(), process,
               "other", "available", allocator});
@@ -1002,7 +1000,7 @@ append_cgroup_report(String                                   &output,
   }
 
   let const sorted_rows = steal(rows).make_sorted(
-      [](const cgroup_report_row &left, const cgroup_report_row &right) {
+      [](const CgroupReportRow &left, const CgroupReportRow &right) {
         if (left.hierarchy_value != right.hierarchy_value)
           return left.hierarchy_value < right.hierarchy_value;
         if (left.controller != right.controller)
@@ -1029,29 +1027,28 @@ append_cgroup_report(String                                   &output,
   for (let const &row : sorted_rows) {
     cells.clear();
     cells.push({
-        row.hierarchy.view(),
-        colors::color_style{colors::color::BoldGreen,
-                            colors::color_variant::Soft}
+        row.hierarchy.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                                 colors::color_variant::Soft}
     });
     cells.push({row.controller.view(), colors::color::Reset});
     cells.push({row.path.view(), colors::color::Reset});
     cells.push({
         row.process_id.view(),
-        colors::color_style{colors::color::BoldGreen,
-                            colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::BoldGreen,
+                           colors::color_variant::Soft}
     });
     cells.push({row.name.view(), colors::color::Reset});
     cells.push({
-        row.role, colors::color_style{colors::color::BoldMagenta,
-                                      colors::color_variant::Soft}
+        row.role, colors::ColorStyle{colors::color::BoldMagenta,
+                                     colors::color_variant::Soft}
     });
     if (detail == eviliso_detail_mode::All)
       cells.push({
           row.status, row.status == "available"
-                          ? colors::color_style{colors::color::BoldGreen,
-                                                colors::color_variant::Soft}
-                          : colors::color_style{colors::color::BoldYellow,
-                                                colors::color_variant::Soft}
+                          ? colors::ColorStyle{colors::color::BoldGreen,
+                                               colors::color_variant::Soft}
+                          : colors::ColorStyle{colors::color::BoldYellow,
+                                               colors::color_variant::Soft}
       });
     report.add_row(cells);
   }
@@ -1061,9 +1058,9 @@ append_cgroup_report(String                                   &output,
                                cgroup_failure_fallback::SuppressEmpty);
 }
 
-struct session_report_row
+struct SessionReportRow
 {
-  explicit session_report_row(Allocator allocator)
+  explicit SessionReportRow(Allocator allocator)
       : user(allocator), terminal(allocator), login_time(allocator)
   {}
 
@@ -1088,7 +1085,7 @@ append_session_report(String             &output,
         return left.login_time < right.login_time;
       });
 
-  let rows = ArrayList<session_report_row>{allocator};
+  let rows = ArrayList<SessionReportRow>{allocator};
 
   for (let const &session : sorted_sessions) {
     let login_time = String{allocator};
@@ -1101,7 +1098,7 @@ append_session_report(String             &output,
                                                         session.login_time)};
     }
 
-    let row = session_report_row{allocator};
+    let row = SessionReportRow{allocator};
 
     row.user       = session.user.clone_to(allocator);
     row.terminal   = session.terminal.clone_to(allocator);
@@ -1132,8 +1129,8 @@ append_session_report(String             &output,
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     cells.push({
-        row.user.view(), colors::color_style{colors::color::BoldGreen,
-                                             colors::color_variant::Soft}
+        row.user.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                            colors::color_variant::Soft}
     });
     cells.push({row.terminal.view(), colors::color::Reset});
     if (detail == eviliso_detail_mode::All) {
@@ -1207,11 +1204,11 @@ remote_table_text(StringView text,
 }
 
 fn
-append_remote_report(String                                   &output,
-                     bool                                      should_color,
-                     const ArrayList<process_cgroup_snapshot> &snapshot,
-                     Allocator                                 allocator,
-                     eviliso_detail_mode                       detail) throws -> void
+append_remote_report(String                                 &output,
+                     bool                                    should_color,
+                     const ArrayList<ProcessCgroupSnapshot> &snapshot,
+                     Allocator                               allocator,
+                     eviliso_detail_mode                     detail) throws -> void
 {
   let table = ReportTable{allocator};
 
@@ -1224,12 +1221,12 @@ append_remote_report(String                                   &output,
 
     cells.reserve(3);
     cells.push({
-        "Sockets", colors::color_style{colors::color::BoldCyan,
-                                       colors::color_variant::Soft}
+        "Sockets", colors::ColorStyle{colors::color::BoldCyan,
+                                      colors::color_variant::Soft}
     });
     cells.push({
-        "unavailable", colors::color_style{colors::color::BoldYellow,
-                                           colors::color_variant::Soft}
+        "unavailable", colors::ColorStyle{colors::color::BoldYellow,
+                                          colors::color_variant::Soft}
     });
     cells.push(
         {"platform does not expose socket records", colors::color::Reset});
@@ -1320,13 +1317,13 @@ append_remote_report(String                                   &output,
   let const remote_socket_text = String::from(remote_count, allocator);
 
   summary_cells.push({
-      "Remote sockets", colors::color_style{colors::color::BoldCyan,
-                                            colors::color_variant::Soft}
+      "Remote sockets", colors::ColorStyle{colors::color::BoldCyan,
+                                           colors::color_variant::Soft}
   });
   summary_cells.push({
       remote_socket_text.view(),
-      colors::color_style{colors::color::BoldGreen,
-                          colors::color_variant::Soft}
+      colors::ColorStyle{colors::color::BoldGreen,
+                         colors::color_variant::Soft}
   });
   table.add_row(summary_cells);
   summary_cells.clear();
@@ -1334,20 +1331,20 @@ append_remote_report(String                                   &output,
   let const total_socket_text = String::from(socket_count, allocator);
 
   summary_cells.push({
-      "Total sockets", colors::color_style{colors::color::BoldCyan,
-                                           colors::color_variant::Soft}
+      "Total sockets", colors::ColorStyle{colors::color::BoldCyan,
+                                          colors::color_variant::Soft}
   });
   summary_cells.push({
       total_socket_text.view(),
-      colors::color_style{colors::color::BoldGreen,
-                          colors::color_variant::Soft}
+      colors::ColorStyle{colors::color::BoldGreen,
+                         colors::color_variant::Soft}
   });
   table.add_row(summary_cells);
   append_titled_report_table(output, "Socket summary", table, should_color);
 
-  struct remote_peer_row
+  struct RemotePeerRow
   {
-    explicit remote_peer_row(Allocator allocator)
+    explicit RemotePeerRow(Allocator allocator)
         : local(allocator), peer(allocator), socket_id(allocator),
           process_id(allocator), owner_id(allocator), user(allocator),
           name(allocator), command(allocator), net_namespace(allocator),
@@ -1375,9 +1372,9 @@ append_remote_report(String                                   &output,
     u64        send_queue_byte_count{0};
   };
 
-  struct remote_process_context
+  struct RemoteProcessContext
   {
-    explicit remote_process_context(Allocator allocator)
+    explicit RemoteProcessContext(Allocator allocator)
         : name(allocator), command(allocator), net_namespace(allocator),
           orchestrator(allocator), runtime(allocator), container(allocator),
           cgroups(allocator)
@@ -1396,16 +1393,16 @@ append_remote_report(String                                   &output,
     bool   is_available{false};
   };
 
-  struct remote_user_context
+  struct RemoteUserContext
   {
-    explicit remote_user_context(Allocator allocator) : name(allocator) {}
+    explicit RemoteUserContext(Allocator allocator) : name(allocator) {}
 
     u32    owner_id{0};
     String name;
   };
 
-  let       process_contexts = ArrayList<remote_process_context>{allocator};
-  let       user_contexts    = ArrayList<remote_user_context>{allocator};
+  let       process_contexts = ArrayList<RemoteProcessContext>{allocator};
+  let       user_contexts    = ArrayList<RemoteUserContext>{allocator};
   let const self_net_namespace =
       os::read_symlink(eviliso_proc_path("self/ns/net", allocator), allocator);
 
@@ -1426,7 +1423,7 @@ append_remote_report(String                                   &output,
       name = steal(*resolved);
     }
 
-    let context = remote_user_context{allocator};
+    let context = RemoteUserContext{allocator};
 
     context.owner_id = owner_id;
     context.name     = steal(name);
@@ -1436,7 +1433,7 @@ append_remote_report(String                                   &output,
                   user_contexts[user_contexts.count() - 1].name.view()};
   };
 
-  let remote_rows         = ArrayList<remote_peer_row>{allocator};
+  let remote_rows         = ArrayList<RemotePeerRow>{allocator};
   u64 previous_identity   = 0;
   u32 previous_process_id = 0;
 
@@ -1451,7 +1448,7 @@ append_remote_report(String                                   &output,
     previous_identity   = socket.identity;
     previous_process_id = socket.process_id;
 
-    remote_peer_row row{allocator};
+    RemotePeerRow row{allocator};
 
     row.family =
         socket.family == os::network_address_family::IPv6 ? "IPv6" : "IPv4";
@@ -1507,7 +1504,7 @@ append_remote_report(String                                   &output,
       if (!process_context_index.has_value() && socket.process_id != 0 &&
           socket.has_owner_start_token)
       {
-        remote_process_context context{allocator};
+        RemoteProcessContext context{allocator};
 
         context.process_id  = socket.process_id;
         context.start_token = socket.owner_start_token;
@@ -1656,43 +1653,43 @@ append_remote_report(String                                   &output,
     let cells   = ArrayList<report_table_cell_view>{allocator};
 
     cells.push({
-        row.family, colors::color_style{colors::color::BoldMagenta,
-                                        colors::color_variant::Soft}
-    });
-    cells.push({
-        row.protocol, colors::color_style{colors::color::BoldMagenta,
-                                          colors::color_variant::Soft}
-    });
-    cells.push({
-        row.state, colors::color_style{colors::color::BoldGreen,
+        row.family, colors::ColorStyle{colors::color::BoldMagenta,
                                        colors::color_variant::Soft}
     });
     cells.push({
-        receive.view(), colors::color_style{colors::color::Green,
-                                            colors::color_variant::Soft}
-    });
-    cells.push({
-        send.view(), colors::color_style{colors::color::Green,
+        row.protocol, colors::ColorStyle{colors::color::BoldMagenta,
                                          colors::color_variant::Soft}
     });
     cells.push({
-        row.local.view(), colors::color_style{colors::color::BoldCyan,
-                                              colors::color_variant::Soft}
+        row.state, colors::ColorStyle{colors::color::BoldGreen,
+                                      colors::color_variant::Soft}
+    });
+    cells.push({
+        receive.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
+    });
+    cells.push({
+        send.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
+    });
+    cells.push({
+        row.local.view(), colors::ColorStyle{colors::color::BoldCyan,
+                                             colors::color_variant::Soft}
     });
     cells.push({
         row.peer.view(),
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft}
     });
     if (detail == eviliso_detail_mode::All) {
       cells.push({
           row.socket_id.view(),
-          colors::color_style{colors::color::Yellow,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::Yellow,
+                             colors::color_variant::Soft}
       });
       cells.push({
           row.process_id.view(),
-          colors::color_style{colors::color::Yellow,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::Yellow,
+                             colors::color_variant::Soft}
       });
       cells.push({row.owner_id.view(), colors::color::Reset});
       cells.push({row.user.view(), colors::color::Reset});
@@ -1712,14 +1709,14 @@ append_remote_report(String                                   &output,
 }
 
 fn
-append_runtime_evidence_report(
-    String                                   &output,
-    bool                                      should_color,
-    const ArrayList<process_cgroup_snapshot> &snapshot,
-    Allocator                                 allocator,
-    eviliso_detail_mode                       detail) throws -> void
+append_runtime_evidence_report(String &output,
+                               bool    should_color,
+                               const ArrayList<ProcessCgroupSnapshot> &snapshot,
+                               Allocator           allocator,
+                               eviliso_detail_mode detail) throws
+    -> void
 {
-  struct runtime_report_row
+  struct RuntimeReportRow
   {
     String runtime;
     String source;
@@ -1729,13 +1726,13 @@ append_runtime_evidence_report(
     String role;
     String evidence;
 
-    explicit runtime_report_row(Allocator allocator)
+    explicit RuntimeReportRow(Allocator allocator)
         : runtime(allocator), source(allocator), process_id(allocator),
           name(allocator), role(allocator), evidence(allocator)
     {}
   };
 
-  let       rows            = ArrayList<runtime_report_row>{allocator};
+  let       rows            = ArrayList<RuntimeReportRow>{allocator};
   let const self_process_id = os::get_current_process_id();
 
   for (let const &process : snapshot) {
@@ -1761,7 +1758,7 @@ append_runtime_evidence_report(
 
       if (is_duplicate) continue;
 
-      let row = runtime_report_row{allocator};
+      let row = RuntimeReportRow{allocator};
 
       row.runtime          = evidence.runtime.clone();
       row.source           = String{row.source.allocator(), "cgroup"};
@@ -1792,7 +1789,7 @@ append_runtime_evidence_report(
 
     if (!Path{path.view(), allocator}.is_regular_file()) continue;
 
-    let row = runtime_report_row{allocator};
+    let row = RuntimeReportRow{allocator};
 
     row.runtime    = String{row.runtime.allocator(), marker.runtime};
     row.source     = String{row.source.allocator(), "marker"};
@@ -1804,7 +1801,7 @@ append_runtime_evidence_report(
   }
 
   let const sorted_rows = steal(rows).make_sorted(
-      [](const runtime_report_row &left, const runtime_report_row &right) {
+      [](const RuntimeReportRow &left, const RuntimeReportRow &right) {
         if (left.runtime != right.runtime) return left.runtime < right.runtime;
         if (left.source != right.source) return left.source < right.source;
         if (left.evidence != right.evidence)
@@ -1829,20 +1826,20 @@ append_runtime_evidence_report(
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     cells.push({
-        row.runtime.view(), colors::color_style{colors::color::BoldGreen,
-                                                colors::color_variant::Soft}
+        row.runtime.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                               colors::color_variant::Soft}
     });
     cells.push({row.source.view(), colors::color::Reset});
     if (detail == eviliso_detail_mode::All) {
       cells.push({
           row.process_id.view(),
-          colors::color_style{colors::color::Yellow,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::Yellow,
+                             colors::color_variant::Soft}
       });
       cells.push({row.name.view(), colors::color::Reset});
       cells.push({
-          row.role.view(), colors::color_style{colors::color::BoldMagenta,
-                                               colors::color_variant::Soft}
+          row.role.view(), colors::ColorStyle{colors::color::BoldMagenta,
+                                              colors::color_variant::Soft}
       });
     }
 
@@ -1854,24 +1851,24 @@ append_runtime_evidence_report(
 }
 
 fn
-append_container_report(String                                   &output,
-                        bool                                      should_color,
-                        const ArrayList<process_cgroup_snapshot> &snapshot,
-                        Allocator                                 allocator,
-                        eviliso_detail_mode detail) throws -> void
+append_container_report(String                                 &output,
+                        bool                                    should_color,
+                        const ArrayList<ProcessCgroupSnapshot> &snapshot,
+                        Allocator                               allocator,
+                        eviliso_detail_mode                     detail) throws -> void
 {
-  struct container_summary_row
+  struct ContainerSummaryRow
   {
     String runtime;
     String identifier;
     usize  process_count{0};
 
-    explicit container_summary_row(Allocator allocator)
+    explicit ContainerSummaryRow(Allocator allocator)
         : runtime(allocator), identifier(allocator)
     {}
   };
 
-  struct container_detail_row
+  struct ContainerDetailRow
   {
     String     runtime;
     String     identifier;
@@ -1880,14 +1877,14 @@ append_container_report(String                                   &output,
     StringView role;
     String     cgroup;
 
-    explicit container_detail_row(Allocator allocator)
+    explicit ContainerDetailRow(Allocator allocator)
         : runtime(allocator), identifier(allocator), name(allocator),
           cgroup(allocator)
     {}
   };
 
-  let       summary_rows    = ArrayList<container_summary_row>{allocator};
-  let       detail_rows     = ArrayList<container_detail_row>{allocator};
+  let       summary_rows    = ArrayList<ContainerSummaryRow>{allocator};
+  let       detail_rows     = ArrayList<ContainerDetailRow>{allocator};
   let const self_process_id = os::get_current_process_id();
 
   for (let const &process : snapshot) {
@@ -1925,7 +1922,7 @@ append_container_report(String                                   &output,
         }
 
         if (!is_known) {
-          let row = container_summary_row{allocator};
+          let row = ContainerSummaryRow{allocator};
 
           row.runtime       = evidence.runtime.clone();
           row.identifier    = evidence.container_id.clone();
@@ -1952,7 +1949,7 @@ append_container_report(String                                   &output,
 
       if (is_detail_duplicate) continue;
 
-      let row = container_detail_row{allocator};
+      let row = ContainerDetailRow{allocator};
 
       row.runtime          = evidence.runtime.clone();
       row.identifier       = evidence.container_id.clone();
@@ -1972,8 +1969,8 @@ append_container_report(String                                   &output,
   if (detail != eviliso_detail_mode::All) {
     let const sorted_summary_rows =
         steal(summary_rows)
-            .make_sorted([](const container_summary_row &left,
-                            const container_summary_row &right) {
+            .make_sorted([](const ContainerSummaryRow &left,
+                            const ContainerSummaryRow &right) {
               if (left.runtime != right.runtime)
                 return left.runtime < right.runtime;
 
@@ -1987,26 +1984,25 @@ append_container_report(String                                   &output,
       let cells = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({
-          row.runtime.view(),
-          colors::color_style{colors::color::BoldGreen,
-                              colors::color_variant::Soft}
+          row.runtime.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                                 colors::color_variant::Soft}
       });
       cells.push({
           row.identifier.view(),
-          colors::color_style{colors::color::Cyan,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::Cyan,
+                             colors::color_variant::Soft}
       });
       cells.push({
-          count.view(), colors::color_style{colors::color::Yellow,
-                                            colors::color_variant::Soft}
+          count.view(), colors::ColorStyle{colors::color::Yellow,
+                                           colors::color_variant::Soft}
       });
       table.add_row(cells);
     }
   } else {
     let const sorted_detail_rows =
         steal(detail_rows)
-            .make_sorted([](const container_detail_row &left,
-                            const container_detail_row &right) {
+            .make_sorted([](const ContainerDetailRow &left,
+                            const ContainerDetailRow &right) {
               if (left.runtime != right.runtime)
                 return left.runtime < right.runtime;
               if (left.identifier != right.identifier)
@@ -2027,23 +2023,22 @@ append_container_report(String                                   &output,
       let       cells      = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({
-          row.runtime.view(),
-          colors::color_style{colors::color::BoldGreen,
-                              colors::color_variant::Soft}
+          row.runtime.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                                 colors::color_variant::Soft}
       });
       cells.push({
           row.identifier.view(),
-          colors::color_style{colors::color::Cyan,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::Cyan,
+                             colors::color_variant::Soft}
       });
       cells.push({
-          process_id.view(), colors::color_style{colors::color::Yellow,
-                                                 colors::color_variant::Soft}
+          process_id.view(), colors::ColorStyle{colors::color::Yellow,
+                                                colors::color_variant::Soft}
       });
       cells.push({row.name.view(), colors::color::Reset});
       cells.push({
-          row.role, colors::color_style{colors::color::BoldMagenta,
-                                        colors::color_variant::Soft}
+          row.role, colors::ColorStyle{colors::color::BoldMagenta,
+                                       colors::color_variant::Soft}
       });
       cells.push({row.cgroup.view(), colors::color::Reset});
       table.add_row(cells);
@@ -2120,11 +2115,11 @@ read_kubernetes_metadata(StringView name, Allocator allocator) throws
            the detail loop scans earlier entries of each process, O(sum of
            E_p^2). summary mode sorts the rows, O(R log R). */
 fn
-append_kubernetes_report(String                                   &output,
-                         bool                                      should_color,
-                         const ArrayList<process_cgroup_snapshot> &snapshot,
-                         Allocator                                 allocator,
-                         eviliso_detail_mode detail) throws -> void
+append_kubernetes_report(String                                 &output,
+                         bool                                    should_color,
+                         const ArrayList<ProcessCgroupSnapshot> &snapshot,
+                         Allocator                               allocator,
+                         eviliso_detail_mode                     detail) throws -> void
 {
   let const self_process_id = os::get_current_process_id();
   let       kubernetes_host = String{allocator};
@@ -2156,8 +2151,8 @@ append_kubernetes_report(String                                   &output,
     cells.push({"environment", colors::color::Reset});
     cells.push({
         kubernetes_host.view(),
-        colors::color_style{colors::color::BoldGreen,
-                            colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::BoldGreen,
+                           colors::color_variant::Soft}
     });
     cells.push({namespace_view, colors::color::Reset});
     cells.push({"KUBERNETES_SERVICE_HOST", colors::color::Reset});
@@ -2181,8 +2176,8 @@ append_kubernetes_report(String                                   &output,
     cells.push({"-", colors::color::Reset});
     cells.push({
         namespace_name.view(),
-        colors::color_style{colors::color::BoldGreen,
-                            colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::BoldGreen,
+                           colors::color_variant::Soft}
     });
     cells.push({"namespace file", colors::color::Reset});
     evidence_table.add_row(cells);
@@ -2191,7 +2186,7 @@ append_kubernetes_report(String                                   &output,
   append_titled_report_table(output, "Kubernetes", evidence_table,
                              should_color);
 
-  struct kubernetes_row
+  struct KubernetesRow
   {
     String pod_uid;
     String qos;
@@ -2199,13 +2194,13 @@ append_kubernetes_report(String                                   &output,
     String container_id;
     usize  process_count{0};
 
-    explicit kubernetes_row(Allocator allocator)
+    explicit KubernetesRow(Allocator allocator)
         : pod_uid(allocator), qos(allocator), runtime(allocator),
           container_id(allocator)
     {}
   };
 
-  let rows = ArrayList<kubernetes_row>{allocator};
+  let rows = ArrayList<KubernetesRow>{allocator};
 
   for (let const &process : snapshot) {
     for (usize index = 0; index < process.evidence.count(); index++) {
@@ -2250,7 +2245,7 @@ append_kubernetes_report(String                                   &output,
       }
 
       if (!is_known) {
-        let row = kubernetes_row{allocator};
+        let row = KubernetesRow{allocator};
 
         row.pod_uid       = evidence.pod_uid.clone();
         row.qos           = evidence.qos.clone();
@@ -2271,7 +2266,7 @@ append_kubernetes_report(String                                   &output,
   workload_table.add_heading("CONTAINER");
   if (detail != eviliso_detail_mode::All) {
     let const sorted_rows = steal(rows).make_sorted(
-        [](const kubernetes_row &left, const kubernetes_row &right) {
+        [](const KubernetesRow &left, const KubernetesRow &right) {
           if (left.pod_uid != right.pod_uid)
             return left.pod_uid < right.pod_uid;
           if (left.qos != right.qos) return left.qos < right.qos;
@@ -2289,23 +2284,22 @@ append_kubernetes_report(String                                   &output,
 
       cells.push({"cgroup", colors::color::Reset});
       cells.push({
-          row.pod_uid.view(),
-          colors::color_style{colors::color::BoldGreen,
-                              colors::color_variant::Soft}
+          row.pod_uid.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                                 colors::color_variant::Soft}
       });
       cells.push({
-          row.qos.view(), colors::color_style{colors::color::BoldMagenta,
-                                              colors::color_variant::Soft}
+          row.qos.view(), colors::ColorStyle{colors::color::BoldMagenta,
+                                             colors::color_variant::Soft}
       });
       cells.push({row.runtime.view(), colors::color::Reset});
       cells.push({
           row.container_id.view(),
-          colors::color_style{colors::color::Cyan,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::Cyan,
+                             colors::color_variant::Soft}
       });
       cells.push({
-          count.view(), colors::color_style{colors::color::Yellow,
-                                            colors::color_variant::Soft}
+          count.view(), colors::ColorStyle{colors::color::Yellow,
+                                           colors::color_variant::Soft}
       });
       workload_table.add_row(cells);
     }
@@ -2346,30 +2340,30 @@ append_kubernetes_report(String                                   &output,
         cells.push({"cgroup", colors::color::Reset});
         cells.push({
             evidence.pod_uid.view(),
-            colors::color_style{colors::color::BoldGreen,
-                                colors::color_variant::Soft}
+            colors::ColorStyle{colors::color::BoldGreen,
+                               colors::color_variant::Soft}
         });
         cells.push({
             evidence.qos.view(),
-            colors::color_style{colors::color::BoldMagenta,
-                                colors::color_variant::Soft}
+            colors::ColorStyle{colors::color::BoldMagenta,
+                               colors::color_variant::Soft}
         });
         cells.push({evidence.runtime.view(), colors::color::Reset});
         cells.push({
             evidence.container_id.view(),
-            colors::color_style{colors::color::Cyan,
-                                colors::color_variant::Soft}
+            colors::ColorStyle{colors::color::Cyan,
+                               colors::color_variant::Soft}
         });
         cells.push({
             process_id.view(),
-            colors::color_style{colors::color::Yellow,
-                                colors::color_variant::Soft}
+            colors::ColorStyle{colors::color::Yellow,
+                               colors::color_variant::Soft}
         });
         cells.push({process.name.view(), colors::color::Reset});
         cells.push({
             process.process_id == self_process_id ? StringView{"self"}
                                                   : StringView{"other"},
-            colors::color_style{colors::color::BoldMagenta,
+            colors::ColorStyle{colors::color::BoldMagenta,
                                                                colors::color_variant::Soft}
         });
         cells.push({evidence.path.view(), colors::color::Reset});
@@ -2434,18 +2428,18 @@ EvilIso::execute(const ExecContext               &ec,
   let const process_cgroups =
       should_show_namespaces || collection == eviliso_collection_mode::Collect
           ? collect_process_cgroup_snapshot(cxt.scratch_allocator(), collection)
-          : ArrayList<process_cgroup_snapshot>{cxt.scratch_allocator()};
+          : ArrayList<ProcessCgroupSnapshot>{cxt.scratch_allocator()};
 
   if (should_show_namespaces) {
     let namespace_processes =
-        ArrayList<namespace_process>{cxt.scratch_allocator()};
+        ArrayList<NamespaceProcess>{cxt.scratch_allocator()};
     let const self_process_id = os::get_current_process_id();
 
     namespace_processes.reserve(process_cgroups.count());
 
     for (let const &process : process_cgroups) {
       if (!process_snapshot_identity_is_valid(process.status)) continue;
-      namespace_processes.push(namespace_process{
+      namespace_processes.push(NamespaceProcess{
           process.process_id, process.name.view(),
           process.process_id == self_process_id, cxt.scratch_allocator()});
     }

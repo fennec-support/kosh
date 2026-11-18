@@ -413,32 +413,31 @@ EvilDisk::execute(const ExecContext               &ec,
 
     cells.push({
         mounted.source.view(),
-        colors::color_style{colors::color::Green,
-                            colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
         mounted.type.is_empty() ? StringView{"-"}
           : mounted.type.view(),
-        colors::color_style{colors::color::BoldMagenta,
+        colors::ColorStyle{colors::color::BoldMagenta,
                                              colors::color_variant::Soft}
     });
     cells.push({
         size_text.view(),
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft}
     });
     cells.push({
         used_text.view(),
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft}
     });
     cells.push({
         available_text.view(),
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft}
     });
     cells.push({use_text.view(), usage_style(use_percent)});
     cells.push({
         mounted.target.view(),
-        colors::color_style{colors::color::BoldGreen,
-                            colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::BoldGreen,
+                           colors::color_variant::Soft}
     });
     capacity_table.add_row(cells);
   }
@@ -462,12 +461,11 @@ EvilDisk::execute(const ExecContext               &ec,
                              should_color);
 
   let       disk_snapshot = os::read_disk_io_snapshot(allocator);
-  let const sorted_disks =
-      steal(disk_snapshot.disks)
-          .make_sorted([](const os::disk_io_status &left,
-                          const os::disk_io_status &right) {
-            return left.name < right.name;
-          });
+  let const sorted_disks  = steal(disk_snapshot.disks)
+                               .make_sorted([](const os::DiskIoStatus &left,
+                                               const os::DiskIoStatus &right) {
+                                 return left.name < right.name;
+                               });
   bool has_failure_counters = false;
 
   for (let const &disk : sorted_disks) {
@@ -518,19 +516,19 @@ EvilDisk::execute(const ExecContext               &ec,
       let cells = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({
-          disk.name.view(), colors::color_style{colors::color::BoldGreen,
-                                                colors::color_variant::Soft}
+          disk.name.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                               colors::color_variant::Soft}
       });
 
       for (usize index = 0; index < counter_text.count(); index++) {
-        let color = colors::color_style{colors::color::Dim};
+        let color = colors::ColorStyle{colors::color::Dim};
 
         if (disk.has_field(FIELDS[index]))
           color = counters[index] == 0
-                      ? colors::color_style{colors::color::Green,
-                                            colors::color_variant::Soft}
-                      : colors::color_style{colors::color::BoldRed,
-                                            colors::color_variant::Soft};
+                      ? colors::ColorStyle{colors::color::Green,
+                                           colors::color_variant::Soft}
+                      : colors::ColorStyle{colors::color::BoldRed,
+                                           colors::color_variant::Soft};
         cells.push({counter_text[index].view(), color});
       }
 
@@ -559,8 +557,8 @@ EvilDisk::execute(const ExecContext               &ec,
 
       cells.push({
           filesystem.target.view(),
-          colors::color_style{colors::color::BoldGreen,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::BoldGreen,
+                             colors::color_variant::Soft}
       });
       cells.push({filesystem.volume_name.is_empty()
                       ? StringView{"-"}
@@ -640,20 +638,20 @@ EvilDisk::execute(const ExecContext               &ec,
 
       cells.push({
           filesystem.target.view(),
-          colors::color_style{colors::color::BoldGreen,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::BoldGreen,
+                             colors::color_variant::Soft}
       });
       cells.push({
           filesystem.type.view(),
-          colors::color_style{colors::color::BoldMagenta,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::BoldMagenta,
+                             colors::color_variant::Soft}
       });
       cells.push({
           filesystem_integrity_display_name(status),
           status == filesystem_integrity_display::Dirty
-              ? colors::color_style{colors::color::BoldRed,
-                                    colors::color_variant::Soft}
-              : colors::color_style{colors::color::Reset}
+              ? colors::ColorStyle{colors::color::BoldRed,
+                                   colors::color_variant::Soft}
+              : colors::ColorStyle{colors::color::Reset}
       });
       cells.push({read_count.view(), colors::color::Reset});
       cells.push({write_count.view(), colors::color::Reset});
@@ -688,26 +686,26 @@ EvilDisk::execute(const ExecContext               &ec,
 
         cells.push({
             row.device.view(),
-            colors::color_style{colors::color::BoldGreen,
-                                colors::color_variant::Soft}
+            colors::ColorStyle{colors::color::BoldGreen,
+                               colors::color_variant::Soft}
         });
         cells.push({
             row.status.view(),
-            is_healthy ? colors::color_style{colors::color::BoldGreen,
-                                             colors::color_variant::Soft}
-                       : colors::color_style{colors::color::BoldYellow,
-                                             colors::color_variant::Soft}
+            is_healthy ? colors::ColorStyle{colors::color::BoldGreen,
+                                            colors::color_variant::Soft}
+                       : colors::ColorStyle{colors::color::BoldYellow,
+                                            colors::color_variant::Soft}
         });
         cells.push({row.model.view(), colors::color::Reset});
         cells.push({
             row.protocol.view(),
-            colors::color_style{colors::color::BoldMagenta,
-                                colors::color_variant::Soft}
+            colors::ColorStyle{colors::color::BoldMagenta,
+                               colors::color_variant::Soft}
         });
         cells.push({
             row.statistics.view(),
-            colors::color_style{colors::color::Cyan,
-                                colors::color_variant::Soft}
+            colors::ColorStyle{colors::color::Cyan,
+                               colors::color_variant::Soft}
         });
         table.add_row(cells);
 
@@ -730,19 +728,19 @@ EvilDisk::execute(const ExecContext               &ec,
 
     table.add_heading("SECTION");
     table.add_column("STATUS", report_table_alignment::Left,
-                     colors::color_style{colors::color::BoldYellow,
-                                         colors::color_variant::Soft});
+                     colors::ColorStyle{colors::color::BoldYellow,
+                                        colors::color_variant::Soft});
 
     for (let const section : unavailable_sections) {
       let cells = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({
-          section, colors::color_style{colors::color::BoldCyan,
-                                       colors::color_variant::Soft}
+          section, colors::ColorStyle{colors::color::BoldCyan,
+                                      colors::color_variant::Soft}
       });
       cells.push({
-          "Unavailable", colors::color_style{colors::color::BoldYellow,
-                                             colors::color_variant::Soft}
+          "Unavailable", colors::ColorStyle{colors::color::BoldYellow,
+                                            colors::color_variant::Soft}
       });
       table.add_row(cells);
     }

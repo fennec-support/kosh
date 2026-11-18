@@ -30,7 +30,7 @@ REGISTER_BUILTIN_FLAGS(BuiltinBuiltin);
 namespace koshka {
 
 using sorted_builtin_name_list =
-    SortedArrayList<String, order_comparator<String>>;
+    SortedArrayList<String, OrderComparator<String>>;
 
 /* memory: the sorted list is allocated in heap_allocator() and lives until
            exit. the static initializer runs once.
@@ -51,7 +51,7 @@ sorted_builtin_names() throws -> const sorted_builtin_name_list &
 }
 
 static pure fn
-get_builtin_section(Builtin::Kind kind, StringView name) wontthrow
+get_builtin_section(builtin::Kind kind, StringView name) wontthrow
     -> builtin_section
 {
   if (name == "source") return builtin_section::Bash;
@@ -59,9 +59,9 @@ get_builtin_section(Builtin::Kind kind, StringView name) wontthrow
   return BUILTIN_SECTIONS[static_cast<usize>(kind)];
 }
 
-struct builtin_name_sections
+struct BuiltinNameSections
 {
-  explicit builtin_name_sections(Allocator allocator)
+  explicit BuiltinNameSections(Allocator allocator)
       : posix_names(allocator), bash_names(allocator), koshka_names(allocator)
   {}
 
@@ -72,9 +72,9 @@ struct builtin_name_sections
 
 static fn
 collect_builtin_name_sections(Allocator allocator) throws
-    -> builtin_name_sections
+    -> BuiltinNameSections
 {
-  let sections = builtin_name_sections{allocator};
+  let sections = BuiltinNameSections{allocator};
 
   for (let const &name : sorted_builtin_names()) {
     let const kind = search_builtin(name.view());

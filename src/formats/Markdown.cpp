@@ -166,7 +166,7 @@ starts_with_prompt(StringView source,
 /* the heredoc that a session command line opens, read with the lexer's
    delimiter rules, or None when the line opens none. */
 static fn
-session_heredoc(StringView line) throws -> Maybe<lexer::pending_heredoc>
+session_heredoc(StringView line) throws -> Maybe<lexer::PendingHeredoc>
 {
   for (usize position = 0; position + 2 < line.length; position++) {
     if (line[position] != '<' || line[position + 1] != '<') {
@@ -186,7 +186,7 @@ session_heredoc(StringView line) throws -> Maybe<lexer::pending_heredoc>
     let const tail = lexer::read_heredoc_operator_tail(line, position + 2);
 
     if (tail.word_end > tail.word_start) {
-      return lexer::pending_heredoc{
+      return lexer::PendingHeredoc{
           lexer::unquote_heredoc_delimiter(
               line.substring_of_length(tail.word_start,
                                        tail.word_end - tail.word_start),
@@ -219,7 +219,7 @@ markdown_analysis_source(StringView        source,
 
   usize position        = start;
   bool  is_continuation = false;
-  let   heredoc         = Maybe<lexer::pending_heredoc>{};
+  let   heredoc         = Maybe<lexer::PendingHeredoc>{};
 
   while (position < end) {
     let const line_start = position;

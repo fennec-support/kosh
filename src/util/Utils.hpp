@@ -40,7 +40,7 @@ struct leading_expansion
   usize variable_end{0};
 };
 
-struct decoded_shell_word
+struct DecodedShellWord
 {
   String                             text;
   Bitset                             glob_active;
@@ -57,7 +57,7 @@ struct decoded_shell_word
   bool                               is_last_quote_ansi_c{false};
   bool                               has_shell_syntax{false};
 
-  explicit decoded_shell_word(Allocator allocator)
+  explicit DecodedShellWord(Allocator allocator)
       : text(allocator), glob_active(allocator), raw_positions(allocator),
         opaque_ranges(allocator)
   {}
@@ -72,9 +72,9 @@ struct decoded_shell_word
   }
 
   mustuse cold fn
-  clone_to(Allocator allocator) const throws -> decoded_shell_word
+  clone_to(Allocator allocator) const throws -> DecodedShellWord
   {
-    let result = decoded_shell_word{allocator};
+    let result = DecodedShellWord{allocator};
 
     result.text                     = text.clone_to(allocator);
     result.glob_active              = glob_active.clone_to(allocator);
@@ -106,7 +106,7 @@ decode_shell_word(StringView                word,
                   Allocator                 allocator,
                   shell_word_source_mapping mapping =
                       shell_word_source_mapping::Omit) throws
-    -> decoded_shell_word;
+    -> DecodedShellWord;
 
 struct unavailable_path_source_component
 {
@@ -360,13 +360,13 @@ detect_c_integer_base(StringView text) wontthrow -> int_base
   return int_base::octal;
 }
 
-struct text_position_range
+struct TextPositionRange
 {
   usize first;
   usize last;
 
   pure fn
-  operator<(const text_position_range &other) const wontthrow -> bool
+  operator<(const TextPositionRange &other) const wontthrow -> bool
   {
     if (first != other.first) return first < other.first;
 
@@ -376,13 +376,12 @@ struct text_position_range
 
 fn
 parse_text_position_ranges(StringView text, Allocator allocator) throws
-    -> Maybe<SortedArrayList<text_position_range,
-                             order_comparator<text_position_range>>>;
+    -> Maybe<
+        SortedArrayList<TextPositionRange, OrderComparator<TextPositionRange>>>;
 pure fn
 text_position_is_selected(
     usize one_based_position,
-    const SortedArrayList<text_position_range,
-                          order_comparator<text_position_range>>
+    const SortedArrayList<TextPositionRange, OrderComparator<TextPositionRange>>
         &ranges) wontthrow -> bool;
 
 /* extend_width places stops at its multiples past the last explicit stop, and
@@ -742,9 +741,9 @@ fn
 git_upstream_ref(const Path &git_dir, StringView branch_name) throws
     -> String;
 
-struct git_status_result
+struct GitStatusResult
 {
-  explicit git_status_result(Allocator allocator) : branch(allocator) {}
+  explicit GitStatusResult(Allocator allocator) : branch(allocator) {}
 
   cold fn
   move_to_allocator(Allocator allocator) throws -> void
@@ -753,9 +752,9 @@ struct git_status_result
   }
 
   mustuse cold fn
-  clone_to(Allocator allocator) const throws -> git_status_result
+  clone_to(Allocator allocator) const throws -> GitStatusResult
   {
-    let result = git_status_result{allocator};
+    let result = GitStatusResult{allocator};
 
     result.branch       = branch.clone_to(allocator);
     result.ahead_count  = ahead_count;
@@ -772,7 +771,7 @@ struct git_status_result
 fn
 git_status(StringView ceiling_directories,
            Allocator  allocator = heap_allocator()) throws
-    -> git_status_result;
+    -> GitStatusResult;
 
 fn
 read_entire_standard_input() throws -> String;

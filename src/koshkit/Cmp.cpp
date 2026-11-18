@@ -30,7 +30,7 @@ enum class byte_read_result : u8
   End,
 };
 
-struct buffered_byte_reader
+struct BufferedByteReader
 {
   os::descriptor descriptor;
   u64            byte_offset{0};
@@ -52,12 +52,12 @@ struct buffered_byte_reader
 };
 
 static fn
-refill_readers(buffered_byte_reader        &left,
-               buffered_byte_reader        &right,
+refill_readers(BufferedByteReader          &left,
+               BufferedByteReader          &right,
                os::Batch                   &batch,
                ArrayList<os::batch_result> &results) throws -> bool
 {
-  let const do_has_bytes = [](const buffered_byte_reader &reader) -> bool {
+  let const do_has_bytes = [](const BufferedByteReader &reader) -> bool {
     return reader.position != reader.length || reader.has_ended;
   };
 
@@ -65,9 +65,9 @@ refill_readers(buffered_byte_reader        &left,
     return true;
   }
 
-  buffered_byte_reader *readers[] = {&left, &right};
-  buffered_byte_reader *batched_readers[2]{};
-  usize                 operation_count = 0;
+  BufferedByteReader *readers[] = {&left, &right};
+  BufferedByteReader *batched_readers[2]{};
+  usize               operation_count = 0;
 
   batch.clear();
 
@@ -85,9 +85,9 @@ refill_readers(buffered_byte_reader        &left,
       continue;
     }
 
-    batch.add(os::batch_operation::read(reader->descriptor, reader->buffer,
-                                        sizeof(reader->buffer),
-                                        reader->byte_offset));
+    batch.add(os::BatchOperation::read(reader->descriptor, reader->buffer,
+                                       sizeof(reader->buffer),
+                                       reader->byte_offset));
     batched_readers[operation_count] = reader;
     operation_count++;
   }
@@ -127,7 +127,7 @@ append_padded_number(String  &output,
   output += digits.view();
 }
 
-/* memory: each buffered_byte_reader holds a 64 KiB buffer inline, so the two
+/* memory: each BufferedByteReader holds a 64 KiB buffer inline, so the two
            readers occupy 128 KiB of the stack frame. in -l mode, output is
            printed once it reaches 64 KiB.
    time:   O(bytes compared). each run of common bytes is checked with
@@ -177,10 +177,10 @@ Cmp::execute(const ExecContext               &ec,
     return input.mode == input_descriptor_mode::Owned &&
            os::descriptor_is_seekable(input.descriptor);
   };
-  buffered_byte_reader left{left_input->descriptor,        0,     0, 0,
-                            do_is_positioned(*left_input), false, {}};
-  buffered_byte_reader right{right_input->descriptor,        0,     0, 0,
-                             do_is_positioned(*right_input), false, {}};
+  BufferedByteReader left{left_input->descriptor,        0,     0, 0,
+                          do_is_positioned(*left_input), false, {}};
+  BufferedByteReader right{right_input->descriptor,        0,     0, 0,
+                           do_is_positioned(*right_input), false, {}};
 
   u64       byte_position  = 1;
   u64       line_number    = 1;

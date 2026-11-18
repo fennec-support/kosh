@@ -56,7 +56,7 @@ struct diff_edit_result
   bool                 was_interrupted;
 };
 
-struct diff_lines
+struct DiffLines
 {
   StringView     contents;
   ArrayList<u32> end_positions;
@@ -79,7 +79,7 @@ struct diff_lines
 
 static fn
 split_diff_lines(StringView contents, Allocator allocator) throws
-    -> diff_lines
+    -> DiffLines
 {
   if (contents.length > UINT32_MAX) throw std::bad_alloc{};
 
@@ -168,8 +168,8 @@ append_replacement_edits(ArrayList<diff_edit> &edits,
    time:   O((n + m) * d) for n = left_middle_count, m = right_middle_count,
            and edit distance d. */
 static fn
-make_diff_edits(const diff_lines    &left_lines,
-                const diff_lines    &right_lines,
+make_diff_edits(const DiffLines     &left_lines,
+                const DiffLines     &right_lines,
                 Allocator            allocator,
                 diff_whitespace_mode whitespace_mode) throws
     -> diff_edit_result
@@ -361,18 +361,18 @@ flush_diff_output(const ExecContext &ec, String &output) throws -> void
 
 struct diff_palette
 {
-  colors::color_style removed;
-  colors::color_style added;
-  colors::color_style hunk;
-  colors::color_style header;
+  colors::ColorStyle removed;
+  colors::ColorStyle added;
+  colors::ColorStyle hunk;
+  colors::ColorStyle header;
 };
 
 static fn
-append_diff_line(const ExecContext  &ec,
-                 String             &output,
-                 colors::color_style style,
-                 StringView          prefix,
-                 StringView          line) throws -> void
+append_diff_line(const ExecContext &ec,
+                 String            &output,
+                 colors::ColorStyle style,
+                 StringView         prefix,
+                 StringView         line) throws -> void
 {
   let const has_newline = !line.is_empty() && line[line.length - 1] == '\n';
 
@@ -410,8 +410,8 @@ append_normal_range(String &output,
 static fn
 append_normal_diff(const ExecContext          &ec,
                    String                     &output,
-                   const diff_lines           &left_lines,
-                   const diff_lines           &right_lines,
+                   const DiffLines            &left_lines,
+                   const DiffLines            &right_lines,
                    const ArrayList<diff_edit> &edits,
                    const diff_palette         &palette) throws -> bool
 {
@@ -534,8 +534,8 @@ append_unified_diff(const ExecContext          &ec,
                     String                     &output,
                     StringView                  left_label,
                     StringView                  right_label,
-                    const diff_lines           &left_lines,
-                    const diff_lines           &right_lines,
+                    const DiffLines            &left_lines,
+                    const DiffLines            &right_lines,
                     const ArrayList<diff_edit> &edits,
                     const diff_palette         &palette) throws -> bool
 {
@@ -659,7 +659,7 @@ Diff::execute(const ExecContext               &ec,
   let left_contents  = String{heap_allocator()};
   let right_contents = String{heap_allocator()};
   let reader         = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-  let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+  let chunks = ArrayList<SourceBatchReader::chunk>{cxt.scratch_allocator()};
   i32 right_error_number = 0;
 
   let const do_report_read_error =
@@ -769,9 +769,9 @@ Diff::execute(const ExecContext               &ec,
                                  FLAG_DIFF_COLOR.value()))
   {
     palette = diff_palette{
-        colors::color_style{colors::color::Red,   colors::color_variant::Soft},
-        colors::color_style{colors::color::Green, colors::color_variant::Soft},
-        colors::color_style{colors::color::Cyan,  colors::color_variant::Soft},
+        colors::ColorStyle{colors::color::Red,   colors::color_variant::Soft},
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft},
+        colors::ColorStyle{colors::color::Cyan,  colors::color_variant::Soft},
         colors::color::Bold
     };
   }

@@ -207,7 +207,7 @@ EvalContext::register_function(StringView                name,
   }
 
   info.body_name_index = definition_location.source_name_index;
-  info.defining_state  = definition_state::from(runtime_state());
+  info.defining_state  = DefinitionState::from(runtime_state());
   body_storage.set_definition(definition_text, steal(info));
 
   LOG(Info, "registering function '%.*s' with a %zu byte definition",
@@ -723,9 +723,9 @@ EvalContext::is_signal_ignored_at_startup(StringView condition) const wontthrow
 fn
 EvalContext::capture_trap_definition(const SourceLocation &location,
                                      StringView            action) throws
-    -> trap_definition
+    -> TrapDefinition
 {
-  let definition = trap_definition{
+  let definition = TrapDefinition{
       String{heap_allocator(), action},
       String{heap_allocator()},
       location, 0,
@@ -865,7 +865,7 @@ EvalContext::save_untraced_trap(StringView      condition,
   LOG(Info, "taking a %zu byte '%.*s' action away from an untraced body",
       trap->action_text.count(), static_cast<int>(condition.length),
       condition.data);
-  saved.definition = trap_definition{*trap.value()};
+  saved.definition = TrapDefinition{*trap.value()};
   trap_store().reset(condition);
 
   return saved;
@@ -951,7 +951,7 @@ fn
 EvalContext::install_trap_dispositions() throws -> void
 {
   LOG(Info, "reinstalling the dispositions of %zu traps", trap_store().count());
-  trap_store().list([&](StringView condition, const trap_definition &trap) {
+  trap_store().list([&](StringView condition, const TrapDefinition &trap) {
     if (condition == "EXIT") return;
     if (let const number = os::signal_number_from_name(condition)) {
       if (trap.action_text.is_empty())
@@ -1209,7 +1209,7 @@ EvalContext::is_readonly(StringView name) const wontthrow -> bool
 
 fn
 EvalContext::readonly_names() const throws
-    -> SortedArrayList<String, order_comparator<String>>
+    -> SortedArrayList<String, OrderComparator<String>>
 {
   let out = ArrayList<String>{heap_allocator()};
 

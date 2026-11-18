@@ -141,8 +141,8 @@ Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let const *flags = builtin_flag_list(*resolved);
 
-    if ((*resolved == Builtin::Kind::False ||
-         *resolved == Builtin::Kind::Test) &&
+    if ((*resolved == builtin::Kind::False ||
+         *resolved == builtin::Kind::Test) &&
         synopsis != nullptr && flags != nullptr)
     {
       show_builtin_help_impl(ec, description, *synopsis, *flags);

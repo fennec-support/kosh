@@ -18,7 +18,7 @@
 
 namespace koshka::arithmetic_internal {
 
-struct alignas(u64) ArithmeticValue::Storage
+struct alignas(u64) ArithmeticValue::storage
 {
   u32 limb_count{0};
   u32 decimal_scale{0};
@@ -576,11 +576,11 @@ ArithmeticValue::is_promoted() const wontthrow -> bool
 }
 
 pure fn
-ArithmeticValue::get_storage() const wontthrow -> const Storage *
+ArithmeticValue::get_storage() const wontthrow -> const storage *
 {
   ASSERT(is_promoted());
 
-  return reinterpret_cast<const Storage *>(static_cast<uintptr>(m_low) &
+  return reinterpret_cast<const storage *>(static_cast<uintptr>(m_low) &
                                            ~NEGATIVE_STORAGE_FLAG);
 }
 
@@ -700,8 +700,9 @@ ArithmeticValue::from_magnitude(const u64 *limbs,
   return result;
 }
 
-/* memory: one bump allocation of sizeof(Storage) plus limb_count u64 values
-           from arena. arena frees it when it resets. the caller fills limbs.
+/* memory: one bump allocation of sizeof(ArithmeticValue::storage) plus
+           limb_count u64 values from arena. arena frees it when it resets.
+           the caller fills limbs.
    time:   O(1). */
 fn
 ArithmeticValue::allocate_promoted(usize      limb_count,
@@ -711,23 +712,25 @@ ArithmeticValue::allocate_promoted(usize      limb_count,
                                    u64      *&limbs) throws
     -> ArithmeticValue
 {
-  static_assert(sizeof(Storage) == 8);
-  static_assert(alignof(Storage) >= alignof(u64));
+  static_assert(sizeof(storage) == 8);
+  static_assert(alignof(storage) >= alignof(u64));
 
   if (limb_count > static_cast<usize>(~u32{0}) ||
-      limb_count > (SIZE_MAX - sizeof(Storage)) / sizeof(u64))
+      limb_count > (SIZE_MAX - sizeof(storage)) / sizeof(u64))
   {
     throw std::bad_alloc{};
   }
 
-  let const allocation_byte_count = sizeof(Storage) + limb_count * sizeof(u64);
-  let const storage               = static_cast<Storage *>(
-      bump_allocator(arena).raw_alloc(allocation_byte_count, alignof(Storage)));
+  let const allocation_byte_count = sizeof(storage) + limb_count * sizeof(u64);
+  let const storage =
+      static_cast<ArithmeticValue::storage *>(bump_allocator(arena).raw_alloc(
+          allocation_byte_count, alignof(ArithmeticValue::storage)));
 
   if (storage == nullptr) throw std::bad_alloc{};
   /* at this point: storage is non-null, and it heads an arena allocation
-     of sizeof(Storage) plus limb_count u64 values. limb_count fits in u32. */
-  new (storage) Storage{};
+     of sizeof(ArithmeticValue::storage) plus limb_count u64 values.
+     limb_count fits in u32. */
+  new (storage) ArithmeticValue::storage{};
   storage->limb_count    = static_cast<u32>(limb_count);
   storage->decimal_scale = decimal_scale;
   limbs                  = reinterpret_cast<u64 *>(storage + 1);

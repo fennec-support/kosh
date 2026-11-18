@@ -552,7 +552,7 @@ private:
   ArrayList<String>            &m_parse_errors;
   EvalContext                  &m_context;
   ArrayList<source_diagnostic> *m_diagnostic_sink;
-  BumpArena::Mark               m_mark{};
+  BumpArena::arena_mark         m_mark{};
 };
 
 struct script_run_options
@@ -924,7 +924,7 @@ analyze_script(const script_run_input    &input,
     context.set_diagnostic_highlight_cache(previous_highlight_cache);
   };
 
-  let options = analysis_options::from_runtime(context.runtime_state());
+  let options = AnalysisOptions::from_runtime(context.runtime_state());
 
   options.should_silence_unresolved_commands =
       run_options.should_silence_unresolved_commands ||
@@ -998,7 +998,7 @@ static fn
 evaluate_script(const script_run_input &input,
                 const script_run_plan  &plan,
                 Expression             *ast,
-                BumpArena::Mark         preflight_mark,
+                BumpArena::arena_mark   preflight_mark,
                 Maybe<usize>            history_event_number,
                 root_evaluation_mode    evaluation_mode) throws -> i32
 {
@@ -2753,7 +2753,7 @@ ensure_bash_completion_loaded(EvalContext &context) throws -> void
      BASH_COMPLETION_VERSINFO is unset. */
   LOG(Info, "sourcing the stock bash-completion script");
 
-  let bash_completion_state = definition_state::from(context.runtime_state());
+  let bash_completion_state = DefinitionState::from(context.runtime_state());
 
   bash_completion_state.mood = mimic_mood::Bash;
 
@@ -3148,15 +3148,15 @@ print_applied_fix_summary(
 
   let const should_color = colors::stderr_wants_color();
   let const warning_color =
-      should_color ? colors::color_style{colors::color::Yellow,
-                                         colors::color_variant::Soft}
-                   : colors::color_style{};
-  let const error_color =
-      should_color ? colors::color_style{colors::color::BoldBrightRed,
-                                         colors::color_variant::Soft}
-                   : colors::color_style{};
-  let const reset = colors::color_style{should_color ? colors::color::Reset
-                                                     : colors::color::None};
+      should_color ? colors::ColorStyle{colors::color::Yellow,
+                                        colors::color_variant::Soft}
+                   : colors::ColorStyle{};
+  let const error_color = should_color
+                              ? colors::ColorStyle{colors::color::BoldBrightRed,
+                                                   colors::color_variant::Soft}
+                              : colors::ColorStyle{};
+  let const reset       = colors::ColorStyle{should_color ? colors::color::Reset
+                                                          : colors::color::None};
 
   let summary = String{heap_allocator(), "Fixed "};
 

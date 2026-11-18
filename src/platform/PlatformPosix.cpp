@@ -129,7 +129,7 @@ struct linux_unix_socket_peer
   u32 send_queue_byte_count{0};
 };
 
-struct linux_unix_socket_peer_comparator
+struct LinuxUnixSocketPeerComparator
 {
   pure fn
   operator()(const linux_unix_socket_peer &left,
@@ -154,7 +154,7 @@ struct linux_unix_socket_peer_comparator
 };
 
 using linux_unix_socket_peer_list =
-    SortedArrayList<linux_unix_socket_peer, linux_unix_socket_peer_comparator>;
+    SortedArrayList<linux_unix_socket_peer, LinuxUnixSocketPeerComparator>;
 
 static fn
 linux_socket_proc_path(StringView suffix, Allocator allocator) throws
@@ -182,7 +182,7 @@ linux_unix_socket_peers(Allocator allocator) throws
 
   if (descriptor < 0)
     return linux_unix_socket_peer_list{allocator,
-                                       linux_unix_socket_peer_comparator{}};
+                                       LinuxUnixSocketPeerComparator{}};
   defer { ::close(descriptor); };
 
   struct
@@ -206,7 +206,7 @@ linux_unix_socket_peers(Allocator allocator) throws
                reinterpret_cast<struct sockaddr *>(&kernel),
                sizeof(kernel)) < 0)
     return linux_unix_socket_peer_list{allocator,
-                                       linux_unix_socket_peer_comparator{}};
+                                       LinuxUnixSocketPeerComparator{}};
 
   let const deadline_nanos = monotonic_nanos() + 1000000000;
   bool      is_done        = false;
@@ -308,13 +308,13 @@ linux_unix_socket_peers(Allocator allocator) throws
 
   if (!is_done || !is_valid) {
     return linux_unix_socket_peer_list{allocator,
-                                       linux_unix_socket_peer_comparator{}};
+                                       LinuxUnixSocketPeerComparator{}};
   }
 
   /* at this point: is_done and is_valid are true, and peers holds the rows
      kept from the netlink dump. the netlink descriptor closes when this
      function returns. */
-  return steal(peers).make_sorted(linux_unix_socket_peer_comparator{});
+  return steal(peers).make_sorted(LinuxUnixSocketPeerComparator{});
 }
 
 static pure fn

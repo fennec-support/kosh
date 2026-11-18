@@ -42,7 +42,7 @@ Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   cxt.job_table_store().forget_waited_jobs();
 
-  job *job = nullptr;
+  Job *job = nullptr;
 
   if (args.count() > 1 && !args[1].is_empty()) {
     job = cxt.job_table_store().find_job_by_spec(args[1]);
@@ -58,7 +58,7 @@ Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(Info, "fg bringing job %d to the foreground", job->id);
 
-  if (job->state == job::State::Done) {
+  if (job->state == Job::State::Done) {
     let const done_status = job->last_status;
 
     cxt.job_table_store().forget_done_jobs();
@@ -84,7 +84,7 @@ Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       should_reclaim && job->process_group_id > 0;
 
   let const do_resume_job = [&]() throws {
-    if (job->state == job::State::Stopped) continue_job(*job);
+    if (job->state == Job::State::Stopped) continue_job(*job);
   };
 
   let was_stopped = false;
@@ -106,7 +106,7 @@ Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (was_stopped) {
-    job->state          = job::State::Stopped;
+    job->state          = Job::State::Stopped;
     job->stopped_status = status;
     cxt.job_table_store().notify_stopped_job(job->id);
 

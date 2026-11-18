@@ -481,7 +481,7 @@ parse_dockerfile_format(const parser_format_input &input,
     if (heredoc.has_value()) {
       let const body_start = position;
       usize     body_end   = position;
-      let const pending    = lexer::pending_heredoc{
+      let const pending    = lexer::PendingHeredoc{
           String{heap_allocator(), heredoc->delimiter},
           line.substring(content_position).starts_with("<<-")
       };

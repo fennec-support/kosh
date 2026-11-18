@@ -140,7 +140,7 @@ EvalContext::run_program_fallback(ExecContext     &ec,
       source_store().source_frames().count());
 
   for (let const &frame : source_store().source_frames()) {
-    fallback_context.source_store().source_frames().push(source_frame{
+    fallback_context.source_store().source_frames().push(SourceFrame{
         String{heap_allocator(), frame.origin.view()},
         frame.call_site,
         frame.parent_source, frame.parent_source_generation,
@@ -299,7 +299,7 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
 
   let const script_filename = ec.program_path().view();
 
-  source_store().source_frames().push(source_frame{
+  source_store().source_frames().push(SourceFrame{
       ec.program().clone_to(heap_allocator()), ec.source_location(),
       source_store().current_source(),
       source_generation_for(source_store().current_source()),
@@ -539,7 +539,7 @@ EvalContext::run_source(StringView                source,
                         const FunctionBodyHandle *cached_body,
                         return_handling           handling,
                         history_recording         history,
-                        const trap_definition    *definition,
+                        const TrapDefinition     *definition,
                         syntax_error_reach        syntax_reach) throws -> i32
 {
   if (cached_body != nullptr && (cached_body->get_body() == nullptr ||
@@ -622,7 +622,7 @@ EvalContext::run_source(StringView                source,
   let const untraced_debug_scope = UntracedTrapScope{
       *this, UntracedTrapScope::Kind::Debug, is_sourced_file_frame};
 
-  source_store().source_frames().push(source_frame{
+  source_store().source_frames().push(SourceFrame{
       String{heap_allocator(), origin},
       call_site ? *call_site : SourceLocation{0, 0},
       parent_source,
@@ -970,7 +970,7 @@ EvalContext::source_generation_for(const String *source) const wontthrow -> u64
 }
 
 pure fn
-EvalContext::borrowed_frame_source(const source_frame &frame) const wontthrow
+EvalContext::borrowed_frame_source(const SourceFrame &frame) const wontthrow
     -> const String *
 {
   if (source_retention().is_stale_generation(frame.parent_source_generation))

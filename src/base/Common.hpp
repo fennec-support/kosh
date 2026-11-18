@@ -151,25 +151,25 @@ using opaque = void;
 #define concat_literal(x, y)    t__concat_literal(x, y)
 
 template <typename T>
-class t__exit_scope
+class ExitScope
 {
 public:
-  t__exit_scope(T lambda) : m_lambda(lambda) {}
-  ~t__exit_scope() { m_lambda(); }
-  t__exit_scope(const t__exit_scope &);
+  ExitScope(T lambda) : m_lambda(lambda) {}
+  ~ExitScope() { m_lambda(); }
+  ExitScope(const ExitScope &);
 
 private:
   T m_lambda;
 
-  t__exit_scope &
-  operator=(const t__exit_scope &);
+  ExitScope &
+  operator=(const ExitScope &);
 };
 
-class t__exit_scope_help
+class ExitScopeHelp
 {
 public:
   template <typename T>
-  t__exit_scope<T>
+  ExitScope<T>
   operator+(T t)
   {
     return t;
@@ -178,7 +178,7 @@ public:
 
 #define defer                                                                  \
   const auto &concat_literal(defer__, __LINE__) =                              \
-      t__exit_scope_help() + [&]() -> void
+      ExitScopeHelp() + [&]() -> void
 
 #define ENUM(e) static_cast<int>(e)
 
@@ -494,15 +494,15 @@ enum class int_base : u8
 };
 
 template <int_base TagBase, class T>
-struct tagged_int
+struct TaggedInt
 {
   using underlying               = T;
   static constexpr int_base base = TagBase;
 
   T value{0};
 
-  constexpr tagged_int() wontthrow = default;
-  constexpr tagged_int(T initial) wontthrow : value(initial) {}
+  constexpr TaggedInt() wontthrow = default;
+  constexpr TaggedInt(T initial) wontthrow : value(initial) {}
   constexpr
   operator T() const wontthrow
   {
@@ -514,7 +514,7 @@ template <class T>
 struct is_tagged_int : false_type
 {};
 template <int_base TagBase, class T>
-struct is_tagged_int<tagged_int<TagBase, T>> : true_type
+struct is_tagged_int<TaggedInt<TagBase, T>> : true_type
 {};
 template <class T>
 inline constexpr bool is_tagged_int_v = is_tagged_int<T>::value;
@@ -540,24 +540,24 @@ clone_value(const T &value) throws -> T
     return value;
 }
 
-using bi16 = tagged_int<int_base::binary, i16>;
-using bi32 = tagged_int<int_base::binary, i32>;
-using bi64 = tagged_int<int_base::binary, i64>;
-using bu16 = tagged_int<int_base::binary, u16>;
-using bu32 = tagged_int<int_base::binary, u32>;
-using bu64 = tagged_int<int_base::binary, u64>;
+using bi16 = TaggedInt<int_base::binary, i16>;
+using bi32 = TaggedInt<int_base::binary, i32>;
+using bi64 = TaggedInt<int_base::binary, i64>;
+using bu16 = TaggedInt<int_base::binary, u16>;
+using bu32 = TaggedInt<int_base::binary, u32>;
+using bu64 = TaggedInt<int_base::binary, u64>;
 
-using oi16 = tagged_int<int_base::octal, i16>;
-using oi32 = tagged_int<int_base::octal, i32>;
-using oi64 = tagged_int<int_base::octal, i64>;
-using ou16 = tagged_int<int_base::octal, u16>;
-using ou32 = tagged_int<int_base::octal, u32>;
-using ou64 = tagged_int<int_base::octal, u64>;
+using oi16 = TaggedInt<int_base::octal, i16>;
+using oi32 = TaggedInt<int_base::octal, i32>;
+using oi64 = TaggedInt<int_base::octal, i64>;
+using ou16 = TaggedInt<int_base::octal, u16>;
+using ou32 = TaggedInt<int_base::octal, u32>;
+using ou64 = TaggedInt<int_base::octal, u64>;
 
-using hi16 = tagged_int<int_base::hex, i16>;
-using hi32 = tagged_int<int_base::hex, i32>;
-using hi64 = tagged_int<int_base::hex, i64>;
-using hu16 = tagged_int<int_base::hex, u16>;
-using hu32 = tagged_int<int_base::hex, u32>;
-using hu64 = tagged_int<int_base::hex, u64>;
+using hi16 = TaggedInt<int_base::hex, i16>;
+using hi32 = TaggedInt<int_base::hex, i32>;
+using hi64 = TaggedInt<int_base::hex, i64>;
+using hu16 = TaggedInt<int_base::hex, u16>;
+using hu32 = TaggedInt<int_base::hex, u32>;
+using hu64 = TaggedInt<int_base::hex, u64>;
 } /* namespace koshka */

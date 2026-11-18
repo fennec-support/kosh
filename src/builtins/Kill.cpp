@@ -151,7 +151,7 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     const String &target = args[i];
 
     if (!target.is_empty() && target[0] == '%') {
-      const job *const job = cxt.job_table_store().find_job_by_spec(target);
+      const Job *const job = cxt.job_table_store().find_job_by_spec(target);
 
       if (job == nullptr) {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
@@ -188,7 +188,7 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           (hangup_signal.has_value() && *hangup_signal == signal_number);
 
       if (did_signal_process && is_termination &&
-          job->state == job::State::Stopped && continue_signal.has_value())
+          job->state == Job::State::Stopped && continue_signal.has_value())
       {
         if (job->is_primary_process_active) {
           unused(os::signal_process(job->pid, *continue_signal));

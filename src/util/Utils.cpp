@@ -83,12 +83,12 @@ parse_positive_position(StringView text, usize &position) wontthrow
            where r is the number of parsed ranges. */
 fn
 parse_text_position_ranges(StringView text, Allocator allocator) throws
-    -> Maybe<SortedArrayList<text_position_range,
-                             order_comparator<text_position_range>>>
+    -> Maybe<
+        SortedArrayList<TextPositionRange, OrderComparator<TextPositionRange>>>
 {
   if (text.is_empty()) return None;
 
-  let   parsed_ranges = ArrayList<text_position_range>{allocator};
+  let   parsed_ranges = ArrayList<TextPositionRange>{allocator};
   usize position      = 0;
 
   while (position < text.length &&
@@ -177,8 +177,7 @@ parse_text_position_ranges(StringView text, Allocator allocator) throws
 pure fn
 text_position_is_selected(
     usize one_based_position,
-    const SortedArrayList<text_position_range,
-                          order_comparator<text_position_range>>
+    const SortedArrayList<TextPositionRange, OrderComparator<TextPositionRange>>
         &ranges) wontthrow -> bool
 {
   for (let const range : ranges) {
@@ -431,7 +430,7 @@ shell_word_expansion_end(StringView word, usize expansion_start) wontthrow
 }
 
 /* memory: text, glob_active, and opaque_ranges grow in allocator and belong to
-           the returned decoded_shell_word. raw_positions gets one entry per
+           the returned DecodedShellWord. raw_positions gets one entry per
            decoded byte plus one when mapping is Record. each $'...' body is
            decoded into a String that is destroyed at the end of its branch.
    time:   O(word.length). each expansion span goes through
@@ -441,9 +440,9 @@ hot fn
 decode_shell_word(StringView                word,
                   Allocator                 allocator,
                   shell_word_source_mapping mapping) throws
-    -> decoded_shell_word
+    -> DecodedShellWord
 {
-  let decoded = decoded_shell_word{allocator};
+  let decoded = DecodedShellWord{allocator};
 
   decoded.text.reserve(word.length);
   decoded.glob_active.reserve(word.length);
@@ -775,9 +774,9 @@ struct path_component_owner_range
 };
 
 static fn
-split_path_source_components(StringView                path,
-                             const decoded_shell_word *decoded,
-                             Allocator                 allocator) throws
+split_path_source_components(StringView              path,
+                             const DecodedShellWord *decoded,
+                             Allocator               allocator) throws
     -> ArrayList<path_source_component>
 {
   let   components = ArrayList<path_source_component>{allocator};

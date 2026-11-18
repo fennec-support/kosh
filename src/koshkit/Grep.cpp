@@ -517,8 +517,8 @@ collect_recursive_sources(const ExecContext &ec,
       batch.clear();
 
       for (usize index = 0; index < unknown_indices.count(); index++)
-        batch.add(os::batch_operation::lstat(
-            child_paths[unknown_indices[index]], unknown_statuses[index]));
+        batch.add(os::BatchOperation::lstat(child_paths[unknown_indices[index]],
+                                            unknown_statuses[index]));
 
       batch.execute(results, os::batch_deduplication::Disabled);
 
@@ -1683,7 +1683,7 @@ public:
                      : SourceBatchReader::SourceKindMode::Probe,
         is_recursive ? SourceBatchReader::SourceReadMode::Sequential
                      : SourceBatchReader::SourceReadMode::Batched};
-    let       chunks   = ArrayList<SourceBatchReader::Chunk>{m_allocator};
+    let       chunks   = ArrayList<SourceBatchReader::chunk>{m_allocator};
     let const is_quiet = m_options.output_mode == grep_output_mode::Quiet;
 
     loop {
@@ -2309,7 +2309,7 @@ private:
   }
 
   fn
-  scan_chunk_candidates(const SourceBatchReader::Chunk &chunk,
+  scan_chunk_candidates(const SourceBatchReader::chunk &chunk,
                         StringView                      source) throws -> usize
   {
     let const terminator      = m_options.line_terminator;
@@ -2370,7 +2370,7 @@ private:
   }
 
   fn
-  split_chunk(const SourceBatchReader::Chunk &chunk,
+  split_chunk(const SourceBatchReader::chunk &chunk,
               StringView                      source,
               usize                           position) throws -> void
   {
@@ -2405,11 +2405,11 @@ private:
   }
 
   fn
-  process_chunk(const SourceBatchReader::Chunk &chunk) throws -> void
+  process_chunk(const SourceBatchReader::chunk &chunk) throws -> void
   {
     let const source = m_sources[chunk.source_index];
     let const do_split =
-        [&](const SourceBatchReader::Chunk &part) throws {
+        [&](const SourceBatchReader::chunk &part) throws {
           let const scanned_length = m_candidate_literal.is_empty()
                                          ? 0
                                          : scan_chunk_candidates(part, source);

@@ -227,8 +227,8 @@ read_varint(StringView bytes, usize &position) wontthrow -> Maybe<u32>
 }
 
 fn
-encode_value(const EvalContext       &cxt,
-             const option_descriptor &option) throws -> String
+encode_value(const EvalContext      &cxt,
+             const OptionDescriptor &option) throws -> String
 {
   let value = String{heap_allocator()};
 
@@ -248,7 +248,7 @@ encode_value(const EvalContext       &cxt,
 }
 
 fn
-decode_value(const option_descriptor &option, StringView bytes) throws
+decode_value(const OptionDescriptor &option, StringView bytes) throws
     -> Maybe<String>
 {
   switch (option.type) {
@@ -296,7 +296,7 @@ declared_name(StringView line) wontthrow -> Maybe<StringView>
 }
 
 fn
-preset_group_of(const option_descriptor &option) wontthrow -> StringView
+preset_group_of(const OptionDescriptor &option) wontthrow -> StringView
 {
   let const name      = StringView{option.koshconf_name};
   let const first_dot = name.find_character('.');
@@ -312,7 +312,7 @@ preset_group_of(const option_descriptor &option) wontthrow -> StringView
 }
 
 fn
-get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
+get_preset_group_first_id(const OptionDescriptor &option) wontthrow -> u16
 {
   let const group    = preset_group_of(option);
   let       first_id = option.id;
@@ -329,8 +329,8 @@ get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
 }
 
 fn
-preset_sorts_before(const option_descriptor &left,
-                    const option_descriptor &right) wontthrow -> bool
+preset_sorts_before(const OptionDescriptor &left,
+                    const OptionDescriptor &right) wontthrow -> bool
 {
   let const left_group_id  = get_preset_group_first_id(left);
   let const right_group_id = get_preset_group_first_id(right);
@@ -539,7 +539,7 @@ parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
 }
 
 pure fn
-koshconf_option_takes_count(const option_descriptor &option) wontthrow -> bool
+koshconf_option_takes_count(const OptionDescriptor &option) wontthrow -> bool
 {
   let const name = StringView{option.koshconf_name};
 
@@ -598,8 +598,8 @@ suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
 }
 
 fn
-find_koshconf_value_problem(const option_descriptor &option,
-                            StringView               value) throws -> Maybe<String>
+find_koshconf_value_problem(const OptionDescriptor &option,
+                            StringView              value) throws -> Maybe<String>
 {
   let const do_describe = [&](StringView expectation) throws -> String {
     let message = String{heap_allocator(), "Invalid value '"};
@@ -671,8 +671,8 @@ find_koshconf_value_problem(const option_descriptor &option,
 }
 
 fn
-format_koshconf_display_line(const option_descriptor &option,
-                             StringView               value) throws -> String
+format_koshconf_display_line(const OptionDescriptor &option,
+                             StringView              value) throws -> String
 {
   let const quote           = quote_for_value(value);
   let const has_both_quotes = quote.has_value() && *quote == '\'' &&
@@ -1046,8 +1046,8 @@ apply_koshconf_settings(EvalContext                       &cxt,
 }
 
 fn
-format_koshconf_line(const option_descriptor &option,
-                     StringView               value) throws -> String
+format_koshconf_line(const OptionDescriptor &option,
+                     StringView              value) throws -> String
 {
   if (value.find_character('\n').has_value() ||
       value.find_character('\r').has_value())
@@ -1080,8 +1080,8 @@ format_koshconf_line(const option_descriptor &option,
 }
 
 static pure fn
-get_preset_default_number(const option_descriptor &option,
-                          mimic_mood               preset) wontthrow -> u32
+get_preset_default_number(const OptionDescriptor &option,
+                          mimic_mood              preset) wontthrow -> u32
 {
   if (option.storage == option_storage::Mood) return static_cast<u32>(preset);
   if (preset == mimic_mood::Posix) return option.posix_default_value;
@@ -1094,7 +1094,7 @@ get_preset_default_number(const option_descriptor &option,
 static fn
 has_default_koshconf_value(
     const EvalContext                 &cxt,
-    const option_descriptor           &option,
+    const OptionDescriptor            &option,
     const ArrayList<koshconf_setting> &system_settings) throws -> bool
 {
   let const current_value = read_option_text(cxt, option);
@@ -1170,7 +1170,7 @@ compose_koshconf_text(
                 "the saved mood are\n# left out.\n";
   }
 
-  let ordered = ArrayList<const option_descriptor *>{heap_allocator()};
+  let ordered = ArrayList<const OptionDescriptor *>{heap_allocator()};
 
   for (let const &option : get_option_registry()) {
     if (!option.is_configurable()) continue;
@@ -1423,9 +1423,9 @@ persist_koshconf_snapshot(const Path        &path,
            the directory lock covers the existing-file read, rewrite, backup,
            and replacement. */
 fn
-persist_koshconf_setting(const Path              &path,
-                         const option_descriptor &option,
-                         StringView               value) throws -> void
+persist_koshconf_setting(const Path             &path,
+                         const OptionDescriptor &option,
+                         StringView              value) throws -> void
 {
   let const replacement = format_koshconf_line(option, value);
   let const target      = prepare_koshconf_target(path);

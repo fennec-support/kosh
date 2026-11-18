@@ -22,7 +22,7 @@ struct static_string_entry
   Value value;
 };
 
-struct static_string_prefilter
+struct StaticStringPrefilter
 {
   u64   leading_byte_mask[4]{};
   usize shortest_key_length{static_cast<usize>(-1)};
@@ -64,7 +64,7 @@ class StaticStringMap
 {
 public:
   static_string_entry<Value, Key> entries[Count]{};
-  static_string_prefilter         prefilter{};
+  StaticStringPrefilter           prefilter{};
 
   /* memory: none at run time. the entries and prefilter are members.
      time:   O(Count) to copy and record each entry, plus O(Count^2) for the
@@ -128,8 +128,8 @@ template <usize Count, class Key = PackedStringKey>
 class StaticStringSet
 {
 public:
-  Key                     keys[Count]{};
-  static_string_prefilter prefilter{};
+  Key                   keys[Count]{};
+  StaticStringPrefilter prefilter{};
 
   /* memory: none at run time. the keys and prefilter are members.
      time:   O(Count) to copy and record each key, plus O(Count^2) for the

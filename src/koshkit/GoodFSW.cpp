@@ -110,7 +110,7 @@ struct watched_entry
   u32    group_id{0};
 };
 
-struct watched_entry_comparator
+struct WatchedEntryComparator
 {
   pure fn
   operator()(const watched_entry &left,
@@ -141,21 +141,21 @@ is_same_attributes(const watched_entry &previous,
 }
 
 pure fn
-event_style(watch_event event) wontthrow -> colors::color_style
+event_style(watch_event event) wontthrow -> colors::ColorStyle
 {
   switch (event) {
   case watch_event::Created:
-    return colors::color_style{colors::color::BoldGreen,
-                               colors::color_variant::Soft};
+    return colors::ColorStyle{colors::color::BoldGreen,
+                              colors::color_variant::Soft};
   case watch_event::Removed:
-    return colors::color_style{colors::color::BoldRed,
-                               colors::color_variant::Soft};
+    return colors::ColorStyle{colors::color::BoldRed,
+                              colors::color_variant::Soft};
   case watch_event::Updated:
-    return colors::color_style{colors::color::BoldCyan,
-                               colors::color_variant::Soft};
+    return colors::ColorStyle{colors::color::BoldCyan,
+                              colors::color_variant::Soft};
   case watch_event::AttributeModified:
-    return colors::color_style{colors::color::BoldYellow,
-                               colors::color_variant::Soft};
+    return colors::ColorStyle{colors::color::BoldYellow,
+                              colors::color_variant::Soft};
   }
 
   unreachable("unknown filesystem watch event");
@@ -446,8 +446,8 @@ GoodFSW::execute(const ExecContext               &ec,
   }
 
   for (usize index = 0; index < operands.count(); index++)
-    operand_batch.add(os::batch_operation::lstat(operand_paths[index],
-                                                 operand_statuses[index]));
+    operand_batch.add(os::BatchOperation::lstat(operand_paths[index],
+                                                operand_statuses[index]));
 
   let const operand_results = operand_batch.execute();
 
@@ -474,7 +474,7 @@ GoodFSW::execute(const ExecContext               &ec,
   /* at this point: collected_previous holds the entries of the first scan, and
      no interrupt request is pending. */
   let previous =
-      steal(collected_previous).make_sorted(watched_entry_comparator{});
+      steal(collected_previous).make_sorted(WatchedEntryComparator{});
   let  recycled_entries = ArrayList<watched_entry>{watch_allocator};
   let  output           = String{watch_allocator};
   let  watcher          = os::FileWatcher{};
@@ -550,8 +550,7 @@ GoodFSW::execute(const ExecContext               &ec,
       break;
     }
 
-    let current =
-        steal(recycled_entries).make_sorted(watched_entry_comparator{});
+    let current = steal(recycled_entries).make_sorted(WatchedEntryComparator{});
 
     let const scan_microseconds = os::realtime_microseconds();
     let const scan_time = static_cast<i64>(scan_microseconds / 1000000u);

@@ -716,7 +716,7 @@ conditional_command_text(
 }
 
 fn
-ConditionalCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+ConditionalCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   cxt.source_store().set_current_location(source_location());
 
@@ -759,9 +759,9 @@ ConditionalCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const 
   SET_AND_RETURN_EXIT_STATUS(cxt, status);
 }
 
-ArithmeticCommand::ArithmeticCommand(SourceLocation    location,
-                                     StringView        expression,
-                                     const arith_tree *tree)
+ArithmeticCommand::ArithmeticCommand(SourceLocation   location,
+                                     StringView       expression,
+                                     const ArithTree *tree)
     : CompoundCommand(steal(location)), m_expression(expression), m_tree(tree)
 {}
 
@@ -812,7 +812,7 @@ arithmetic_clause_command_text(StringView clause) throws -> String
 }
 
 fn
-ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   LOG(Debug, "evaluating the arithmetic command '%.*s'",
       static_cast<int>(m_expression.length), m_expression.data);
@@ -930,9 +930,9 @@ CStyleForLoop::CStyleForLoop(SourceLocation    location,
                              StringView        condition,
                              StringView        step,
                              const Expression *body,
-                             const arith_tree *init_tree,
-                             const arith_tree *condition_tree,
-                             const arith_tree *step_tree)
+                             const ArithTree  *init_tree,
+                             const ArithTree  *condition_tree,
+                             const ArithTree  *step_tree)
     : CompoundCommand(steal(location)), m_header_position(header_position),
       m_init(init), m_condition(condition), m_step(step), m_body(body),
       m_init_tree(init_tree), m_condition_tree(condition_tree),
@@ -955,9 +955,9 @@ CStyleForLoop::write_ast(AstWriter &out) const throws -> void
 
   struct clause_entry
   {
-    StringView        role;
-    StringView        text;
-    const arith_tree *tree;
+    StringView       role;
+    StringView       text;
+    const ArithTree *tree;
   };
 
   const clause_entry clauses[] = {
@@ -985,7 +985,7 @@ CStyleForLoop::write_ast(AstWriter &out) const throws -> void
    time:   O(n * (condition + step + body)) for n iterations, where the
            condition decides n. the loop is a while over do_test_condition(). */
 fn
-CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_body != nullptr);
 
@@ -1079,7 +1079,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
   /* at this point: m_body is non-null, the init clause has run or is
      blank, and the loop is entered. */
-  status_result result{};
+  StatusResult result{};
 
   while (do_test_condition()) {
     result = m_body->evaluate_status(cxt);
@@ -1376,7 +1376,7 @@ evaluate_subshell_in_process(const Expression *body,
    time:   at most one fork and one wait per call, and one run of the body.
            this function has no loops. */
 fn
-Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_body != nullptr);
 
@@ -1666,7 +1666,7 @@ FunctionDefinition::write_ast(AstWriter &out) const throws -> void
 }
 
 fn
-FunctionDefinition::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+FunctionDefinition::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_body != nullptr);
 
@@ -1825,14 +1825,14 @@ RedirectedCommand::analyze(AnalysisContext &actx, bool is_unconditional) const t
 
   let const no_args               = ArrayList<const Token *>{heap_allocator()};
   let const no_prefix_assignments = SparseList<PrefixAssignment>{};
-  let const lint_input            = command_lint_input{no_args,
-                                            m_redirections,
-                                            no_prefix_assignments,
-                                            source_location(),
-                                            StringView{},
-                                            analysis_command_info::unknown(),
-                                            false,
-                                            !is_unconditional};
+  let const lint_input            = CommandLintInput{no_args,
+                                          m_redirections,
+                                          no_prefix_assignments,
+                                          source_location(),
+                                          StringView{},
+                                          AnalysisCommandInfo::unknown(),
+                                          false,
+                                          !is_unconditional};
 
   check_redirection_lints(actx, lint_input);
 }
@@ -1858,7 +1858,7 @@ RedirectedCommand::redirections() const wontthrow
 }
 
 fn
-RedirectedCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+RedirectedCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   if (is_async()) return {static_cast<i32>(evaluate_async(cxt)), 0};
 
@@ -1882,7 +1882,7 @@ RedirectedCommand::evaluate_async_body(EvalContext &cxt) const throws
 
 fn
 RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
-    -> status_result
+    -> StatusResult
 {
   ASSERT(m_child != nullptr);
 

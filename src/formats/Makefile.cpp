@@ -297,7 +297,7 @@ parse_makefile_format(const parser_format_input &input,
 
   let const ranges =
       koshkit::parse_makefile_shell_sources(source, heap_allocator());
-  let merged = ArrayList<koshkit::make_shell_source_range>{heap_allocator()};
+  let       merged = ArrayList<koshkit::MakeShellSourceRange>{heap_allocator()};
   let const is_oneshell = has_oneshell(source);
 
   for (let const &range : ranges) {

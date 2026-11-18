@@ -388,14 +388,14 @@ private:
     return fitted;
   }
 
-  struct ProbeResult
+  struct probe_result
   {
     usize found{NO_INDEX};
     usize insertion{NO_INDEX};
   };
 
   hot mustuse fn
-  probe(StringView key, u64 hash) const wontthrow -> ProbeResult
+  probe(StringView key, u64 hash) const wontthrow -> probe_result
   {
     ASSERT(m_capacity != 0);
 
@@ -431,7 +431,7 @@ private:
   }
 
   hot fn
-  prepare_insertion(StringView key, u64 hash) throws -> ProbeResult
+  prepare_insertion(StringView key, u64 hash) throws -> probe_result
   {
     if (m_capacity == 0) {
       rehash(m_first_capacity);

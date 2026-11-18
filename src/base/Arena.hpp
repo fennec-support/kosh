@@ -35,14 +35,14 @@ public:
   cold fn
   reset() wontthrow -> void;
 
-  struct Mark
+  struct arena_mark
   {
     usize block_index;
     usize used_in_block;
     usize destructor_count;
   };
 
-  struct LifetimeIdentity
+  struct lifetime_identity
   {
     u32 arena_incarnation{0};
     u32 slot_position{UINT32_MAX};
@@ -56,9 +56,9 @@ public:
   }
 
   fn
-  register_lifetime() throws -> LifetimeIdentity;
+  register_lifetime() throws -> lifetime_identity;
   pure fn
-  is_lifetime_valid(LifetimeIdentity identity) const wontthrow -> bool;
+  is_lifetime_valid(lifetime_identity identity) const wontthrow -> bool;
 
   fn
   bytes_used() const wontthrow -> usize;
@@ -98,9 +98,9 @@ public:
   }
 
   fn
-  mark() const wontthrow -> Mark;
+  mark() const wontthrow -> arena_mark;
   fn
-  release(Mark saved) wontthrow -> void;
+  release(arena_mark saved) wontthrow -> void;
 
   template <class T, class... Args>
   flatten alwaysinline fn
@@ -135,9 +135,10 @@ public:
       }
 
       try {
-        push_destructor(PendingDestructor{object, [](opaque *pointer) noexcept {
-                                            static_cast<T *>(pointer)->~T();
-                                          }});
+        push_destructor(
+            pending_destructor{object, [](opaque *pointer) noexcept {
+                                 static_cast<T *>(pointer)->~T();
+                               }});
       } catch (...) {
         object->~T();
         release(saved);
@@ -149,7 +150,7 @@ public:
   }
 
 private:
-  struct Block
+  struct block
   {
     u8   *base;
     usize size;
@@ -160,16 +161,16 @@ private:
      a live slot points next_free_position to itself. a released slot links
      into the free list, and incarnation changes when that slot is
      registered again. */
-  struct LifetimeSlot
+  struct lifetime_slot
   {
-    Mark payload_end;
-    u32  incarnation{0};
-    u32  next_free_position{UINT32_MAX};
+    arena_mark payload_end;
+    u32        incarnation{0};
+    u32        next_free_position{UINT32_MAX};
   };
 
-  static_assert(sizeof(usize) != 8 || sizeof(LifetimeSlot) == 32);
+  static_assert(sizeof(usize) != 8 || sizeof(lifetime_slot) == 32);
 
-  struct PendingDestructor
+  struct pending_destructor
   {
     opaque *object;
     void (*run)(opaque *) noexcept;
@@ -178,7 +179,7 @@ private:
   static constexpr usize DEFAULT_BLOCK_SIZE           = 64 * 1024;
   static constexpr usize FIRST_DESTRUCTOR_CHUNK_COUNT = 32;
   static constexpr usize DESTRUCTORS_PER_CHUNK =
-      DEFAULT_BLOCK_SIZE / sizeof(PendingDestructor);
+      DEFAULT_BLOCK_SIZE / sizeof(pending_destructor);
 
   static_assert(DESTRUCTORS_PER_CHUNK % FIRST_DESTRUCTOR_CHUNK_COUNT == 0 &&
                     (DESTRUCTORS_PER_CHUNK / FIRST_DESTRUCTOR_CHUNK_COUNT &
@@ -227,23 +228,23 @@ private:
                                        ((usize{1} << chunk_index) - 1);
   }
 
-  ArrayList<Block>               m_blocks{heap_allocator()};
-  usize                          m_current_index{0};
-  uintptr                        m_lowest_address{UINTPTR_MAX};
-  uintptr                        m_highest_address{0};
-  ArrayList<PendingDestructor *> m_destructor_chunks{heap_allocator()};
-  ArrayList<LifetimeSlot>        m_lifetime_slots{heap_allocator()};
-  ArrayList<u32>                 m_active_lifetime_slots{heap_allocator()};
-  usize                          m_destructor_count{0};
-  usize                          m_reset_generation{0};
-  u32                            m_arena_incarnation{0};
-  u32                            m_first_free_lifetime_slot{UINT32_MAX};
+  ArrayList<block>                m_blocks{heap_allocator()};
+  usize                           m_current_index{0};
+  uintptr                         m_lowest_address{UINTPTR_MAX};
+  uintptr                         m_highest_address{0};
+  ArrayList<pending_destructor *> m_destructor_chunks{heap_allocator()};
+  ArrayList<lifetime_slot>        m_lifetime_slots{heap_allocator()};
+  ArrayList<u32>                  m_active_lifetime_slots{heap_allocator()};
+  usize                           m_destructor_count{0};
+  usize                           m_reset_generation{0};
+  u32                             m_arena_incarnation{0};
+  u32                             m_first_free_lifetime_slot{UINT32_MAX};
 
   fn
   add_block(usize minimum_byte_count, usize preferred_byte_count) throws
       -> void;
   fn
-  push_destructor(PendingDestructor pending) throws -> void;
+  push_destructor(pending_destructor pending) throws -> void;
   fn
   run_destructors_down_to(usize first) wontthrow -> void;
   fn

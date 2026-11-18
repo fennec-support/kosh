@@ -111,24 +111,24 @@ resolve_group_id(StringView text) throws -> Maybe<u32>
 
 namespace {
 
-struct id_name_entry
+struct IdNameEntry
 {
-  id_name_entry(u32 id, String name) : id(id), name(steal(name)) {}
+  IdNameEntry(u32 id, String name) : id(id), name(steal(name)) {}
 
   u32    id;
   String name;
 };
 
-struct id_name_cache
+struct IdNameCache
 {
   static constexpr usize ENTRY_LIMIT    = 64;
   static constexpr u64   LIFETIME_NANOS = 1'000'000'000;
 
-  id_name_cache() : users(heap_allocator()), groups(heap_allocator()) {}
+  IdNameCache() : users(heap_allocator()), groups(heap_allocator()) {}
 
-  ArrayList<id_name_entry> users;
-  ArrayList<id_name_entry> groups;
-  u64                      filled_nanos{0};
+  ArrayList<IdNameEntry> users;
+  ArrayList<IdNameEntry> groups;
+  u64                    filled_nanos{0};
 };
 
 } /* namespace */
@@ -137,12 +137,12 @@ static fn
 cached_name_or_id(u32 id, bool is_group, Allocator allocator) throws
     -> String
 {
-  static thread_local id_name_cache cache;
+  static thread_local IdNameCache cache;
 
   let const now = os::monotonic_nanos();
 
   if (cache.filled_nanos == 0 ||
-      now - cache.filled_nanos > id_name_cache::LIFETIME_NANOS)
+      now - cache.filled_nanos > IdNameCache::LIFETIME_NANOS)
   {
     cache.users.clear();
     cache.groups.clear();
@@ -158,9 +158,9 @@ cached_name_or_id(u32 id, bool is_group, Allocator allocator) throws
   let const looked_up =
       is_group ? os::gid_to_groupname(id) : os::uid_to_username(id);
 
-  if (entries.count() >= id_name_cache::ENTRY_LIMIT) entries.clear();
+  if (entries.count() >= IdNameCache::ENTRY_LIMIT) entries.clear();
 
-  entries.push(id_name_entry{
+  entries.push(IdNameEntry{
       id, looked_up.has_value() ? String{heap_allocator(), looked_up->view()}
                                 : String::from(id, heap_allocator())
   });

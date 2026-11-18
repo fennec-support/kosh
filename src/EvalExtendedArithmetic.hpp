@@ -116,7 +116,7 @@ public:
                       const ArithmeticValue &right) wontthrow -> u32;
 
 private:
-  struct Storage;
+  struct storage;
 
   static constexpr u64     PROMOTED_MARKER       = 0x7fffc0dec0dec0deULL;
   static constexpr uintptr NEGATIVE_STORAGE_FLAG = 1;
@@ -151,7 +151,7 @@ private:
   pure fn
   is_promoted() const wontthrow -> bool;
   pure fn
-  get_storage() const wontthrow -> const Storage *;
+  get_storage() const wontthrow -> const storage *;
   pure fn
   inline_value() const wontthrow -> i128;
   pure fn

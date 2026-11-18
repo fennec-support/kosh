@@ -69,17 +69,17 @@ show_builtin_help_impl(const ExecContext  &ec,
 }
 
 flatten fn
-search_builtin(StringView builtin_name) throws -> Maybe<Builtin::Kind>
+search_builtin(StringView builtin_name) throws -> Maybe<builtin::Kind>
 {
   return BUILTINS.find(builtin_name);
 }
 
 pure fn
-builtin_is_hidden_by_mood(Builtin::Kind kind, mimic_mood mood) wontthrow -> bool
+builtin_is_hidden_by_mood(builtin::Kind kind, mimic_mood mood) wontthrow -> bool
 {
   if (mood != mimic_mood::Posix) return false;
 
-  return kind == Builtin::Kind::Let || kind == Builtin::Kind::Time;
+  return kind == builtin::Kind::Let || kind == builtin::Kind::Time;
 }
 
 pure fn
@@ -102,7 +102,7 @@ static const StringView   *BUILTIN_HELP_DESCRIPTIONS[BUILTIN_KIND_COUNT] = {};
 static const SynopsisList *BUILTIN_HELP_SYNOPSES[BUILTIN_KIND_COUNT]     = {};
 
 fn
-register_builtin_help(Builtin::Kind       kind,
+register_builtin_help(builtin::Kind       kind,
                       const FlagList     *flags,
                       const StringView   *description,
                       const SynopsisList *synopsis) wontthrow -> void
@@ -115,13 +115,13 @@ register_builtin_help(Builtin::Kind       kind,
 }
 
 fn
-builtin_flag_list(Builtin::Kind kind) wontthrow -> const FlagList *
+builtin_flag_list(builtin::Kind kind) wontthrow -> const FlagList *
 {
   return BUILTIN_FLAG_LISTS[static_cast<usize>(kind)];
 }
 
 fn
-builtin_help_description(Builtin::Kind kind) wontthrow -> StringView
+builtin_help_description(builtin::Kind kind) wontthrow -> StringView
 {
   let const description = BUILTIN_HELP_DESCRIPTIONS[static_cast<usize>(kind)];
 
@@ -129,7 +129,7 @@ builtin_help_description(Builtin::Kind kind) wontthrow -> StringView
 }
 
 fn
-builtin_help_synopsis(Builtin::Kind kind) wontthrow -> const SynopsisList *
+builtin_help_synopsis(builtin::Kind kind) wontthrow -> const SynopsisList *
 {
   return BUILTIN_HELP_SYNOPSES[static_cast<usize>(kind)];
 }
@@ -177,12 +177,12 @@ declaration_assignment_failure_status(const EvalContext &cxt) wontthrow -> i32
 }
 
 static pure fn
-is_declaration_builtin_kind(Builtin::Kind kind) wontthrow -> bool
+is_declaration_builtin_kind(builtin::Kind kind) wontthrow -> bool
 {
   switch (kind) {
-  case Builtin::Kind::Declare:
-  case Builtin::Kind::Export:
-  case Builtin::Kind::Readonly: return true;
+  case builtin::Kind::Declare:
+  case builtin::Kind::Export:
+  case builtin::Kind::Readonly: return true;
   default:                      return false;
   }
 }
@@ -197,15 +197,15 @@ is_builtin_owned_location(const ExecContext    &ec,
   let const command = ec.source_location();
 
   switch (ec.builtin_kind()) {
-  case Builtin::Kind::Source:
-  case Builtin::Kind::Eval:
-  case Builtin::Kind::Exec:
-  case Builtin::Kind::CommandBuiltin:
-  case Builtin::Kind::BuiltinBuiltin:
-  case Builtin::Kind::Mapfile:
-  case Builtin::Kind::Time:
-  case Builtin::Kind::Fc:
-  case Builtin::Kind::Koshkit:        return false;
+  case builtin::Kind::Source:
+  case builtin::Kind::Eval:
+  case builtin::Kind::Exec:
+  case builtin::Kind::CommandBuiltin:
+  case builtin::Kind::BuiltinBuiltin:
+  case builtin::Kind::Mapfile:
+  case builtin::Kind::Time:
+  case builtin::Kind::Fc:
+  case builtin::Kind::Koshkit:        return false;
   default:                            break;
   }
 
@@ -223,7 +223,7 @@ static fn
 is_bare_exec_on_shell(const ExecContext &ec, const EvalContext &cxt) wontthrow
     -> bool
 {
-  if (ec.builtin_kind() != Builtin::Kind::Exec) return false;
+  if (ec.builtin_kind() != builtin::Kind::Exec) return false;
 
   let const &args = ec.args();
 
@@ -414,9 +414,9 @@ builtin_error_ends_posix_script(const ExecContext &ec,
                                 const EvalContext &cxt) wontthrow -> bool
 {
   if (!cxt.runtime_state().is_posix_mode()) return false;
-  if (ec.builtin_kind() == Builtin::Kind::Trap) return false;
+  if (ec.builtin_kind() == builtin::Kind::Trap) return false;
 
-  return ec.builtin_kind() == Builtin::Kind::Local ||
+  return ec.builtin_kind() == builtin::Kind::Local ||
          is_special_builtin_name(ec.program());
 }
 
@@ -574,7 +574,7 @@ report_usage_error(const ExecContext &ec,
   let context = String{heap_allocator(), program_name};
 
   if (!ec.is_multicall && ec.is_builtin()) {
-    context = ec.builtin_kind() == Builtin::Kind::Koshkit
+    context = ec.builtin_kind() == builtin::Kind::Koshkit
                   ? StringView{"Koshkit `"} + program_name + "`"
                   : builtin_error_context(program_name);
   }
@@ -635,7 +635,7 @@ declare_nameref(const ExecContext &ec,
 }
 
 fn
-continue_job(job &job) throws -> void
+continue_job(Job &job) throws -> void
 {
   let const cont = os::signal_number_from_name("CONT");
 
@@ -646,7 +646,7 @@ continue_job(job &job) throws -> void
   if (job.process_group_id > 0 &&
       os::signal_process(os::process_from_pid(-job.process_group_id), *cont))
   {
-    job.state = job::State::Running;
+    job.state = Job::State::Running;
 
     return;
   }
@@ -663,7 +663,7 @@ continue_job(job &job) throws -> void
 
   /* at this point: CONT was sent to the primary process when it is active,
      and to every earlier pipeline process. */
-  job.state = job::State::Running;
+  job.state = Job::State::Running;
 }
 
 fn
@@ -1132,7 +1132,7 @@ run_cd_to_directory(EvalContext       &cxt,
 
   let cd_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
   let routed           = ExecContext::make_from_resolved(
-      ec.source_location(), ResolvedCommand::from_builtin(Builtin::Kind::Cd),
+      ec.source_location(), ResolvedCommand::from_builtin(builtin::Kind::Cd),
       steal(cd_args), steal(cd_arg_locations));
 
   return execute_builtin(steal(routed), cxt);

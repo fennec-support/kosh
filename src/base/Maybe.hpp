@@ -14,10 +14,10 @@
 
 namespace koshka {
 
-class Nothing
+class nothing
 {};
 
-inline constexpr Nothing None{};
+inline constexpr nothing None{};
 
 /* a value whose copy is a plain byte copy, so a Maybe of it is trivially
    copyable and destructible and can be constant data. */
@@ -33,7 +33,7 @@ public:
   static_assert(is_nothrow_destructible_v<T>);
 
   constexpr Maybe() noexcept : m_has_value(false), m_empty(0) {}
-  constexpr Maybe(Nothing) noexcept : m_has_value(false), m_empty(0) {}
+  constexpr Maybe(nothing) noexcept : m_has_value(false), m_empty(0) {}
   constexpr Maybe(T value) : m_has_value(true), m_value(steal(value)) {}
 
   Maybe(const Maybe &other)
@@ -262,7 +262,7 @@ class mustuse Maybe<T *>
 {
 public:
   constexpr Maybe() noexcept = default;
-  constexpr Maybe(Nothing) noexcept {}
+  constexpr Maybe(nothing) noexcept {}
   constexpr Maybe(T *value) noexcept : m_value(value) {}
 
   hot mustuse pure constexpr fn

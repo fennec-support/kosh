@@ -883,7 +883,7 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
 
     has_reference = true;
     if (reference != nullptr
-            ? reference->kind != parameter_reference::Form::Name
+            ? reference->kind != ParameterReference::Form::Name
             : !lexer::word_is_variable_name(segment.text.view()))
     {
       has_complex_reference = true;
@@ -937,10 +937,9 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
 }
 
 static pure fn
-ast_parameter_form_symbol(parameter_reference::Form form)
-    wontthrow -> StringView
+ast_parameter_form_symbol(ParameterReference::Form form) wontthrow -> StringView
 {
-  using reference_form = parameter_reference::Form;
+  using reference_form = ParameterReference::Form;
 
   switch (form) {
   case reference_form::Empty:       return "empty";
@@ -960,8 +959,8 @@ ast_parameter_form_symbol(parameter_reference::Form form)
 }
 
 cold fn
-AstWriter::parameter(const parameter_reference &reference,
-                     StringView                 text) throws -> void
+AstWriter::parameter(const ParameterReference &reference,
+                     StringView                text) throws -> void
 {
   open("param");
   symbol("form", ast_parameter_form_symbol(reference.kind));
@@ -972,12 +971,12 @@ AstWriter::parameter(const parameter_reference &reference,
                           : StringView{};
   let const bracket = spec.find_character('[');
 
-  if (reference.kind == parameter_reference::Form::PrefixNames &&
+  if (reference.kind == ParameterReference::Form::PrefixNames &&
       !spec.is_empty())
   {
     quoted("name", spec.substring_of_length(0, spec.length - 1));
     quoted("suffix", spec.substring(spec.length - 1));
-  } else if (reference.kind == parameter_reference::Form::Keys &&
+  } else if (reference.kind == ParameterReference::Form::Keys &&
              bracket.has_value())
   {
     quoted("name", spec.substring_of_length(0, *bracket));
@@ -987,7 +986,7 @@ AstWriter::parameter(const parameter_reference &reference,
     quoted("name", spec);
   }
 
-  if (reference.kind == parameter_reference::Form::Subscripted) {
+  if (reference.kind == ParameterReference::Form::Subscripted) {
     quoted("subscript",
            text.substring_of_length(reference.rest_offset + 1,
                                     reference.subscript_close -
@@ -1111,8 +1110,8 @@ ast_arithmetic_operator(char op) wontthrow -> StringView
 }
 
 cold fn
-AstWriter::arithmetic(StringView        expression,
-                      const arith_tree *tree) throws -> void
+AstWriter::arithmetic(StringView       expression,
+                      const ArithTree *tree) throws -> void
 {
   if (tree == nullptr) return;
   if (tree->should_expand) {
@@ -1133,9 +1132,9 @@ AstWriter::arithmetic(StringView        expression,
 }
 
 cold fn
-AstWriter::arithmetic_lvalue(StringView        expression,
-                             const arith_tree &tree,
-                             u32               index) throws -> void
+AstWriter::arithmetic_lvalue(StringView       expression,
+                             const ArithTree &tree,
+                             u32              index) throws -> void
 {
   let const &node = tree.nodes[index];
   let const  name = expression.substring_of_length(node.start, node.length);
@@ -1155,9 +1154,9 @@ AstWriter::arithmetic_lvalue(StringView        expression,
 }
 
 cold fn
-AstWriter::arithmetic_chain(StringView        expression,
-                            const arith_tree &tree,
-                            u32               index) throws -> void
+AstWriter::arithmetic_chain(StringView       expression,
+                            const ArithTree &tree,
+                            u32              index) throws -> void
 {
   let const &chain = tree.nodes[index];
   let        steps = ArrayList<u32>{heap_allocator()};
@@ -1180,9 +1179,9 @@ AstWriter::arithmetic_chain(StringView        expression,
 }
 
 cold fn
-AstWriter::arithmetic_node(StringView        expression,
-                           const arith_tree &tree,
-                           u32               index) throws -> void
+AstWriter::arithmetic_node(StringView       expression,
+                           const ArithTree &tree,
+                           u32              index) throws -> void
 {
   let const &node = tree.nodes[index];
 
@@ -1362,7 +1361,7 @@ Expression::to_ast_string(StringView source, mimic_mood mood) const throws -> St
 hot flatten fn
 Expression::evaluate_root_status(EvalContext         &cxt,
                                  root_evaluation_mode mode) const throws
-    -> status_result
+    -> StatusResult
 {
   os::reap_unowned_children();
 
@@ -1414,13 +1413,13 @@ Expression::operator delete(opaque *pointer) wontthrow -> void
 }
 
 fn
-analysis_reporter::warn(diagnostic_id                id,
-                        const SourceLocation        &location,
-                        StringView                   message,
-                        StringView                   suggestion,
-                        diagnostic_tier              tier,
-                        const Maybe<SourceLocation> &related_location,
-                        StringView                   related_message) throws -> void
+AnalysisReporter::warn(diagnostic_id                id,
+                       const SourceLocation        &location,
+                       StringView                   message,
+                       StringView                   suggestion,
+                       diagnostic_tier              tier,
+                       const Maybe<SourceLocation> &related_location,
+                       StringView                   related_message) throws -> void
 {
   if (!should_report(tier)) return;
 
@@ -1437,10 +1436,10 @@ analysis_reporter::warn(diagnostic_id                id,
 }
 
 fn
-analysis_reporter::set_last_trace(diagnostic_id         id,
-                                  const SourceLocation &location,
-                                  const SourceLocation &trace_location,
-                                  StringView            trace_message) throws
+AnalysisReporter::set_last_trace(diagnostic_id         id,
+                                 const SourceLocation &location,
+                                 const SourceLocation &trace_location,
+                                 StringView            trace_message) throws
     -> void
 {
   if (pending.is_empty()) return;
@@ -1457,8 +1456,7 @@ analysis_reporter::set_last_trace(diagnostic_id         id,
 }
 
 fn
-analysis_reporter::flush(const analysis_report_site &site) throws
-    -> void
+AnalysisReporter::flush(const analysis_report_site &site) throws -> void
 {
   if (pending.is_empty()) return;
 
@@ -1592,15 +1590,15 @@ print_analysis_diagnostic_summary(
 
   let const should_color = colors::stderr_wants_color();
   let const warning_color =
-      should_color ? colors::color_style{colors::color::Yellow,
-                                         colors::color_variant::Soft}
-                   : colors::color_style{};
-  let const error_color =
-      should_color ? colors::color_style{colors::color::BoldBrightRed,
-                                         colors::color_variant::Soft}
-                   : colors::color_style{};
-  let const reset = colors::color_style{should_color ? colors::color::Reset
-                                                     : colors::color::None};
+      should_color ? colors::ColorStyle{colors::color::Yellow,
+                                        colors::color_variant::Soft}
+                   : colors::ColorStyle{};
+  let const error_color = should_color
+                              ? colors::ColorStyle{colors::color::BoldBrightRed,
+                                                   colors::color_variant::Soft}
+                              : colors::ColorStyle{};
+  let const reset       = colors::ColorStyle{should_color ? colors::color::Reset
+                                                          : colors::color::None};
 
   let summary = String{heap_allocator(), "kosh: "};
 
@@ -1638,7 +1636,7 @@ AnalysisContext::print_optimizer_summary() const throws -> void
 
   if (should_color)
     summary.append(colors::color_to_sv(
-        colors::color_style{colors::color::Blue, colors::color_variant::Soft}));
+        colors::ColorStyle{colors::color::Blue, colors::color_variant::Soft}));
   summary.append(String::from(optimizer_eliminated_count, heap_allocator()));
   summary.append(optimizer_eliminated_count == 1 ? " statement"
                                                  : " statements");
@@ -1649,13 +1647,13 @@ AnalysisContext::print_optimizer_summary() const throws -> void
 }
 
 pure fn
-analysis_reporter::should_report(diagnostic_id id) const wontthrow -> bool
+AnalysisReporter::should_report(diagnostic_id id) const wontthrow -> bool
 {
   return should_report(get_diagnostic_definition(id).tier);
 }
 
 pure fn
-analysis_reporter::should_report(diagnostic_tier tier) const wontthrow -> bool
+AnalysisReporter::should_report(diagnostic_tier tier) const wontthrow -> bool
 {
   if (tier == diagnostic_tier::Annoying && !options.should_emit_annoying) {
     return false;
@@ -1691,7 +1689,7 @@ AnalysisContext::should_silence_unresolved_command_at(
 }
 
 fn
-analysis_reporter::report(
+AnalysisReporter::report(
     const analysis_report_site       &site,
     diagnostic_id                     id,
     const SourceLocation             &location,
@@ -1743,14 +1741,14 @@ analysis_reporter::report(
 }
 
 fn
-analysis_reporter::fail(const analysis_report_site  &site,
-                        diagnostic_id                id,
-                        const SourceLocation        &location,
-                        StringView                   message,
-                        StringView                   suggestion,
-                        diagnostic_tier              tier,
-                        const Maybe<SourceLocation> &related_location,
-                        StringView                   related_message) throws -> void
+AnalysisReporter::fail(const analysis_report_site  &site,
+                       diagnostic_id                id,
+                       const SourceLocation        &location,
+                       StringView                   message,
+                       StringView                   suggestion,
+                       diagnostic_tier              tier,
+                       const Maybe<SourceLocation> &related_location,
+                       StringView                   related_message) throws -> void
 {
   let const  source       = site.source;
   let *const eval_context = site.eval_context;
@@ -1833,9 +1831,9 @@ analysis_reporter::fail(const analysis_report_site  &site,
 }
 
 pure fn
-analysis_reporter::is_suppressed(const analysis_report_site &site,
-                                 diagnostic_id               id,
-                                 const SourceLocation       &location) const wontthrow
+AnalysisReporter::is_suppressed(const analysis_report_site &site,
+                                diagnostic_id               id,
+                                const SourceLocation       &location) const wontthrow
     -> bool
 {
   if (suppressions == nullptr) return false;
@@ -2155,7 +2153,7 @@ AnalysisContext::apply_called_function(
 
 static fn
 resolve_function_occurrence_states(
-    analysis_symbol_records &symbol_records) wontthrow -> void
+    AnalysisSymbolRecords &symbol_records) wontthrow -> void
 {
   for (let &occurrence : symbol_records.variable_occurrences) {
     if (occurrence.kind != variable_occurrence_kind::Reference) continue;
@@ -3014,7 +3012,7 @@ analyze_ast(const Expression                *root,
             const HashSet                   &known_functions,
             const HashSet                   &known_aliases,
             EvalContext                     *eval_context,
-            const analysis_options          &options,
+            const AnalysisOptions           &options,
             const analysis_directives       &directives,
             const analysis_followed_sources &followed_sources,
             const analysis_parent_link      &parent,
@@ -3281,7 +3279,7 @@ internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext    &actx,
                                                  analysis_scope_mode mode)
     : m_actx{actx}, m_mode{mode},
       m_occurrences{mode == analysis_scope_mode::Substitution
-                        ? variable_occurrence_pair{}
+                        ? VariableOccurrencePair{}
                         : actx.occurrences.snapshot()},
       m_function_mark{actx.functions.get_mark()},
       m_scoped_name_mark{actx.get_scoped_name_mark()},
@@ -3310,7 +3308,7 @@ internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext    &actx,
   case analysis_scope_mode::Function:
     m_constants                        = steal(actx.constant_variables);
     m_function_local_names             = steal(actx.function_local_names);
-    actx.occurrences                   = variable_occurrence_pair{};
+    actx.occurrences                   = VariableOccurrencePair{};
     m_loop_body_depth                  = actx.loop_body_depth;
     actx.loop_body_depth               = 0;
     m_conditional_branch_depth         = actx.conditional_branch_depth;
@@ -4060,7 +4058,7 @@ DummyExpression::is_dummy() const wontthrow -> bool
 }
 
 fn
-DummyExpression::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+DummyExpression::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   SET_AND_RETURN_EXIT_STATUS(cxt, 0);
 }

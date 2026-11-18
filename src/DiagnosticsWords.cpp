@@ -823,8 +823,8 @@ check_posix_word_portability(AnalysisContext      &actx,
 }
 
 fn
-check_operand_lints_before_scan(AnalysisContext          &actx,
-                                const command_lint_input &input) throws
+check_operand_lints_before_scan(AnalysisContext        &actx,
+                                const CommandLintInput &input) throws
     -> void
 {
   if (input.is_command_shadowed) return;
@@ -1107,8 +1107,8 @@ check_equals_bearing_command_name(AnalysisContext      &actx,
    time:   linear in command_literal for the equals and dollar scans, plus
            the copy of the last argument when one is made. */
 fn
-check_command_word_shape(AnalysisContext          &actx,
-                         const command_lint_input &input) throws -> bool
+check_command_word_shape(AnalysisContext        &actx,
+                         const CommandLintInput &input) throws -> bool
 {
   let const &args                             = input.args;
   let const  command_literal                  = input.command_literal;
@@ -1186,10 +1186,10 @@ check_command_word_shape(AnalysisContext          &actx,
 }
 
 fn
-note_formatted_target(AnalysisContext          &actx,
-                      const command_lint_input &input,
-                      StringView                name,
-                      const SourceLocation     &location) throws -> void
+note_formatted_target(AnalysisContext        &actx,
+                      const CommandLintInput &input,
+                      StringView              name,
+                      const SourceLocation   &location) throws -> void
 {
   if (name.is_empty() || input.is_command_shadowed) {
     return;
@@ -1213,8 +1213,8 @@ constexpr PackedStringKey FIND_PATTERN_PREDICATE_KEYS[] = {
 constexpr StaticStringSet FIND_PATTERN_PREDICATES{FIND_PATTERN_PREDICATE_KEYS};
 
 fn
-check_operand_lints_after_scan(AnalysisContext          &actx,
-                               const command_lint_input &input) throws
+check_operand_lints_after_scan(AnalysisContext        &actx,
+                               const CommandLintInput &input) throws
     -> void
 {
   if (input.is_command_shadowed) return;

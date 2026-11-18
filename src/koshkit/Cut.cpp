@@ -95,8 +95,8 @@ Cut::execute(const ExecContext               &ec,
   if (FLAG_CUT_COMPLEMENT.is_enabled()) {
     /* the ranges are ascending and disjoint, so the gaps arrive in order and
        each push appends. */
-    let gaps = SortedArrayList<utils::text_position_range,
-                               order_comparator<utils::text_position_range>>{
+    let gaps = SortedArrayList<utils::TextPositionRange,
+                               OrderComparator<utils::TextPositionRange>>{
         cxt.scratch_allocator(), sort_order::ascending};
     usize first_unselected = 1;
 
@@ -150,7 +150,7 @@ Cut::execute(const ExecContext               &ec,
   let const should_suppress_undelimited  = FLAG_CUT_SUPPRESS.is_enabled();
   let       line                         = String{cxt.scratch_allocator()};
   let       reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-  let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+  let chunks = ArrayList<SourceBatchReader::chunk>{cxt.scratch_allocator()};
   i32 status = 0;
 
   let const do_process_line = [&](StringView line_view) throws -> void {

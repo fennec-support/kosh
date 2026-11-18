@@ -21,7 +21,7 @@ namespace koshka {
 using namespace tokens;
 
 class Token;
-struct heredoc_contents;
+struct HeredocContents;
 struct parsed_format_document;
 
 struct pending_analysis_warning
@@ -260,19 +260,19 @@ private:
   variable_occurrence_map_storage *m_head{nullptr};
 };
 
-struct variable_occurrence_pair
+struct VariableOccurrencePair
 {
   VariableOccurrenceStateMap assigned;
   VariableOccurrenceStateMap inherited;
 
   fn
-  snapshot() throws -> variable_occurrence_pair
+  snapshot() throws -> VariableOccurrencePair
   {
-    return variable_occurrence_pair{assigned.snapshot(), inherited.snapshot()};
+    return VariableOccurrencePair{assigned.snapshot(), inherited.snapshot()};
   }
 
   fn
-  merge(const variable_occurrence_pair &other) throws -> void
+  merge(const VariableOccurrencePair &other) throws -> void
   {
     assigned.merge(other.assigned);
     inherited.merge(other.inherited);
@@ -344,7 +344,7 @@ struct analysis_function_mark
   usize alias_insertion_count{0};
 };
 
-struct analysis_function_table
+struct AnalysisFunctionTable
 {
   HashSet defined{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
   HashSet aliases{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
@@ -423,7 +423,7 @@ struct source_span_record
   u32 length{0};
 };
 
-struct analysis_symbol_records
+struct AnalysisSymbolRecords
 {
   ArrayList<variable_assignment_record> assignments{heap_allocator()};
   ArrayList<variable_occurrence_record> variable_occurrences{heap_allocator()};
@@ -476,7 +476,7 @@ struct analysis_walk_flags
   bool is_inside_substitution_subshell{false};
 };
 
-struct analysis_effects
+struct AnalysisEffects
 {
   bool has_seen_runtime_definer{false};
   bool has_unknown_path{false};
@@ -484,8 +484,7 @@ struct analysis_effects
   bool should_silence_unresolved_commands{false};
 
   fn
-  raise(const analysis_effects &delta, analysis_effects *mirror)
-      wontthrow -> void
+  raise(const AnalysisEffects &delta, AnalysisEffects *mirror) wontthrow -> void
   {
     has_seen_runtime_definer =
         has_seen_runtime_definer || delta.has_seen_runtime_definer;
@@ -502,13 +501,13 @@ struct analysis_effects
 
 struct followed_source_effects
 {
-  HashSet          defined_functions{heap_allocator()};
-  HashSet          known_aliases{heap_allocator()};
-  HashSet          assigned_names{heap_allocator()};
-  HashSet          global_assigned_names{heap_allocator()};
-  HashSet          array_valued_names{heap_allocator()};
-  analysis_effects effects;
-  bool             has_fatal{false};
+  HashSet         defined_functions{heap_allocator()};
+  HashSet         known_aliases{heap_allocator()};
+  HashSet         assigned_names{heap_allocator()};
+  HashSet         global_assigned_names{heap_allocator()};
+  HashSet         array_valued_names{heap_allocator()};
+  AnalysisEffects effects;
+  bool            has_fatal{false};
 };
 
 inline pure fn
@@ -553,7 +552,7 @@ enum class missing_shebang_policy : u8
   Report,
 };
 
-struct analysis_options
+struct AnalysisOptions
 {
   u8                       warning_level{0};
   bool                     is_default_mood{true};
@@ -569,9 +568,9 @@ struct analysis_options
   usize source_start_position{0};
 
   static fn
-  from_runtime(const RuntimeState &runtime) wontthrow -> analysis_options
+  from_runtime(const RuntimeState &runtime) wontthrow -> AnalysisOptions
   {
-    analysis_options options{};
+    AnalysisOptions options{};
 
     options.warning_level        = runtime.get_warning_level();
     options.is_default_mood      = runtime.get_mood() == mimic_mood::Default;
@@ -604,9 +603,9 @@ struct analysis_report_site
   EvalContext *eval_context;
 };
 
-struct analysis_reporter
+struct AnalysisReporter
 {
-  const analysis_options                  &options;
+  const AnalysisOptions                   &options;
   const ArrayList<shellcheck_suppression> *suppressions{nullptr};
   u32                                      source_name_index{0};
   analysis_diagnostic_totals               totals{};
@@ -614,8 +613,7 @@ struct analysis_reporter
   ArrayList<source_diagnostic>            *sink{nullptr};
   bool                                     has_fatal{false};
 
-  explicit analysis_reporter(const analysis_options &analysis)
-      : options(analysis)
+  explicit AnalysisReporter(const AnalysisOptions &analysis) : options(analysis)
   {}
 
   fn
@@ -673,18 +671,18 @@ struct analysis_outputs
 {
   analysis_diagnostic_totals   *deferred_totals{nullptr};
   ArrayList<source_diagnostic> *diagnostic_sink{nullptr};
-  analysis_symbol_records      *symbol_records{nullptr};
+  AnalysisSymbolRecords        *symbol_records{nullptr};
 };
 
 class AnalysisContext
 {
 public:
-  StringView              source;
-  const analysis_options  options;
-  analysis_reporter       reporter;
-  bool                    is_koshkit_utility_reachable{true};
-  analysis_function_table functions;
-  StringMap<String>       constant_variables{heap_allocator(),
+  StringView            source;
+  const AnalysisOptions options;
+  AnalysisReporter      reporter;
+  bool                  is_koshkit_utility_reachable{true};
+  AnalysisFunctionTable functions;
+  StringMap<String>     constant_variables{heap_allocator(),
                                        SMALL_MAP_FIRST_CAPACITY};
 
   usize function_scope_depth{0};
@@ -695,7 +693,7 @@ public:
   StringMap<SourceLocation> function_local_names{heap_allocator(),
                                                  SMALL_MAP_FIRST_CAPACITY};
 
-  variable_occurrence_pair occurrences;
+  VariableOccurrencePair occurrences;
 
   StringMap<SourceLocation> global_assigned_names{heap_allocator()};
   HashSet                   inherited_global_assigned_names{heap_allocator(),
@@ -747,7 +745,7 @@ public:
   StringMap<variable_scope_record> variable_scopes{heap_allocator()};
   HashSet                          top_level_assigned_names{heap_allocator()};
 
-  analysis_effects              effects;
+  AnalysisEffects               effects;
   const parsed_format_document *format_document{nullptr};
 
   HashSet generated_relative_executable_paths{heap_allocator(),
@@ -764,12 +762,12 @@ public:
 
   AnalysisSourceProvider *source_provider{nullptr};
 
-  analysis_symbol_records *symbol_records{nullptr};
+  AnalysisSymbolRecords *symbol_records{nullptr};
 
   BumpArena substitution_arena;
   usize     substitution_analysis_depth{0};
 
-  AnalysisContext(StringView source_view, const analysis_options &analysis)
+  AnalysisContext(StringView source_view, const AnalysisOptions &analysis)
       : source(source_view), options(analysis), reporter(options)
   {
     effects.should_silence_unresolved_commands =
@@ -848,7 +846,7 @@ public:
   fn
   mark_path_unknown(bool should_silence_commands) wontthrow -> void
   {
-    let delta = analysis_effects{};
+    let delta = AnalysisEffects{};
 
     delta.has_unknown_path                   = true;
     delta.should_silence_unresolved_commands = should_silence_commands;
@@ -858,7 +856,7 @@ public:
   fn
   mark_working_directory_unknown() wontthrow -> void
   {
-    let delta = analysis_effects{};
+    let delta = AnalysisEffects{};
 
     delta.has_unknown_working_directory = true;
     generated_relative_executable_paths =
@@ -869,7 +867,7 @@ public:
   fn
   mark_runtime_definer_seen() wontthrow -> void
   {
-    let delta = analysis_effects{};
+    let delta = AnalysisEffects{};
 
     delta.has_seen_runtime_definer = true;
     raise_effects(delta);
@@ -1005,7 +1003,7 @@ public:
 
 private:
   fn
-  raise_effects(const analysis_effects &delta) wontthrow -> void
+  raise_effects(const AnalysisEffects &delta) wontthrow -> void
   {
     effects.raise(delta, current_source_effects != nullptr
                              ? &current_source_effects->effects
@@ -1027,7 +1025,7 @@ analyze_ast(const Expression                *root,
             const HashSet                   &known_functions,
             const HashSet                   &known_aliases,
             EvalContext                     *eval_context,
-            const analysis_options          &options,
+            const AnalysisOptions           &options,
             const analysis_directives       &directives,
             const analysis_followed_sources &followed_sources = {},
             const analysis_parent_link      &parent           = {},
@@ -1073,12 +1071,12 @@ public:
   fn
   word(const Word &word, Maybe<SourceLocation> location) throws -> void;
   fn
-  parameter(const parameter_reference &reference,
-            StringView                 text) throws -> void;
+  parameter(const ParameterReference &reference, StringView text) throws
+      -> void;
   fn
   atom(StringView value) throws -> void;
   fn
-  arithmetic(StringView expression, const arith_tree *tree) throws
+  arithmetic(StringView expression, const ArithTree *tree) throws
       -> void;
   fn
   take() throws -> String;
@@ -1097,17 +1095,17 @@ private:
   fn
   substitution_body(const WordSegment &segment) throws -> void;
   fn
-  arithmetic_lvalue(StringView        expression,
-                    const arith_tree &tree,
-                    u32               index) throws -> void;
+  arithmetic_lvalue(StringView       expression,
+                    const ArithTree &tree,
+                    u32              index) throws -> void;
   fn
-  arithmetic_node(StringView        expression,
-                  const arith_tree &tree,
-                  u32               index) throws -> void;
+  arithmetic_node(StringView       expression,
+                  const ArithTree &tree,
+                  u32              index) throws -> void;
   fn
-  arithmetic_chain(StringView        expression,
-                   const arith_tree &tree,
-                   u32               index) throws -> void;
+  arithmetic_chain(StringView       expression,
+                   const ArithTree &tree,
+                   u32              index) throws -> void;
 
   String     m_output{heap_allocator()};
   StringView m_source;
@@ -1134,9 +1132,9 @@ public:
   virtual fn
   error_report_location() const wontthrow -> SourceLocation;
   fn
-  evaluate_root_status(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result;
+  evaluate_root_status(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult;
   fn
-  evaluate_status(EvalContext &cxt) const throws -> status_result
+  evaluate_status(EvalContext &cxt) const throws -> StatusResult
   {
     return evaluate_root_status(cxt, root_evaluation_mode::Normal);
   }
@@ -1218,7 +1216,7 @@ public:
 
 protected:
   virtual fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult
       abstract;
 
   SourceLocation m_location;
@@ -1242,7 +1240,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 };
 
 class PrefixAssignment
@@ -1396,7 +1394,7 @@ protected:
   SparseList<PrefixAssignment> m_local_vars{};
 };
 
-struct published_command_text
+struct PublishedCommandText
 {
   CopyOnWrite<String> text{heap_allocator()};
   bool                was_rendered_with_bash_additions{false};
@@ -1451,12 +1449,12 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
   fn
   evaluate_assignment(EvalContext &cxt) const throws -> i64;
 
-  const Assignment              *m_assignment;
-  mutable published_command_text m_published_command_text{};
+  const Assignment            *m_assignment;
+  mutable PublishedCommandText m_published_command_text{};
 };
 
 class Redirection
@@ -1485,20 +1483,20 @@ public:
 
   static constexpr i32 DUP_FD_CLOSE = -2;
 
-  const Token            *target;
-  const heredoc_contents *heredoc;
-  const Token            *fd_allocation_name_token;
-  const Token            *heredoc_delimiter;
-  i32                     fd;
-  i32                     dup_fd;
-  u32                     operator_position;
-  u32                     span_position;
-  u32                     span_length;
-  Kind                    kind;
-  Origin                  origin;
-  bool                    has_state_changing_target;
-  bool                    should_expand_heredoc;
-  bool                    should_strip_heredoc_tabs;
+  const Token           *target;
+  const HeredocContents *heredoc;
+  const Token           *fd_allocation_name_token;
+  const Token           *heredoc_delimiter;
+  i32                    fd;
+  i32                    dup_fd;
+  u32                    operator_position;
+  u32                    span_position;
+  u32                    span_length;
+  Kind                   kind;
+  Origin                 origin;
+  bool                   has_state_changing_target;
+  bool                   should_expand_heredoc;
+  bool                   should_strip_heredoc_tabs;
   /* the - of <<- is its own token, as in <<- EOF, so the delimiter word
      holds no dash. */
   bool has_separated_strip_operator;
@@ -1648,22 +1646,22 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   ArrayList<const Token *> m_args{heap_allocator()};
 
-  struct LiteralCommandLookup
+  struct literal_command_lookup
   {
-    Maybe<Builtin::Kind> builtin{};
+    Maybe<builtin::Kind> builtin{};
     bool                 is_special{false};
   };
 
-  mutable published_command_text m_published_command_text{};
+  mutable PublishedCommandText m_published_command_text{};
 
   fn
   get_literal_command_name() const throws -> Maybe<StringView>;
   fn
-  get_literal_command_lookup(const ArrayList<String> &program_args) const throws -> const LiteralCommandLookup *;
+  get_literal_command_lookup(const ArrayList<String> &program_args) const throws -> const literal_command_lookup *;
 
   u32 m_full_source_end_position{0};
   u32 m_first_token_position{0};
@@ -1671,8 +1669,8 @@ protected:
   SparseList<Redirection>              m_redirections{};
   SparseList<array_builtin_assignment> m_array_args{};
 
-  Maybe<LiteralCommandLookup> m_literal_command_lookup{};
-  bool                        m_is_command_word_glob{false};
+  Maybe<literal_command_lookup> m_literal_command_lookup{};
+  bool                          m_is_command_word_glob{false};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(SimpleCommand) == 120);
@@ -1723,7 +1721,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   Kind           m_kind;
   const Command *m_cmd;
@@ -1775,7 +1773,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   ArrayList<const CompoundListCondition *> m_nodes{heap_allocator()};
 };
@@ -1813,7 +1811,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   fn
   evaluate_with_compound_stages(EvalContext &cxt) const throws -> i64;
@@ -1878,7 +1876,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   ArrayList<if_branch> m_branches{heap_allocator()};
   const Expression    *m_otherwise;
@@ -1923,7 +1921,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   const Expression *m_condition;
   const Expression *m_body;
@@ -1956,7 +1954,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   StringView               m_variable_name;
   ArrayList<const Token *> m_words{heap_allocator()};
@@ -1995,7 +1993,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   const Token         *m_word;
   ArrayList<case_item> m_items{heap_allocator()};
@@ -2022,7 +2020,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   const Expression *m_body;
 };
@@ -2045,7 +2043,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   StringView        m_name;
   const Expression *m_body;
@@ -2076,7 +2074,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   fn
   collapsed_body() const wontthrow -> const Expression *;
@@ -2101,19 +2099,19 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   ArrayList<conditional_element> m_elements;
   conditional_tree               m_tree;
-  mutable published_command_text m_published_command_text{};
+  mutable PublishedCommandText   m_published_command_text{};
 };
 
 class ArithmeticCommand : public CompoundCommand
 {
 public:
-  ArithmeticCommand(SourceLocation    location,
-                    StringView        expression,
-                    const arith_tree *tree);
+  ArithmeticCommand(SourceLocation   location,
+                    StringView       expression,
+                    const ArithTree *tree);
 
   fn
   write_ast(AstWriter &out) const throws -> void override;
@@ -2128,12 +2126,12 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
-  StringView        m_expression;
-  const arith_tree *m_tree;
+  StringView       m_expression;
+  const ArithTree *m_tree;
 
-  mutable published_command_text m_published_command_text{};
+  mutable PublishedCommandText m_published_command_text{};
 };
 
 class CStyleForLoop : public CompoundCommand
@@ -2145,9 +2143,9 @@ public:
                 StringView        condition,
                 StringView        step,
                 const Expression *body,
-                const arith_tree *init_tree,
-                const arith_tree *condition_tree,
-                const arith_tree *step_tree);
+                const ArithTree  *init_tree,
+                const ArithTree  *condition_tree,
+                const ArithTree  *step_tree);
 
   fn
   write_ast(AstWriter &out) const throws -> void override;
@@ -2172,7 +2170,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   usize             m_header_position;
   StringView        m_init;
@@ -2183,13 +2181,13 @@ protected:
   mutable Maybe<i64> m_folded_condition{};
   mutable bool       m_is_exact_folded_condition_nonzero{false};
 
-  const arith_tree *m_init_tree;
-  const arith_tree *m_condition_tree;
-  const arith_tree *m_step_tree;
+  const ArithTree *m_init_tree;
+  const ArithTree *m_condition_tree;
+  const ArithTree *m_step_tree;
 
-  mutable published_command_text m_published_init_text{};
-  mutable published_command_text m_published_condition_text{};
-  mutable published_command_text m_published_step_text{};
+  mutable PublishedCommandText m_published_init_text{};
+  mutable PublishedCommandText m_published_condition_text{};
+  mutable PublishedCommandText m_published_step_text{};
 };
 
 class SelectLoop : public CompoundCommand
@@ -2212,7 +2210,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   StringView               m_variable_name;
   ArrayList<const Token *> m_words{heap_allocator()};
@@ -2246,12 +2244,12 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
   fn
   evaluate_async_body(EvalContext &cxt) const throws -> i64 override;
 
   fn
-  evaluate_redirected(EvalContext &cxt) const throws -> status_result;
+  evaluate_redirected(EvalContext &cxt) const throws -> StatusResult;
 
   const Command          *m_child;
   SparseList<Redirection> m_redirections{};
@@ -2286,7 +2284,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult override;
 
   SourceLocation                        m_signature_location;
   String                                m_name;

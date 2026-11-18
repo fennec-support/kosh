@@ -71,7 +71,7 @@ manpage_name_for(StringView command) throws -> String
 }
 
 using sorted_subcommand_array =
-    SortedArrayList<String, order_comparator<String>>;
+    SortedArrayList<String, OrderComparator<String>>;
 
 struct cached_subcommand_list
 {
@@ -2100,7 +2100,7 @@ locate_hint_target(StringView line, usize cursor) throws
 
   /* the body of an open heredoc holds no command. */
   {
-    let state = shell_lexical_state{completion_allocator()};
+    let state = ShellLexicalState{completion_allocator()};
 
     internal::advance_shell_lexical_state(line, cursor, state);
     if (state.is_in_heredoc) return None;
@@ -2429,9 +2429,9 @@ compose_command_hint(StringView   line,
              builtin_kind.has_value())
   {
     let const is_koshkit_dispatch =
-        *builtin_kind == Builtin::Kind::Koshkit && has_subcommand_word;
+        *builtin_kind == builtin::Kind::Koshkit && has_subcommand_word;
     let const bundled = is_koshkit_dispatch ? koshkit::find_util(first_word)
-                                            : Maybe<koshkit::Utility::Kind>{};
+                                            : Maybe<koshkit::utility::Kind>{};
 
     if (bundled.has_value()) {
       let key = String{heap_allocator(), "k:"};

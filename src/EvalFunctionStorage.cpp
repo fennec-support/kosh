@@ -15,13 +15,13 @@
 
 namespace koshka {
 
-static function_body_storage *LIVE_EVAL_FUNCTION_STORAGES          = nullptr;
-static constexpr usize        MINIMUM_FUNCTION_ARENA_SIZE          = 1024;
-static constexpr usize        MAXIMUM_FUNCTION_ARENA_SIZE          = 4 * 1024;
-static constexpr usize        FUNCTION_ARENA_FIXED_SIZE            = 512;
-static constexpr usize        FUNCTION_ARENA_BYTES_PER_SOURCE_BYTE = 24;
+static FunctionBodyStorage *LIVE_EVAL_FUNCTION_STORAGES          = nullptr;
+static constexpr usize      MINIMUM_FUNCTION_ARENA_SIZE          = 1024;
+static constexpr usize      MAXIMUM_FUNCTION_ARENA_SIZE          = 4 * 1024;
+static constexpr usize      FUNCTION_ARENA_FIXED_SIZE            = 512;
+static constexpr usize      FUNCTION_ARENA_BYTES_PER_SOURCE_BYTE = 24;
 
-function_body_storage::function_body_storage(BumpArena *owned_arena)
+FunctionBodyStorage::FunctionBodyStorage(BumpArena *owned_arena)
     : arena(owned_arena)
 {
   next_live = LIVE_EVAL_FUNCTION_STORAGES;
@@ -29,7 +29,7 @@ function_body_storage::function_body_storage(BumpArena *owned_arena)
   LIVE_EVAL_FUNCTION_STORAGES = this;
 }
 
-function_body_storage::~function_body_storage()
+FunctionBodyStorage::~FunctionBodyStorage()
 {
   ASSERT(arena != nullptr);
   if (previous_live != nullptr)
@@ -114,11 +114,11 @@ FunctionBodyHandle::create(usize source_length_hint) throws
     throw;
   }
 
-  let *storage = static_cast<function_body_storage *>(nullptr);
+  let *storage = static_cast<FunctionBodyStorage *>(nullptr);
 
   try {
-    storage = heap_allocator().alloc_array<function_body_storage>(1);
-    new (storage) function_body_storage{arena_storage};
+    storage = heap_allocator().alloc_array<FunctionBodyStorage>(1);
+    new (storage) FunctionBodyStorage{arena_storage};
   } catch (...) {
     arena_storage->~BumpArena();
     heap_allocator().free_array(arena_storage, 1);
@@ -213,7 +213,7 @@ FunctionBodyHandle::release() wontthrow -> void
      before the decrement. */
   m_storage->reference_count--;
   if (m_storage->reference_count == 0) {
-    m_storage->~function_body_storage();
+    m_storage->~FunctionBodyStorage();
     heap_allocator().free_array(m_storage, 1);
   }
 

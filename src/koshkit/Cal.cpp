@@ -91,14 +91,14 @@ append_calendar_month(String          &output,
 
   append_report_text(
       output, title.view(),
-      colors::color_style{colors::color::BoldBlue, colors::color_variant::Soft},
+      colors::ColorStyle{colors::color::BoldBlue, colors::color_variant::Soft},
       should_color);
   output += '\n';
   append_report_text(
       output,
       first_day == week_start::Monday ? "Mo Tu We Th Fr Sa Su"
                                       : "Su Mo Tu We Th Fr Sa",
-      colors::color_style{colors::color::BoldCyan, colors::color_variant::Soft},
+      colors::ColorStyle{colors::color::BoldCyan, colors::color_variant::Soft},
       should_color);
   output += '\n';
 
@@ -125,11 +125,11 @@ append_calendar_month(String          &output,
     /* the current day takes a background, red on a weekend. */
     let const style =
         is_current_day && is_weekend
-            ? colors::color_style{colors::color::BoldBlackOnRed}
-        : is_current_day ? colors::color_style{colors::color::BoldBlackOnGreen}
-        : is_weekend     ? colors::color_style{colors::color::Red,
-                                           colors::color_variant::Soft}
-                         : colors::color_style{};
+            ? colors::ColorStyle{colors::color::BoldBlackOnRed}
+        : is_current_day ? colors::ColorStyle{colors::color::BoldBlackOnGreen}
+        : is_weekend     ? colors::ColorStyle{colors::color::Red,
+                                          colors::color_variant::Soft}
+                         : colors::ColorStyle{};
     let const day_text = String::from(day, allocator);
 
     append_report_text(output, day_text.view(), style, should_color);
@@ -230,8 +230,8 @@ Cal::execute(const ExecContext               &ec,
   if (FLAG_CAL_TODAY.is_enabled()) {
     output += '\n';
     append_report_text(output, "Today",
-                       colors::color_style{colors::color::BoldGreen,
-                                           colors::color_variant::Soft},
+                       colors::ColorStyle{colors::color::BoldGreen,
+                                          colors::color_variant::Soft},
                        should_color);
     output += " is ";
     output += CAL_WEEKDAY_NAMES[static_cast<usize>(current_date.tm_wday)];

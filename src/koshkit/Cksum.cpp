@@ -127,7 +127,7 @@ Cksum::execute(const ExecContext               &ec,
     source_states.push({});
 
   let   reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-  let   chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+  let   chunks = ArrayList<SourceBatchReader::chunk>{cxt.scratch_allocator()};
   usize next_output_index = 0;
   i32   status            = 0;
 

@@ -16,7 +16,7 @@ namespace koshka::os {
 
 namespace batch_internal {
 
-struct batch_operation_access;
+struct BatchOperationAccess;
 
 inline pure fn
 encode_directory_descriptor(descriptor directory) wontthrow -> u64
@@ -46,7 +46,7 @@ decode_directory_descriptor(u64 byte_offset) wontthrow -> descriptor
 
 /* operations borrow their paths, names, buffers, and status outputs. these
    objects remain valid until Batch::execute() returns. */
-struct batch_operation
+struct BatchOperation
 {
   enum class Kind : u8
   {
@@ -64,46 +64,46 @@ struct batch_operation
   read(descriptor fd,
        char      *buffer,
        usize      byte_count,
-       u64        byte_offset = 0) wontthrow -> batch_operation;
+       u64        byte_offset = 0) wontthrow -> BatchOperation;
   static fn
   write(descriptor  fd,
         const char *buffer,
         usize       byte_count,
-        u64         byte_offset = 0) wontthrow -> batch_operation;
+        u64         byte_offset = 0) wontthrow -> BatchOperation;
   static fn
   write_current(descriptor fd, const char *buffer, usize byte_count) wontthrow
-      -> batch_operation;
+      -> BatchOperation;
 
   static fn
-  lstat(const Path &path, file_status &status) wontthrow -> batch_operation;
+  lstat(const Path &path, file_status &status) wontthrow -> BatchOperation;
   static fn
-  stat(const Path &path, file_status &status) wontthrow -> batch_operation;
+  stat(const Path &path, file_status &status) wontthrow -> BatchOperation;
   static fn
-  exists(const Path &path) wontthrow -> batch_operation;
+  exists(const Path &path) wontthrow -> BatchOperation;
   static fn
   lstat_at(descriptor directory, const char *name, file_status &status)
       wontthrow
-      -> batch_operation;
+      -> BatchOperation;
 
   static fn
-  lstat(Path &&path, file_status &status) wontthrow -> batch_operation = delete;
+  lstat(Path &&path, file_status &status) wontthrow -> BatchOperation = delete;
   static fn
   lstat(const Path &&path, file_status &status) wontthrow
-      -> batch_operation = delete;
+      -> BatchOperation = delete;
   static fn
-  stat(Path &&path, file_status &status) wontthrow -> batch_operation = delete;
+  stat(Path &&path, file_status &status) wontthrow -> BatchOperation = delete;
   static fn
   stat(const Path &&path, file_status &status) wontthrow
-      -> batch_operation = delete;
+      -> BatchOperation = delete;
   static fn
-  exists(Path &&path) wontthrow -> batch_operation = delete;
+  exists(Path &&path) wontthrow -> BatchOperation = delete;
   static fn
-  exists(const Path &&path) wontthrow -> batch_operation = delete;
+  exists(const Path &&path) wontthrow -> BatchOperation = delete;
 
   u64 request_id{0};
   /* lstat_at() stores its directory descriptor in byte_offset, since the union
      members already hold the name and status. the static_assert below keeps
-     batch_operation at 48 bytes on 64-bit targets. */
+     BatchOperation at 48 bytes on 64-bit targets. */
   u64   byte_offset{0};
   usize byte_count{0};
 
@@ -123,14 +123,14 @@ private:
     descriptor   fd;
   } m_secondary{};
 
-  explicit batch_operation(Kind kind) : syscall_id(kind) {}
-  batch_operation() = default;
+  explicit BatchOperation(Kind kind) : syscall_id(kind) {}
+  BatchOperation() = default;
 
   friend class Batch;
-  friend struct batch_internal::batch_operation_access;
+  friend struct batch_internal::BatchOperationAccess;
 };
 
-static_assert(sizeof(usize) != 8 || sizeof(batch_operation) == 48);
+static_assert(sizeof(usize) != 8 || sizeof(BatchOperation) == 48);
 
 struct batch_result
 {
@@ -150,127 +150,126 @@ enum class batch_deduplication : u8
 
 namespace batch_internal {
 
-using batched_syscall_id     = batch_operation::Kind;
+using batched_syscall_id     = BatchOperation::Kind;
 using batched_syscall_result = batch_result;
-using batched_syscall        = batch_operation;
+using batched_syscall        = BatchOperation;
 
-struct batch_operation_access
+struct BatchOperationAccess
 {
   static pure fn
-  get_kind(const batch_operation &operation) wontthrow -> batch_operation::Kind
+  get_kind(const BatchOperation &operation) wontthrow -> BatchOperation::Kind
   {
     return operation.syscall_id;
   }
 
   static pure fn
-  get_path(const batch_operation &operation) wontthrow -> const Path *
+  get_path(const BatchOperation &operation) wontthrow -> const Path *
   {
     switch (operation.syscall_id) {
-    case batch_operation::Kind::Lstat:
-    case batch_operation::Kind::Stat:
-    case batch_operation::Kind::Exists:       return operation.m_primary.path;
-    case batch_operation::Kind::LstatAt:
-    case batch_operation::Kind::Read:
-    case batch_operation::Kind::Write:
-    case batch_operation::Kind::WriteCurrent:
-    case batch_operation::Kind::Invalid:      return nullptr;
+    case BatchOperation::Kind::Lstat:
+    case BatchOperation::Kind::Stat:
+    case BatchOperation::Kind::Exists:       return operation.m_primary.path;
+    case BatchOperation::Kind::LstatAt:
+    case BatchOperation::Kind::Read:
+    case BatchOperation::Kind::Write:
+    case BatchOperation::Kind::WriteCurrent:
+    case BatchOperation::Kind::Invalid:      return nullptr;
     }
 
     return nullptr;
   }
 
   static pure fn
-  get_input_buffer(const batch_operation &operation) wontthrow -> const char *
+  get_input_buffer(const BatchOperation &operation) wontthrow -> const char *
   {
     switch (operation.syscall_id) {
-    case batch_operation::Kind::Write:
-    case batch_operation::Kind::WriteCurrent:
+    case BatchOperation::Kind::Write:
+    case BatchOperation::Kind::WriteCurrent:
       return operation.m_primary.input_buffer;
-    case batch_operation::Kind::Read:
-    case batch_operation::Kind::Lstat:
-    case batch_operation::Kind::Stat:
-    case batch_operation::Kind::Exists:
-    case batch_operation::Kind::LstatAt:
-    case batch_operation::Kind::Invalid: return nullptr;
+    case BatchOperation::Kind::Read:
+    case BatchOperation::Kind::Lstat:
+    case BatchOperation::Kind::Stat:
+    case BatchOperation::Kind::Exists:
+    case BatchOperation::Kind::LstatAt:
+    case BatchOperation::Kind::Invalid: return nullptr;
     }
 
     return nullptr;
   }
 
   static pure fn
-  get_output_buffer(const batch_operation &operation) wontthrow -> char *
+  get_output_buffer(const BatchOperation &operation) wontthrow -> char *
   {
-    return operation.syscall_id == batch_operation::Kind::Read
+    return operation.syscall_id == BatchOperation::Kind::Read
                ? operation.m_primary.output_buffer
                : nullptr;
   }
 
   static pure fn
-  get_status(const batch_operation &operation) wontthrow -> file_status *
+  get_status(const BatchOperation &operation) wontthrow -> file_status *
   {
     switch (operation.syscall_id) {
-    case batch_operation::Kind::Lstat:
-    case batch_operation::Kind::Stat:
-    case batch_operation::Kind::LstatAt:      return operation.m_secondary.status;
-    case batch_operation::Kind::Read:
-    case batch_operation::Kind::Write:
-    case batch_operation::Kind::WriteCurrent:
-    case batch_operation::Kind::Exists:
-    case batch_operation::Kind::Invalid:      return nullptr;
+    case BatchOperation::Kind::Lstat:
+    case BatchOperation::Kind::Stat:
+    case BatchOperation::Kind::LstatAt:      return operation.m_secondary.status;
+    case BatchOperation::Kind::Read:
+    case BatchOperation::Kind::Write:
+    case BatchOperation::Kind::WriteCurrent:
+    case BatchOperation::Kind::Exists:
+    case BatchOperation::Kind::Invalid:      return nullptr;
     }
 
     return nullptr;
   }
 
   static pure fn
-  get_descriptor(const batch_operation &operation) wontthrow -> descriptor
+  get_descriptor(const BatchOperation &operation) wontthrow -> descriptor
   {
     switch (operation.syscall_id) {
-    case batch_operation::Kind::Read:
-    case batch_operation::Kind::Write:
-    case batch_operation::Kind::WriteCurrent: return operation.m_secondary.fd;
-    case batch_operation::Kind::Lstat:
-    case batch_operation::Kind::Stat:
-    case batch_operation::Kind::Exists:
-    case batch_operation::Kind::LstatAt:
-    case batch_operation::Kind::Invalid:      return KOSH_INVALID_FD;
+    case BatchOperation::Kind::Read:
+    case BatchOperation::Kind::Write:
+    case BatchOperation::Kind::WriteCurrent: return operation.m_secondary.fd;
+    case BatchOperation::Kind::Lstat:
+    case BatchOperation::Kind::Stat:
+    case BatchOperation::Kind::Exists:
+    case BatchOperation::Kind::LstatAt:
+    case BatchOperation::Kind::Invalid:      return KOSH_INVALID_FD;
     }
 
     return KOSH_INVALID_FD;
   }
 
   static pure fn
-  get_relative_name(const batch_operation &operation) wontthrow -> const char *
+  get_relative_name(const BatchOperation &operation) wontthrow -> const char *
   {
     switch (operation.syscall_id) {
-    case batch_operation::Kind::LstatAt:
-      return operation.m_primary.input_buffer;
-    case batch_operation::Kind::Read:
-    case batch_operation::Kind::Write:
-    case batch_operation::Kind::WriteCurrent:
-    case batch_operation::Kind::Lstat:
-    case batch_operation::Kind::Stat:
-    case batch_operation::Kind::Exists:
-    case batch_operation::Kind::Invalid:      return nullptr;
+    case BatchOperation::Kind::LstatAt:      return operation.m_primary.input_buffer;
+    case BatchOperation::Kind::Read:
+    case BatchOperation::Kind::Write:
+    case BatchOperation::Kind::WriteCurrent:
+    case BatchOperation::Kind::Lstat:
+    case BatchOperation::Kind::Stat:
+    case BatchOperation::Kind::Exists:
+    case BatchOperation::Kind::Invalid:      return nullptr;
     }
 
     return nullptr;
   }
 
   static pure fn
-  get_directory_descriptor(const batch_operation &operation) wontthrow
+  get_directory_descriptor(const BatchOperation &operation) wontthrow
       -> descriptor
   {
     switch (operation.syscall_id) {
-    case batch_operation::Kind::LstatAt:
+    case BatchOperation::Kind::LstatAt:
       return decode_directory_descriptor(operation.byte_offset);
-    case batch_operation::Kind::Read:
-    case batch_operation::Kind::Write:
-    case batch_operation::Kind::WriteCurrent:
-    case batch_operation::Kind::Lstat:
-    case batch_operation::Kind::Stat:
-    case batch_operation::Kind::Exists:
-    case batch_operation::Kind::Invalid:      return KOSH_INVALID_FD;
+    case BatchOperation::Kind::Read:
+    case BatchOperation::Kind::Write:
+    case BatchOperation::Kind::WriteCurrent:
+    case BatchOperation::Kind::Lstat:
+    case BatchOperation::Kind::Stat:
+    case BatchOperation::Kind::Exists:
+    case BatchOperation::Kind::Invalid:      return KOSH_INVALID_FD;
     }
 
     return KOSH_INVALID_FD;
@@ -292,7 +291,7 @@ public:
   fn
   reserve(usize operation_count) throws -> void;
   fn
-  add(batch_operation operation) throws -> void;
+  add(BatchOperation operation) throws -> void;
   fn
   clear() wontthrow -> void;
   fn
@@ -308,11 +307,11 @@ public:
   count() const wontthrow -> usize;
 
 private:
-  ArrayList<batch_operation> m_operations;
-  ArrayList<usize>           m_canonical_positions;
-  ArrayList<usize>           m_buckets;
-  ArrayList<batch_operation> m_optimized_operations;
-  bool                       m_has_metadata_operations{false};
+  ArrayList<BatchOperation> m_operations;
+  ArrayList<usize>          m_canonical_positions;
+  ArrayList<usize>          m_buckets;
+  ArrayList<BatchOperation> m_optimized_operations;
+  bool                      m_has_metadata_operations{false};
 };
 
 } /* namespace koshka::os */

@@ -185,14 +185,14 @@ check_numeric_comparison_operand(
 pure fn
 is_test_unary_operator_word(StringView op) wontthrow -> bool;
 
-struct command_lint_input
+struct CommandLintInput
 {
   const ArrayList<const Token *>     &args;
   const SparseList<Redirection>      &redirections;
   const SparseList<PrefixAssignment> &local_vars;
   SourceLocation                      command_source_location;
   StringView                          command_literal;
-  analysis_command_info               command_info;
+  AnalysisCommandInfo                 command_info;
   bool                                is_command_shadowed;
   bool                                is_conditional;
 
@@ -306,35 +306,31 @@ check_heredoc_terminators(
     const ArrayList<heredoc_terminator_miss> &misses) throws -> void;
 
 fn
-check_operand_lints_before_scan(AnalysisContext          &actx,
-                                const command_lint_input &input) throws
+check_operand_lints_before_scan(AnalysisContext        &actx,
+                                const CommandLintInput &input) throws
     -> void;
 fn
-check_command_word_shape(AnalysisContext          &actx,
-                         const command_lint_input &input) throws
-    -> bool;
+check_command_word_shape(AnalysisContext        &actx,
+                         const CommandLintInput &input) throws -> bool;
 fn
-check_operand_lints_after_scan(AnalysisContext          &actx,
-                               const command_lint_input &input) throws
+check_operand_lints_after_scan(AnalysisContext        &actx,
+                               const CommandLintInput &input) throws
     -> void;
 fn
-check_command_name_lints(AnalysisContext          &actx,
-                         const command_lint_input &input) throws
-    -> void;
+check_command_name_lints(AnalysisContext        &actx,
+                         const CommandLintInput &input) throws -> void;
 fn
-check_command_value_lints(AnalysisContext          &actx,
-                          const command_lint_input &input) throws
-    -> void;
+check_command_value_lints(AnalysisContext        &actx,
+                          const CommandLintInput &input) throws -> void;
 fn
-check_redirection_lints(AnalysisContext          &actx,
-                        const command_lint_input &input) throws -> void;
+check_redirection_lints(AnalysisContext        &actx,
+                        const CommandLintInput &input) throws -> void;
 fn
-check_test_operand_lints(AnalysisContext          &actx,
-                         const command_lint_input &input) throws
-    -> void;
+check_test_operand_lints(AnalysisContext        &actx,
+                         const CommandLintInput &input) throws -> void;
 fn
-check_prefix_assignment_reads(AnalysisContext          &actx,
-                              const command_lint_input &input) throws
+check_prefix_assignment_reads(AnalysisContext        &actx,
+                              const CommandLintInput &input) throws
     -> bool;
 
 alwaysinline fn
@@ -553,11 +549,11 @@ private:
   StringMap<String>   m_constants{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
   StringMap<SourceLocation> m_function_local_names{heap_allocator(),
                                                    SMALL_MAP_FIRST_CAPACITY};
-  variable_occurrence_pair  m_occurrences;
+  VariableOccurrencePair    m_occurrences;
   analysis_function_mark    m_function_mark;
   usize                     m_scoped_name_mark;
   followed_source_effects  *m_source_effects;
-  analysis_effects          m_effects;
+  AnalysisEffects           m_effects;
   bool                      m_was_inside_subshell_analysis;
   usize                     m_loop_body_depth{0};
   usize                     m_conditional_branch_depth{0};

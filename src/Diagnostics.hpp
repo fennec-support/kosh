@@ -566,7 +566,7 @@ constexpr u32 COMMAND_GROUP_PATTERN_MATCHER     = 1u << 8;
 constexpr u32 COMMAND_GROUP_HTML_ENTITY_TAIL    = 1u << 9;
 constexpr u32 COMMAND_GROUP_NAME_AS_VALUE       = 1u << 10;
 
-struct analysis_command_info
+struct AnalysisCommandInfo
 {
   command_name_id id;
   u32             group_flags;
@@ -578,15 +578,15 @@ struct analysis_command_info
   }
 
   mustuse pure static fn
-  unknown() wontthrow -> analysis_command_info
+  unknown() wontthrow -> AnalysisCommandInfo
   {
-    return analysis_command_info{command_name_id::Unknown, 0};
+    return AnalysisCommandInfo{command_name_id::Unknown, 0};
   }
 };
 
 fn
 get_analysis_command_info(StringView name) throws
-    -> analysis_command_info;
+    -> AnalysisCommandInfo;
 
 class EvalContext;
 class BumpArena;

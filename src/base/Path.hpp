@@ -33,7 +33,7 @@ struct unavailable_path_component
 class Path
 {
 public:
-  struct Component
+  struct component
   {
     StringView text;
     usize      start;
@@ -91,9 +91,9 @@ public:
   mustuse pure fn
   extension() const wontthrow -> StringView;
   mustuse fn
-  next_component(usize &position) const wontthrow -> Component;
+  next_component(usize &position) const wontthrow -> component;
   mustuse static fn
-  next_component(StringView path, usize &position) wontthrow -> Component;
+  next_component(StringView path, usize &position) wontthrow -> component;
 
   mustuse pure fn
   is_absolute() const wontthrow -> bool;
@@ -170,7 +170,7 @@ public:
   cold mustuse static fn
   current_directory() throws -> Path;
   static fn
-  set_current_directory(const Path &path) throws -> ErrorOr<Ok>;
+  set_current_directory(const Path &path) throws -> ErrorOr<ok>;
   mustuse static fn
   temp_directory() throws -> Path;
 

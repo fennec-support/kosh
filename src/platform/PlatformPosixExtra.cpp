@@ -2313,7 +2313,7 @@ parse_decimal_word(StringView word) wontthrow -> Maybe<u64>
 struct tcp_counter_field
 {
   StringView name;
-  u64 tcp_statistics::*field;
+  u64 TcpStatistics:: *field;
   tcp_statistics_field capability;
 };
 
@@ -2322,7 +2322,7 @@ static fn
 read_tcp_counter_rows(StringView text,
                       StringView prefix,
                       const tcp_counter_field (&fields)[FieldCount],
-                      tcp_statistics &statistics) wontthrow -> bool
+                      TcpStatistics &statistics) wontthrow -> bool
 {
   let        has_statistics = false;
   StringView header;
@@ -2430,7 +2430,7 @@ read_pressure_totals(const char *path,
 #endif
 
 fn
-read_system_activity_status(system_activity_status &status) wontthrow -> bool
+read_system_activity_status(SystemActivityStatus &status) wontthrow -> bool
 {
 #if K_PLATFORM_IS K_APPLE
   let const                 host_port = mach_host_self();
@@ -2514,21 +2514,21 @@ read_system_activity_status(system_activity_status &status) wontthrow -> bool
         struct stat_scalar_field
         {
           StringView name;
-          u64 system_activity_status::*value;
-          system_activity_field        availability;
+          u64 SystemActivityStatus::*value;
+          system_activity_field      availability;
         };
         static constexpr stat_scalar_field STAT_SCALAR_FIELDS[] = {
-            {"intr ",          &system_activity_status::interrupt_count,
+            {"intr ",          &SystemActivityStatus::interrupt_count,
              system_activity_field::Interrupts      },
-            {"ctxt ",          &system_activity_status::context_switch_count,
+            {"ctxt ",          &SystemActivityStatus::context_switch_count,
              system_activity_field::ContextSwitches },
-            {"processes ",     &system_activity_status::process_creation_count,
+            {"processes ",     &SystemActivityStatus::process_creation_count,
              system_activity_field::ProcessCreations},
-            {"softirq ",       &system_activity_status::soft_interrupt_count,
+            {"softirq ",       &SystemActivityStatus::soft_interrupt_count,
              system_activity_field::SoftInterrupts  },
-            {"procs_running ", &system_activity_status::runnable_process_count,
+            {"procs_running ", &SystemActivityStatus::runnable_process_count,
              system_activity_field::Runnable        },
-            {"procs_blocked ", &system_activity_status::blocked_process_count,
+            {"procs_blocked ", &SystemActivityStatus::blocked_process_count,
              system_activity_field::Blocked         },
         };
 
@@ -2560,43 +2560,43 @@ read_system_activity_status(system_activity_status &status) wontthrow -> bool
       struct vm_field
       {
         StringView name;
-        u64 system_activity_status::*field;
-        u64                          multiplier;
-        system_activity_field        capability;
-        bool                         is_additive;
+        u64 SystemActivityStatus::*field;
+        u64                        multiplier;
+        system_activity_field      capability;
+        bool                       is_additive;
       };
       static constexpr vm_field FIELDS[] = {
-          {"pgpgin ",             &system_activity_status::page_input_byte_count,  1024,
+          {"pgpgin ",             &SystemActivityStatus::page_input_byte_count,  1024,
            system_activity_field::PageInput,       false},
-          {"pgpgout ",            &system_activity_status::page_output_byte_count, 1024,
+          {"pgpgout ",            &SystemActivityStatus::page_output_byte_count, 1024,
            system_activity_field::PageOutput,      false},
-          {"pgfault ",            &system_activity_status::page_fault_count,       1,
+          {"pgfault ",            &SystemActivityStatus::page_fault_count,       1,
            system_activity_field::Faults,          false},
-          {"pgmajfault ",         &system_activity_status::major_page_fault_count, 1,
+          {"pgmajfault ",         &SystemActivityStatus::major_page_fault_count, 1,
            system_activity_field::MajorFaults,     false},
-          {"pgscan_kswapd ",      &system_activity_status::page_scan_count,        1,
+          {"pgscan_kswapd ",      &SystemActivityStatus::page_scan_count,        1,
            system_activity_field::PageScan,        true },
-          {"pgscan_direct ",      &system_activity_status::page_scan_count,        1,
+          {"pgscan_direct ",      &SystemActivityStatus::page_scan_count,        1,
            system_activity_field::PageScan,        true },
-          {"pgscan_khugepaged ",  &system_activity_status::page_scan_count,        1,
+          {"pgscan_khugepaged ",  &SystemActivityStatus::page_scan_count,        1,
            system_activity_field::PageScan,        true },
-          {"pgscan_proactive ",   &system_activity_status::page_scan_count,        1,
+          {"pgscan_proactive ",   &SystemActivityStatus::page_scan_count,        1,
            system_activity_field::PageScan,        true },
-          {"pgsteal_kswapd ",     &system_activity_status::page_steal_count,       1,
+          {"pgsteal_kswapd ",     &SystemActivityStatus::page_steal_count,       1,
            system_activity_field::PageSteal,       true },
-          {"pgsteal_direct ",     &system_activity_status::page_steal_count,       1,
+          {"pgsteal_direct ",     &SystemActivityStatus::page_steal_count,       1,
            system_activity_field::PageSteal,       true },
-          {"pgsteal_khugepaged ", &system_activity_status::page_steal_count,       1,
+          {"pgsteal_khugepaged ", &SystemActivityStatus::page_steal_count,       1,
            system_activity_field::PageSteal,       true },
-          {"pgsteal_proactive ",  &system_activity_status::page_steal_count,       1,
+          {"pgsteal_proactive ",  &SystemActivityStatus::page_steal_count,       1,
            system_activity_field::PageSteal,       true },
-          {"compact_stall ",      &system_activity_status::compaction_stall_count, 1,
+          {"compact_stall ",      &SystemActivityStatus::compaction_stall_count, 1,
            system_activity_field::CompactionStall, false},
-          {"nr_dirty ",           &system_activity_status::dirty_page_count,       1,
+          {"nr_dirty ",           &SystemActivityStatus::dirty_page_count,       1,
            system_activity_field::DirtyPages,      false},
-          {"nr_writeback ",       &system_activity_status::writeback_page_count,   1,
+          {"nr_writeback ",       &SystemActivityStatus::writeback_page_count,   1,
            system_activity_field::WritebackPages,  false},
-          {"oom_kill ",           &system_activity_status::oom_kill_count,         1,
+          {"oom_kill ",           &SystemActivityStatus::oom_kill_count,         1,
            system_activity_field::OomKills,        false},
       };
 
@@ -2779,9 +2779,9 @@ read_system_activity_status(system_activity_status &status) wontthrow -> bool
 
 fn
 read_network_interface_statistics() throws
-    -> ArrayList<network_interface_statistics_entry>
+    -> ArrayList<NetworkInterfaceStatisticsEntry>
 {
-  let result = ArrayList<network_interface_statistics_entry>{heap_allocator()};
+  let result = ArrayList<NetworkInterfaceStatisticsEntry>{heap_allocator()};
 #if K_PLATFORM_IS K_APPLE
   int   name_mib[6] = {CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST2, 0};
   usize byte_count  = 0;
@@ -2836,7 +2836,7 @@ read_network_interface_statistics() throws
               static_cast<u32>(network_statistics_field::TransmitLinkSpeed);
         }
 
-        result.push(network_interface_statistics_entry{
+        result.push(NetworkInterfaceStatisticsEntry{
             String{heap_allocator(), data.ifmd_name},
             data.ifmd_data.ifi_ibytes,
             data.ifmd_data.ifi_obytes,
@@ -2890,7 +2890,7 @@ read_network_interface_statistics() throws
         static_cast<u32>(network_statistics_field::ReceiveDrops) |
         static_cast<u32>(network_statistics_field::TransmitDrops);
 
-    result.push(network_interface_statistics_entry{
+    result.push(NetworkInterfaceStatisticsEntry{
         String{heap_allocator(),
                line.substring_of_length(0, *colon_position).trim_blanks()},
         values[0],
@@ -2970,7 +2970,7 @@ kernel_sockets() throws -> ArrayList<kernel_socket_entry>
 }
 
 fn
-read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
+read_tcp_statistics(TcpStatistics &statistics) wontthrow -> bool
 {
 #if K_PLATFORM_IS K_APPLE
   int            name_mib[4] = {CTL_NET, PF_INET, IPPROTO_TCP, TCPCTL_STATS};
@@ -3015,25 +3015,25 @@ read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
   if (length == 0) return false;
 
   static constexpr tcp_counter_field SNMP_FIELDS[] = {
-      {"ActiveOpens",  &tcp_statistics::active_open_count,
+      {"ActiveOpens",  &TcpStatistics::active_open_count,
        tcp_statistics_field::ActiveOpens          },
-      {"PassiveOpens", &tcp_statistics::passive_open_count,
+      {"PassiveOpens", &TcpStatistics::passive_open_count,
        tcp_statistics_field::PassiveOpens         },
-      {"InSegs",       &tcp_statistics::received_segment_count,
+      {"InSegs",       &TcpStatistics::received_segment_count,
        tcp_statistics_field::ReceivedSegments     },
-      {"OutSegs",      &tcp_statistics::sent_segment_count,
+      {"OutSegs",      &TcpStatistics::sent_segment_count,
        tcp_statistics_field::SentSegments         },
-      {"RetransSegs",  &tcp_statistics::retransmitted_segment_count,
+      {"RetransSegs",  &TcpStatistics::retransmitted_segment_count,
        tcp_statistics_field::RetransmittedSegments},
-      {"InErrs",       &tcp_statistics::input_error_count,
+      {"InErrs",       &TcpStatistics::input_error_count,
        tcp_statistics_field::InputErrors          },
-      {"AttemptFails", &tcp_statistics::attempt_failure_count,
+      {"AttemptFails", &TcpStatistics::attempt_failure_count,
        tcp_statistics_field::AttemptFailures      },
-      {"EstabResets",  &tcp_statistics::established_reset_count,
+      {"EstabResets",  &TcpStatistics::established_reset_count,
        tcp_statistics_field::EstablishedResets    },
-      {"CurrEstab",    &tcp_statistics::current_established_count,
+      {"CurrEstab",    &TcpStatistics::current_established_count,
        tcp_statistics_field::CurrentEstablished   },
-      {"OutRsts",      &tcp_statistics::sent_reset_count,
+      {"OutRsts",      &TcpStatistics::sent_reset_count,
        tcp_statistics_field::SentResets           },
   };
   let has_statistics = read_tcp_counter_rows(StringView{buffer, length},
@@ -3048,25 +3048,25 @@ read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
   /* at this point: buffer holds the non-empty /proc/net/snmp text, and
      netstat_buffer holds the non-empty /proc/net/netstat text. */
   static constexpr tcp_counter_field NETSTAT_FIELDS[] = {
-      {"ListenOverflows", &tcp_statistics::listen_overflow_count,
+      {"ListenOverflows", &TcpStatistics::listen_overflow_count,
        tcp_statistics_field::ListenOverflows           },
-      {"ListenDrops",     &tcp_statistics::listen_drop_count,
+      {"ListenDrops",     &TcpStatistics::listen_drop_count,
        tcp_statistics_field::ListenDrops               },
-      {"TCPTimeouts",     &tcp_statistics::retransmit_timeout_count,
+      {"TCPTimeouts",     &TcpStatistics::retransmit_timeout_count,
        tcp_statistics_field::RetransmitTimeouts        },
-      {"TCPSynRetrans",   &tcp_statistics::syn_retransmit_count,
+      {"TCPSynRetrans",   &TcpStatistics::syn_retransmit_count,
        tcp_statistics_field::SynRetransmits            },
-      {"TCPFastRetrans",  &tcp_statistics::fast_retransmit_count,
+      {"TCPFastRetrans",  &TcpStatistics::fast_retransmit_count,
        tcp_statistics_field::FastRetransmits           },
-      {"TCPSpuriousRTOs", &tcp_statistics::spurious_retransmit_timeout_count,
+      {"TCPSpuriousRTOs", &TcpStatistics::spurious_retransmit_timeout_count,
        tcp_statistics_field::SpuriousRetransmitTimeouts},
-      {"TCPRcvQDrop",     &tcp_statistics::receive_queue_drop_count,
+      {"TCPRcvQDrop",     &TcpStatistics::receive_queue_drop_count,
        tcp_statistics_field::ReceiveQueueDrops         },
-      {"TCPBacklogDrop",  &tcp_statistics::backlog_drop_count,
+      {"TCPBacklogDrop",  &TcpStatistics::backlog_drop_count,
        tcp_statistics_field::BacklogDrops              },
-      {"TCPReqQFullDrop", &tcp_statistics::request_queue_full_drop_count,
+      {"TCPReqQFullDrop", &TcpStatistics::request_queue_full_drop_count,
        tcp_statistics_field::RequestQueueFullDrops     },
-      {"TCPRetransFail",  &tcp_statistics::retransmit_failure_count,
+      {"TCPRetransFail",  &TcpStatistics::retransmit_failure_count,
        tcp_statistics_field::RetransmitFailures        },
   };
 
@@ -3085,7 +3085,7 @@ read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
 fn
 read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
 {
-  disk_io_snapshot snapshot{ArrayList<disk_io_status>{allocator},
+  disk_io_snapshot snapshot{ArrayList<DiskIoStatus>{allocator},
                             monotonic_nanos()};
 #if K_PLATFORM_IS K_APPLE
   let const *matching = IOServiceMatching(kIOBlockStorageDriverClass);
@@ -3175,38 +3175,37 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
       snprintf(name_buffer, sizeof(name_buffer), "%s", fallback_name);
     }
 
-    disk_io_status status{};
+    DiskIoStatus status{};
 
     status.name = String{allocator, name_buffer};
 
     struct disk_field
     {
       const char *name;
-      u64 disk_io_status::*field;
-      disk_io_field        capability;
+      u64 DiskIoStatus::*field;
+      disk_io_field      capability;
     };
     static constexpr disk_field FIELDS[] = {
         {kIOBlockStorageDriverStatisticsBytesReadKey,
-         &disk_io_status::read_byte_count,        disk_io_field::ReadBytes     },
+         &DiskIoStatus::read_byte_count,        disk_io_field::ReadBytes      },
         {kIOBlockStorageDriverStatisticsBytesWrittenKey,
-         &disk_io_status::written_byte_count,     disk_io_field::WrittenBytes  },
+         &DiskIoStatus::written_byte_count,     disk_io_field::WrittenBytes   },
         {kIOBlockStorageDriverStatisticsReadsKey,
-         &disk_io_status::read_operation_count,   disk_io_field::ReadOperations},
+         &DiskIoStatus::read_operation_count,   disk_io_field::ReadOperations },
         {kIOBlockStorageDriverStatisticsWritesKey,
-         &disk_io_status::write_operation_count,
-         disk_io_field::WriteOperations                                        },
+         &DiskIoStatus::write_operation_count,  disk_io_field::WriteOperations},
         {kIOBlockStorageDriverStatisticsTotalReadTimeKey,
-         &disk_io_status::read_time_nanoseconds,  disk_io_field::ReadTime      },
+         &DiskIoStatus::read_time_nanoseconds,  disk_io_field::ReadTime       },
         {kIOBlockStorageDriverStatisticsTotalWriteTimeKey,
-         &disk_io_status::write_time_nanoseconds, disk_io_field::WriteTime     },
+         &DiskIoStatus::write_time_nanoseconds, disk_io_field::WriteTime      },
         {kIOBlockStorageDriverStatisticsReadErrorsKey,
-         &disk_io_status::read_error_count,       disk_io_field::ReadErrors    },
+         &DiskIoStatus::read_error_count,       disk_io_field::ReadErrors     },
         {kIOBlockStorageDriverStatisticsWriteErrorsKey,
-         &disk_io_status::write_error_count,      disk_io_field::WriteErrors   },
+         &DiskIoStatus::write_error_count,      disk_io_field::WriteErrors    },
         {kIOBlockStorageDriverStatisticsReadRetriesKey,
-         &disk_io_status::read_retry_count,       disk_io_field::ReadRetries   },
+         &DiskIoStatus::read_retry_count,       disk_io_field::ReadRetries    },
         {kIOBlockStorageDriverStatisticsWriteRetriesKey,
-         &disk_io_status::write_retry_count,      disk_io_field::WriteRetries  },
+         &DiskIoStatus::write_retry_count,      disk_io_field::WriteRetries   },
     };
 
     for (let const &field : FIELDS) {
@@ -3275,7 +3274,7 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
       available_fields |= static_cast<u32>(disk_io_field::WeightedBusyTime);
     }
 
-    snapshot.disks.push(disk_io_status{
+    snapshot.disks.push(DiskIoStatus{
         String{allocator, name},
         read_byte_count.value_or(0),
         written_byte_count.value_or(0),
@@ -3329,7 +3328,7 @@ system_uptime_seconds() wontthrow -> Maybe<u64>
 }
 
 fn
-read_memory_status(memory_status &status) wontthrow -> bool
+read_memory_status(MemoryStatus &status) wontthrow -> bool
 {
 #if K_PLATFORM_IS K_APPLE
   u64   memory_byte_count        = 0;
@@ -3384,35 +3383,34 @@ read_memory_status(memory_status &status) wontthrow -> bool
   struct meminfo_field
   {
     StringView name;
-    u64 memory_status::*field;
+    u64 MemoryStatus:: *field;
     memory_status_field availability;
   };
 
   static constexpr meminfo_field MEMINFO_FIELDS[] = {
-      {"MemTotal",        &memory_status::total_kib,             memory_status_field::Total   },
-      {"MemFree",         &memory_status::free_kib,              memory_status_field::Free    },
-      {"MemAvailable",    &memory_status::available_kib,
-       memory_status_field::Available                                                         },
-      {"SwapTotal",       &memory_status::swap_total_kib,
-       memory_status_field::SwapTotal                                                         },
-      {"SwapFree",        &memory_status::swap_free_kib,
-       memory_status_field::SwapFree                                                          },
-      {"Buffers",         &memory_status::buffer_kib,            memory_status_field::Buffers },
-      {"Cached",          &memory_status::cached_kib,            memory_status_field::Cached  },
-      {"SReclaimable",    &memory_status::reclaimable_slab_kib,
-       memory_status_field::ReclaimableSlab                                                   },
-      {"Shmem",           &memory_status::shared_kib,            memory_status_field::Shared  },
-      {"Slab",            &memory_status::slab_kib,              memory_status_field::Slab    },
-      {"Active",          &memory_status::active_kib,            memory_status_field::Active  },
-      {"Inactive",        &memory_status::inactive_kib,          memory_status_field::Inactive},
-      {"CommitLimit",     &memory_status::commit_limit_kib,
-       memory_status_field::CommitLimit                                                       },
-      {"Committed_AS",    &memory_status::committed_kib,
-       memory_status_field::Committed                                                         },
-      {"HugePages_Total", &memory_status::huge_page_total_count,
-       memory_status_field::HugePagesTotal                                                    },
-      {"HugePages_Free",  &memory_status::huge_page_free_count,
-       memory_status_field::HugePagesFree                                                     },
+      {"MemTotal",        &MemoryStatus::total_kib,             memory_status_field::Total   },
+      {"MemFree",         &MemoryStatus::free_kib,              memory_status_field::Free    },
+      {"MemAvailable",    &MemoryStatus::available_kib,
+       memory_status_field::Available                                                        },
+      {"SwapTotal",       &MemoryStatus::swap_total_kib,
+       memory_status_field::SwapTotal                                                        },
+      {"SwapFree",        &MemoryStatus::swap_free_kib,         memory_status_field::SwapFree},
+      {"Buffers",         &MemoryStatus::buffer_kib,            memory_status_field::Buffers },
+      {"Cached",          &MemoryStatus::cached_kib,            memory_status_field::Cached  },
+      {"SReclaimable",    &MemoryStatus::reclaimable_slab_kib,
+       memory_status_field::ReclaimableSlab                                                  },
+      {"Shmem",           &MemoryStatus::shared_kib,            memory_status_field::Shared  },
+      {"Slab",            &MemoryStatus::slab_kib,              memory_status_field::Slab    },
+      {"Active",          &MemoryStatus::active_kib,            memory_status_field::Active  },
+      {"Inactive",        &MemoryStatus::inactive_kib,          memory_status_field::Inactive},
+      {"CommitLimit",     &MemoryStatus::commit_limit_kib,
+       memory_status_field::CommitLimit                                                      },
+      {"Committed_AS",    &MemoryStatus::committed_kib,
+       memory_status_field::Committed                                                        },
+      {"HugePages_Total", &MemoryStatus::huge_page_total_count,
+       memory_status_field::HugePagesTotal                                                   },
+      {"HugePages_Free",  &MemoryStatus::huge_page_free_count,
+       memory_status_field::HugePagesFree                                                    },
   };
 
   char      buffer[8192];
@@ -3498,7 +3496,7 @@ read_swap_status(swap_status &status) wontthrow -> bool
 
   return true;
 #elif K_PLATFORM_IS K_LINUX
-  memory_status memory{};
+  MemoryStatus memory{};
 
   if (!read_memory_status(memory)) return false;
   if (!memory.has_field(memory_status_field::SwapTotal) ||
@@ -3678,8 +3676,8 @@ read_process_io_statuses(const ArrayList<i64>         &process_ids,
     batch.clear();
 
     for (usize index = 0; index < probe_count; index++) {
-      batch.add(batch_operation::read(probes[index].fd, probes[index].bytes,
-                                      sizeof(probes[index].bytes)));
+      batch.add(BatchOperation::read(probes[index].fd, probes[index].bytes,
+                                     sizeof(probes[index].bytes)));
     }
 
     batch.execute(results);

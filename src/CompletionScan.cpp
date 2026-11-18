@@ -85,7 +85,7 @@ previous_settled_word(StringView line, usize token_start)
   return word;
 }
 
-using sorted_target_list = SortedArrayList<String, order_comparator<String>>;
+using sorted_target_list = SortedArrayList<String, OrderComparator<String>>;
 
 struct cached_target_list
 {
@@ -847,7 +847,7 @@ append_flag_forms(const FlagList    &flags,
 }
 
 static fn
-dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
+dash_candidates_for(Maybe<builtin::Kind> builtin_kind) throws
     -> const ArrayList<String> *
 {
   static Maybe<ArrayList<String>> per_kind_candidates[BUILTIN_KIND_COUNT]{};
@@ -869,7 +869,7 @@ dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
 
   if (!was_per_kind_built[index]) {
     per_kind_candidates[index] = ArrayList<String>{heap_allocator()};
-    if (*builtin_kind == Builtin::Kind::Kill) {
+    if (*builtin_kind == builtin::Kind::Kill) {
       for (let const name : os::signal_names()) {
         let with_dash = String{heap_allocator(), "-"};
 
@@ -883,7 +883,7 @@ dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
       /* at this point: flags is non-null, and per_kind_candidates[index] is
          an empty list that the static table owns. */
       append_flag_forms(*flags, StringView{}, *per_kind_candidates[index]);
-      if (*builtin_kind == Builtin::Kind::Set) {
+      if (*builtin_kind == builtin::Kind::Set) {
         const String &letters = shell_option_letters();
 
         for (usize i = 0; i < letters.count(); i++) {
@@ -1051,9 +1051,9 @@ complete_from_flags_in_line(StringView      line,
 
   {
     let const is_koshkit_builtin =
-        builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Koshkit &&
+        builtin_kind.has_value() && *builtin_kind == builtin::Kind::Koshkit &&
         !context.runtime_state().option_is_enabled(shell_option_id::Restricted);
-    Maybe<koshkit::Utility::Kind> util_for_flags;
+    Maybe<koshkit::utility::Kind> util_for_flags;
     bool                          should_offer_util_names = false;
 
     if (is_koshkit_builtin) {
@@ -1097,7 +1097,7 @@ complete_from_flags_in_line(StringView      line,
     }
 
     if (util_for_flags.has_value()) {
-      if (*util_for_flags == koshkit::Utility::Kind::Which &&
+      if (*util_for_flags == koshkit::utility::Kind::Which &&
           is_operand_wanted && !os::has_directory_separator(token))
       {
         if (token.is_empty() && mode != completion_mode::Listing) {
@@ -1113,9 +1113,9 @@ complete_from_flags_in_line(StringView      line,
       }
 
       let const is_signal_name_operand =
-          *util_for_flags == koshkit::Utility::Kind::Timeout ||
-          *util_for_flags == koshkit::Utility::Kind::Pkill ||
-          *util_for_flags == koshkit::Utility::Kind::Killall;
+          *util_for_flags == koshkit::utility::Kind::Timeout ||
+          *util_for_flags == koshkit::utility::Kind::Pkill ||
+          *util_for_flags == koshkit::utility::Kind::Killall;
 
       if (is_signal_name_operand &&
           (previous_word == "-s" || previous_word == "--signal"))
@@ -1126,7 +1126,7 @@ complete_from_flags_in_line(StringView      line,
         return None;
       }
 
-      if (*util_for_flags == koshkit::Utility::Kind::Find &&
+      if (*util_for_flags == koshkit::utility::Kind::Find &&
           previous_word == "-type")
       {
         for (let const entry_type : {"d", "f", "l"})
@@ -1137,7 +1137,7 @@ complete_from_flags_in_line(StringView      line,
         return None;
       }
 
-      if (*util_for_flags == koshkit::Utility::Kind::Date &&
+      if (*util_for_flags == koshkit::utility::Kind::Date &&
           token.starts_with("+"))
       {
         for (let const candidate : DATE_FORMAT_CANDIDATES)
@@ -1149,23 +1149,23 @@ complete_from_flags_in_line(StringView      line,
       }
 
       if (previous_word == "--sort") {
-        if (*util_for_flags == koshkit::Utility::Kind::EvilIO) {
+        if (*util_for_flags == koshkit::utility::Kind::EvilIO) {
           for (let const candidate : EVILIO_SORT_CANDIDATES)
             do_push_matching(candidate);
-        } else if (*util_for_flags == koshkit::Utility::Kind::EvilPS) {
+        } else if (*util_for_flags == koshkit::utility::Kind::EvilPS) {
           for (let const candidate : EVILPS_SORT_CANDIDATES)
             do_push_matching(candidate);
         }
 
         if (!candidates.is_empty()) return candidates;
-        if (*util_for_flags == koshkit::Utility::Kind::EvilIO ||
-            *util_for_flags == koshkit::Utility::Kind::EvilPS)
+        if (*util_for_flags == koshkit::utility::Kind::EvilIO ||
+            *util_for_flags == koshkit::utility::Kind::EvilPS)
         {
           return None;
         }
       }
 
-      if (*util_for_flags == koshkit::Utility::Kind::Getconf &&
+      if (*util_for_flags == koshkit::utility::Kind::Getconf &&
           is_operand_wanted)
       {
         let const is_variable_position =
@@ -1205,7 +1205,7 @@ complete_from_flags_in_line(StringView      line,
   }
 
   let const is_set_builtin_completion =
-      builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Set;
+      builtin_kind.has_value() && *builtin_kind == builtin::Kind::Set;
 
   if (is_set_builtin_completion || is_shell_binary_completion) {
     if (is_set_builtin_completion &&
@@ -1262,7 +1262,7 @@ complete_from_flags_in_line(StringView      line,
 #endif
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Koshconf) {
+  if (builtin_kind.has_value() && *builtin_kind == builtin::Kind::Koshconf) {
     usize     cword = 0;
     let const words = split_completion_words(
         line.substring_of_length(0, token_start), token_start, cword);
@@ -1380,7 +1380,7 @@ complete_from_flags_in_line(StringView      line,
     return None;
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Shopt &&
+  if (builtin_kind.has_value() && *builtin_kind == builtin::Kind::Shopt &&
       is_operand_wanted)
   {
     if (previous_word == "-o") {
@@ -1397,10 +1397,10 @@ complete_from_flags_in_line(StringView      line,
   }
 
   if (builtin_kind.has_value() && is_operand_wanted &&
-      (*builtin_kind == Builtin::Kind::Export ||
-       *builtin_kind == Builtin::Kind::Readonly ||
-       *builtin_kind == Builtin::Kind::Declare ||
-       *builtin_kind == Builtin::Kind::Local))
+      (*builtin_kind == builtin::Kind::Export ||
+       *builtin_kind == builtin::Kind::Readonly ||
+       *builtin_kind == builtin::Kind::Declare ||
+       *builtin_kind == builtin::Kind::Local))
   {
     let const is_value_after_equals =
         token_start > 0 && line[token_start - 1] == '=';
@@ -1417,7 +1417,7 @@ complete_from_flags_in_line(StringView      line,
     return None;
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Kill) {
+  if (builtin_kind.has_value() && *builtin_kind == builtin::Kind::Kill) {
     if (previous_word == "-s" || previous_word == "-n") {
       do_push_signal_names();
       if (!candidates.is_empty()) return candidates;
@@ -1439,7 +1439,7 @@ complete_from_flags_in_line(StringView      line,
     }
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Trap &&
+  if (builtin_kind.has_value() && *builtin_kind == builtin::Kind::Trap &&
       is_operand_wanted && previous_word != command)
   {
     for (let const condition : {"DEBUG", "ERR", "EXIT", "RETURN"})
@@ -1451,7 +1451,7 @@ complete_from_flags_in_line(StringView      line,
     return None;
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Enable &&
+  if (builtin_kind.has_value() && *builtin_kind == builtin::Kind::Enable &&
       is_operand_wanted)
   {
     for (let const &name : builtin_names())
@@ -1462,7 +1462,7 @@ complete_from_flags_in_line(StringView      line,
     return None;
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Type &&
+  if (builtin_kind.has_value() && *builtin_kind == builtin::Kind::Type &&
       is_operand_wanted)
   {
     if (token.is_empty() && mode != completion_mode::Listing) {
@@ -1477,7 +1477,7 @@ complete_from_flags_in_line(StringView      line,
     return None;
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Z &&
+  if (builtin_kind.has_value() && *builtin_kind == builtin::Kind::Z &&
       is_operand_wanted)
   {
     let z_candidates = z_completion_candidates(token, heap_allocator());
@@ -1488,7 +1488,7 @@ complete_from_flags_in_line(StringView      line,
   }
 
   if (builtin_kind.has_value() &&
-      *builtin_kind == Builtin::Kind::CommandBuiltin && is_operand_wanted &&
+      *builtin_kind == builtin::Kind::CommandBuiltin && is_operand_wanted &&
       !os::has_directory_separator(token))
   {
     usize     settled_word_count = 0;
@@ -1534,10 +1534,10 @@ complete_from_flags_in_line(StringView      line,
 
   let const is_option_name_word =
       builtin_kind.has_value() &&
-      (((*builtin_kind == Builtin::Kind::Complete ||
-         *builtin_kind == Builtin::Kind::Compgen) &&
+      (((*builtin_kind == builtin::Kind::Complete ||
+         *builtin_kind == builtin::Kind::Compgen) &&
         previous_word == "-o") ||
-       (*builtin_kind == Builtin::Kind::Compopt &&
+       (*builtin_kind == builtin::Kind::Compopt &&
         (previous_word == "-o" || previous_word == "+o")));
 
   if (is_option_name_word) {
@@ -1549,7 +1549,7 @@ complete_from_flags_in_line(StringView      line,
     return None;
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Compgen &&
+  if (builtin_kind.has_value() && *builtin_kind == builtin::Kind::Compgen &&
       previous_word == "-V")
   {
     push_variable_name_candidates(token, context, candidates);
@@ -1558,7 +1558,7 @@ complete_from_flags_in_line(StringView      line,
     return None;
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Assimilate &&
+  if (builtin_kind.has_value() && *builtin_kind == builtin::Kind::Assimilate &&
       previous_word == "--link-mood")
   {
     for (let const link_mood : {"bash", "dash", "kosh", "sh"})
@@ -1569,7 +1569,7 @@ complete_from_flags_in_line(StringView      line,
     return None;
   }
 
-  if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Unset &&
+  if (builtin_kind.has_value() && *builtin_kind == builtin::Kind::Unset &&
       (token.is_empty() || token[0] != '-'))
   {
     let       should_unset_function = false;
@@ -1616,7 +1616,7 @@ complete_from_flags_in_line(StringView      line,
   if (is_operand_wanted) return None;
 
   const ArrayList<String> *dash_candidates = dash_candidates_for(
-      is_shell_binary_completion ? Maybe<Builtin::Kind>{None} : builtin_kind);
+      is_shell_binary_completion ? Maybe<builtin::Kind>{None} : builtin_kind);
 
   if (dash_candidates == nullptr) return None;
 
@@ -1722,14 +1722,14 @@ static constexpr u32 GHOST_ACTION_MASK =
     compgen_action_bit(compgen_action::Variable);
 
 static pure fn
-spec_has_ghost_generators(const completion_spec &spec) wontthrow -> bool
+spec_has_ghost_generators(const CompletionSpec &spec) wontthrow -> bool
 {
   return (spec.action_mask & GHOST_ACTION_MASK) != 0 ||
          !spec.word_list.is_empty();
 }
 
 static fn
-generate_spec_candidates(completion_spec   &active_spec,
+generate_spec_candidates(CompletionSpec    &active_spec,
                          Maybe<StringView>  slot_command_name,
                          StringView         line,
                          StringView         token,
@@ -1969,8 +1969,8 @@ internal::complete_from_spec(StringView         line,
 
   if (command.is_empty()) return None;
 
-  const completion_spec *spec = context.completion_store().lookup_spec(command);
-  String                 resolved_command{completion_allocator()};
+  const CompletionSpec *spec = context.completion_store().lookup_spec(command);
+  String                resolved_command{completion_allocator()};
 
   if (spec == nullptr &&
       context.runtime_state().is_shopt_enabled(shopt_option_id::ProgcompAlias))
@@ -2046,8 +2046,8 @@ internal::complete_from_initial_word_spec(StringView         line,
   if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp))
     return None;
 
-  const completion_spec *spec         = nullptr;
-  let                    command_name = StringView{};
+  const CompletionSpec *spec         = nullptr;
+  let                   command_name = StringView{};
 
   if (is_line_empty) {
     spec =
@@ -2119,10 +2119,10 @@ frame_is_at_case_pattern_level(const shell_lexical_frame &frame)
 }
 
 static fn
-collect_shell_heredoc(StringView           source,
-                      usize               &position,
-                      usize                end,
-                      shell_lexical_state &state) throws -> void
+collect_shell_heredoc(StringView         source,
+                      usize             &position,
+                      usize              end,
+                      ShellLexicalState &state) throws -> void
 {
   let const tail = lexer::read_heredoc_operator_tail(
       source.substring_of_length(0, end), position + 2);
@@ -2135,16 +2135,16 @@ collect_shell_heredoc(StringView           source,
       delimiter_word, state.pending_heredocs.allocator());
 
   if (!delimiter.is_empty())
-    state.pending_heredocs.push(lexer::pending_heredoc{
-        steal(delimiter), tail.should_strip_tabs,
-        lexer::heredoc_word_joins_lines(delimiter_word)});
+    state.pending_heredocs.push(
+        lexer::PendingHeredoc{steal(delimiter), tail.should_strip_tabs,
+                              lexer::heredoc_word_joins_lines(delimiter_word)});
 }
 
 fn
 internal::advance_shell_lexical_state(
     StringView                 source,
     usize                      end,
-    shell_lexical_state       &state,
+    ShellLexicalState         &state,
     shell_lexical_scan_target *target) throws -> void
 {
   if (end > source.length) end = source.length;
@@ -2673,7 +2673,7 @@ internal::command_substitution_range(StringView line,
                                      usize      cursor) throws
     -> completion_command_range
 {
-  let state  = shell_lexical_state{completion_allocator()};
+  let state  = ShellLexicalState{completion_allocator()};
   let target = shell_lexical_scan_target{
       cursor, completion_command_range{0, line.length}
   };
@@ -2699,7 +2699,7 @@ internal::statement_line_start(StringView line, usize cursor) throws
     -> usize
 {
   usize start = 0;
-  let   state = shell_lexical_state{completion_allocator()};
+  let   state = ShellLexicalState{completion_allocator()};
 
   for (usize k = 0; k < cursor && k < line.length; k++) {
     if (line[k] != '\n') continue;
@@ -2732,7 +2732,7 @@ internal::collect_case_pattern_ends(StringView        line,
                                     ArrayList<usize> &positions) throws
     -> void
 {
-  let state = shell_lexical_state{heap_allocator()};
+  let state = ShellLexicalState{heap_allocator()};
 
   for (usize position = 0; position < line.length; position++) {
     if (line[position] != ')') continue;
@@ -2769,7 +2769,7 @@ classify_typed_pair_byte(StringView line,
   if (cursor > line.length) return typed_pair_role::none;
 
   let const scratch = ScopedCompletionScratch{};
-  let       state   = shell_lexical_state{completion_allocator()};
+  let       state   = ShellLexicalState{completion_allocator()};
 
   advance_shell_lexical_state(line, cursor, state);
 
@@ -2931,7 +2931,7 @@ describe_analysis_finding(StringView   line,
   /* at this point: line is at most SYNTAX_HINT_BYTE_LIMIT bytes, it is
      analyzed on submit, and ast is non-null with no rendered errors. */
   let const directives = parser.take_analysis_directives();
-  let       options    = analysis_options::from_runtime(state);
+  let       options    = AnalysisOptions::from_runtime(state);
 
   options.should_silence_unresolved_commands = true;
   analyze_ast(ast, line, context.function_store().names(),

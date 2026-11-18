@@ -24,11 +24,11 @@ enum class sort_order
 };
 
 template <class T>
-struct order_comparator
+struct OrderComparator
 {
   sort_order order;
 
-  explicit order_comparator(sort_order order) : order(order) {}
+  explicit OrderComparator(sort_order order) : order(order) {}
 
   mustuse pure fn
   operator()(const T &left, const T &right) const wontthrow -> bool
@@ -580,12 +580,12 @@ public:
   mustuse fn
   make_sorted(sort_order order) &&
       throws
-      -> SortedArrayList<T, order_comparator<T>>;
+      -> SortedArrayList<T, OrderComparator<T>>;
 
   mustuse fn
   make_sorted(sort_order order) const &
       throws
-      -> SortedArrayList<T, order_comparator<T>>;
+      -> SortedArrayList<T, OrderComparator<T>>;
 
 private:
   template <class Value>
@@ -1116,18 +1116,18 @@ template <class T>
 mustuse auto
 ArrayList<T>::make_sorted(sort_order order) &&
     throws
-    -> SortedArrayList<T, order_comparator<T>>
+    -> SortedArrayList<T, OrderComparator<T>>
 {
-  return SortedArrayList<T, order_comparator<T>>{steal(*this), order};
+  return SortedArrayList<T, OrderComparator<T>>{steal(*this), order};
 }
 
 template <class T>
 mustuse auto
 ArrayList<T>::make_sorted(sort_order order) const &
     throws
-    -> SortedArrayList<T, order_comparator<T>>
+    -> SortedArrayList<T, OrderComparator<T>>
 {
-  return SortedArrayList<T, order_comparator<T>>{clone(), order};
+  return SortedArrayList<T, OrderComparator<T>>{clone(), order};
 }
 
 template <class T>

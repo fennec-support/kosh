@@ -136,9 +136,9 @@ struct listing_options
   char                           line_terminator{'\n'};
 };
 
-struct listing_entry
+struct ListingEntry
 {
-  explicit listing_entry(Allocator allocator) : name(allocator) {}
+  explicit ListingEntry(Allocator allocator) : name(allocator) {}
 
   String                  name;
   os::file_status         status{};
@@ -146,13 +146,13 @@ struct listing_entry
   bool                    has_status{false};
 };
 
-struct listing_entry_comparator
+struct ListingEntryComparator
 {
   ls_sort_key key;
   sort_order  order;
 
   pure fn
-  is_less(const listing_entry &left, const listing_entry &right) const wontthrow
+  is_less(const ListingEntry &left, const ListingEntry &right) const wontthrow
       -> bool
   {
     switch (key) {
@@ -175,17 +175,17 @@ struct listing_entry_comparator
   }
 
   pure fn
-  operator()(const listing_entry &left,
-             const listing_entry &right) const wontthrow -> bool
+  operator()(const ListingEntry &left, const ListingEntry &right) const wontthrow
+      -> bool
   {
     return order == sort_order::ascending ? is_less(left, right)
                                           : is_less(right, left);
   }
 };
 
-struct long_entry
+struct LongEntry
 {
-  explicit long_entry(Allocator allocator)
+  explicit LongEntry(Allocator allocator)
       : mode_string(allocator), link_count(allocator), owner(allocator),
         group(allocator), size(allocator), time(allocator), name(allocator)
   {}
@@ -246,11 +246,11 @@ listing_suffix(colors::file_entry_type type,
 
 static fn
 append_decorated_name(String                &output,
-                      const listing_entry   &entry,
+                      const ListingEntry    &entry,
                       const listing_options &options) throws -> void
 {
   let const color = options.should_color ? colors::file_entry_color(entry.type)
-                                         : colors::color_style{};
+                                         : colors::ColorStyle{};
 
   if (color.value != colors::color::None) {
     output += colors::color_to_sv(color);
@@ -268,7 +268,7 @@ append_decorated_name(String                &output,
 }
 
 static pure fn
-decorated_width(const listing_entry   &entry,
+decorated_width(const ListingEntry    &entry,
                 const listing_options &options) wontthrow -> usize
 {
   let const has_suffix =
@@ -279,7 +279,7 @@ decorated_width(const listing_entry   &entry,
 }
 
 static fn
-set_entry_status(listing_entry &entry, const os::file_status &status) wontthrow
+set_entry_status(ListingEntry &entry, const os::file_status &status) wontthrow
     -> void
 {
   entry.status     = status;
@@ -294,9 +294,9 @@ make_entry(const Path                       &path,
            Path::EntryKind                   kind,
            Allocator                         allocator,
            const os::directory_status_entry *known_entry =
-               nullptr) throws -> listing_entry
+               nullptr) throws -> ListingEntry
 {
-  listing_entry entry{allocator};
+  ListingEntry entry{allocator};
 
   entry.name = String{allocator, name};
 
@@ -338,12 +338,12 @@ make_entry(const Path                       &path,
 }
 
 static fn
-prepare_entries(ArrayList<listing_entry> entries,
-                const listing_options   &options,
-                StringView               directory,
-                Allocator                allocator,
-                bool                     has_known_symlink_targets = false) throws
-    -> SortedArrayList<listing_entry, listing_entry_comparator>
+prepare_entries(ArrayList<ListingEntry> entries,
+                const listing_options  &options,
+                StringView              directory,
+                Allocator               allocator,
+                bool                    has_known_symlink_targets = false) throws
+    -> SortedArrayList<ListingEntry, ListingEntryComparator>
 {
   if (options.should_color && !has_known_symlink_targets) {
     let symlink_paths    = ArrayList<Path>{allocator};
@@ -367,14 +367,14 @@ prepare_entries(ArrayList<listing_entry> entries,
       batch.reserve(symlink_paths.count());
 
       for (usize index = 0; index < symlink_paths.count(); index++) {
-        batch.add(os::batch_operation::stat(symlink_paths[index],
-                                            symlink_statuses[index]));
+        batch.add(os::BatchOperation::stat(symlink_paths[index],
+                                           symlink_statuses[index]));
       }
 
       let const results = batch.execute(os::batch_deduplication::Disabled);
       usize     symlink_index = 0;
 
-      for (listing_entry &entry : entries) {
+      for (ListingEntry &entry : entries) {
         if (entry.type != colors::file_entry_type::Symlink) continue;
 
         if (results[symlink_index].error_number != 0) {
@@ -386,7 +386,7 @@ prepare_entries(ArrayList<listing_entry> entries,
     }
   }
 
-  return steal(entries).make_sorted(listing_entry_comparator{
+  return steal(entries).make_sorted(ListingEntryComparator{
       options.key,
       options.is_reversed ? sort_order::descending : sort_order::ascending});
 }
@@ -401,9 +401,9 @@ static fn
 collect_directory(const Path            &directory,
                   const listing_options &options,
                   Allocator              allocator) throws
-    -> Maybe<SortedArrayList<listing_entry, listing_entry_comparator>>
+    -> Maybe<SortedArrayList<ListingEntry, ListingEntryComparator>>
 {
-  let       entries        = ArrayList<listing_entry>{allocator};
+  let       entries        = ArrayList<ListingEntry>{allocator};
   let const directory_text = directory.view();
   let const should_collect_status =
       options.should_load_full_status ||
@@ -463,11 +463,11 @@ collect_directory(const Path            &directory,
 }
 
 static fn
-build_long_entry_or_sparse_row(const listing_entry   &entry,
+build_long_entry_or_sparse_row(const ListingEntry    &entry,
                                const listing_options &options,
-                               Allocator              allocator) throws -> long_entry
+                               Allocator              allocator) throws -> LongEntry
 {
-  long_entry row{allocator};
+  LongEntry row{allocator};
 
   append_decorated_name(row.name, entry, options);
 
@@ -504,9 +504,9 @@ build_long_entry_or_sparse_row(const listing_entry   &entry,
 }
 
 static fn
-render_long_entries(const ArrayList<long_entry> &entries,
-                    const listing_options       &options,
-                    String                      &output) throws -> void
+render_long_entries(const ArrayList<LongEntry> &entries,
+                    const listing_options      &options,
+                    String                     &output) throws -> void
 {
   usize link_width  = 0;
   usize owner_width = 0;
@@ -570,10 +570,10 @@ column_width(const ArrayList<usize> &widths,
            about count entries through column_width(), so O(count * max_columns)
            with max_columns at most count. */
 static fn
-render_columns(const ArrayList<listing_entry> &entries,
-               const listing_options          &options,
-               String                         &output,
-               Allocator                       allocator) throws -> void
+render_columns(const ArrayList<ListingEntry> &entries,
+               const listing_options         &options,
+               String                        &output,
+               Allocator                      allocator) throws -> void
 {
   let const count = entries.count();
 
@@ -672,8 +672,8 @@ render_columns(const ArrayList<listing_entry> &entries,
 }
 
 static fn
-long_total_in_1k_blocks(const ArrayList<long_entry> &entries,
-                        Allocator                    allocator) throws -> String
+long_total_in_1k_blocks(const ArrayList<LongEntry> &entries,
+                        Allocator                   allocator) throws -> String
 {
   u64 total_512_blocks = 0;
 
@@ -687,11 +687,11 @@ long_total_in_1k_blocks(const ArrayList<long_entry> &entries,
 }
 
 static fn
-render_entries(const ArrayList<listing_entry> &entries,
-               const listing_options          &options,
-               bool                            should_print_total,
-               String                         &output,
-               Allocator                       allocator) throws -> void
+render_entries(const ArrayList<ListingEntry> &entries,
+               const listing_options         &options,
+               bool                           should_print_total,
+               String                        &output,
+               Allocator                      allocator) throws -> void
 {
   if (!options.is_long) {
     render_columns(entries, options, output, allocator);
@@ -699,7 +699,7 @@ render_entries(const ArrayList<listing_entry> &entries,
     return;
   }
 
-  ArrayList<long_entry> rows{allocator};
+  ArrayList<LongEntry> rows{allocator};
 
   rows.reserve(entries.count());
 
@@ -721,9 +721,9 @@ is_dot_or_dotdot(StringView name) wontthrow -> bool
 }
 
 static fn
-is_on_operand_device(const Path          &path,
-                     const listing_entry &entry,
-                     const u64           *operand_device_id) wontthrow -> bool
+is_on_operand_device(const Path         &path,
+                     const ListingEntry &entry,
+                     const u64          *operand_device_id) wontthrow -> bool
 {
   if (operand_device_id == nullptr) return true;
 
@@ -784,9 +784,9 @@ render_tree_level(StringView             directory,
   }
 }
 
-struct ls_run
+struct LSRun
 {
-  ls_run(const ExecContext &ec, EvalContext &cxt, Allocator allocator)
+  LSRun(const ExecContext &ec, EvalContext &cxt, Allocator allocator)
       : ec(ec), cxt(cxt), output(allocator)
   {}
 
@@ -809,7 +809,7 @@ render_directory_block(StringView             directory,
                        usize                  depth,
                        const u64             *operand_device_id,
                        bool                   should_print_header,
-                       ls_run                &run,
+                       LSRun                 &run,
                        Allocator              allocator) throws -> void
 {
   if (os::INTERRUPT_REQUESTED) return;
@@ -976,17 +976,17 @@ LS::execute(const ExecContext               &ec,
   }
 
   for (usize index = 0; index < targets.count(); index++) {
-    target_batch.add(os::batch_operation::lstat(target_paths[index],
-                                                target_statuses[index]));
+    target_batch.add(
+        os::BatchOperation::lstat(target_paths[index], target_statuses[index]));
   }
 
   let const target_results = target_batch.execute();
 
-  ArrayList<listing_entry> file_entries{allocator};
-  ArrayList<usize>         file_target_indices{allocator};
-  ArrayList<usize>         symlink_target_indices{allocator};
-  ArrayList<StringView>    dir_targets{allocator};
-  ls_run                   run{ec, cxt, allocator};
+  ArrayList<ListingEntry> file_entries{allocator};
+  ArrayList<usize>        file_target_indices{allocator};
+  ArrayList<usize>        symlink_target_indices{allocator};
+  ArrayList<StringView>   dir_targets{allocator};
+  LSRun                   run{ec, cxt, allocator};
 
   for (usize index = 0; index < targets.count(); index++) {
     let const target = targets[index];
@@ -1026,8 +1026,8 @@ LS::execute(const ExecContext               &ec,
 
     for (let const target_index : symlink_target_indices) {
       followed_statuses.push({});
-      follow_batch.add(os::batch_operation::stat(target_paths[target_index],
-                                                 followed_statuses.back()));
+      follow_batch.add(os::BatchOperation::stat(target_paths[target_index],
+                                                followed_statuses.back()));
     }
 
     let const follow_results = follow_batch.execute();
@@ -1051,7 +1051,7 @@ LS::execute(const ExecContext               &ec,
       steal(dir_targets).make_sorted(sort_order::ascending);
 
   for (let const target_index : file_target_indices) {
-    let entry = listing_entry{allocator};
+    let entry = ListingEntry{allocator};
 
     entry.name = String{allocator, targets[target_index]};
     set_entry_status(entry, target_statuses[target_index]);

@@ -130,10 +130,10 @@ RuntimeStateScope::RuntimeStateScope(EvalContext &context)
 
 RuntimeStateScope::~RuntimeStateScope() { m_saved.restore(m_context); }
 
-DefinitionStateScope::DefinitionStateScope(EvalContext            &context,
-                                           const definition_state &state,
-                                           definition_state_exit   exit,
-                                           bool                    should_enter)
+DefinitionStateScope::DefinitionStateScope(EvalContext           &context,
+                                           const DefinitionState &state,
+                                           definition_state_exit  exit,
+                                           bool                   should_enter)
     wontthrow
     : m_context(context), m_exit(exit)
 {
@@ -171,9 +171,9 @@ EvalContext::record_history_event(StringView command) throws -> bool
 }
 
 hot fn
-EvalContext::assign_variable(StringView              name,
-                             StringView              value,
-                             Maybe<variable_entry *> entry) throws
+EvalContext::assign_variable(StringView             name,
+                             StringView             value,
+                             Maybe<VariableEntry *> entry) throws
     -> void
 {
   LOG(All, "assigning variable '%.*s' to a value of %zu bytes",
@@ -379,9 +379,9 @@ EvalContext::guard_restricted_path(StringView            path,
 
 hot fn
 EvalContext::set_shell_variable(
-    StringView              name,
-    StringView              value,
-    Maybe<variable_entry *> known_entry) throws -> void
+    StringView             name,
+    StringView             value,
+    Maybe<VariableEntry *> known_entry) throws -> void
 {
   let const entry = known_entry.has_value()
                         ? known_entry
@@ -1304,7 +1304,7 @@ store_exported_name(StringMap<Value> &names,
 {
   if constexpr (os::IS_ENVIRONMENT_CASE_SENSITIVE) {
     unused(spelling);
-    names.set(key, Nothing{});
+    names.set(key, nothing{});
   } else {
     let const previous_count = names.count();
     let      &display_name = names.get_or_create(key, String{heap_allocator()});
@@ -1379,10 +1379,10 @@ analysis_word_name(analysis_word word) wontthrow -> StringView
 }
 
 fn
-inheritable_analysis_state::decode(StringView text) throws
-    -> inheritable_analysis_state
+InheritableAnalysisState::decode(StringView text) throws
+    -> InheritableAnalysisState
 {
-  let result = inheritable_analysis_state{};
+  let result = InheritableAnalysisState{};
 
   /* e.g. text = "mimicry warnings=2 no-annoying" splits into the tokens
      "mimicry", "warnings=2", and "no-annoying". "mimicry" sets
@@ -1427,18 +1427,18 @@ inheritable_analysis_state::decode(StringView text) throws
 }
 
 fn
-inheritable_analysis_state::from_environment() throws
-    -> inheritable_analysis_state
+InheritableAnalysisState::from_environment() throws
+    -> InheritableAnalysisState
 {
   let const text = os::get_environment_variable(ENVIRONMENT_NAME);
 
-  if (!text.has_value()) return inheritable_analysis_state{};
+  if (!text.has_value()) return InheritableAnalysisState{};
 
   return decode(text->view());
 }
 
 fn
-inheritable_analysis_state::encode(String &text) const throws -> void
+InheritableAnalysisState::encode(String &text) const throws -> void
 {
   /* e.g. is_mimicry_enabled, warning_level 2, and is_annoying_disabled give
      "mimicry " + "warnings=2 " + "no-annoying ", and pop_back() removes the
@@ -1471,9 +1471,8 @@ inheritable_analysis_state::encode(String &text) const throws -> void
 fn
 EvalContext::sync_analysis_environment() throws -> void
 {
-  static constexpr StringView NAME =
-      inheritable_analysis_state::ENVIRONMENT_NAME;
-  let text = String{scratch_allocator()};
+  static constexpr StringView NAME = InheritableAnalysisState::ENVIRONMENT_NAME;
+  let                         text = String{scratch_allocator()};
 
   runtime_state().get_inheritable_analysis_state().encode(text);
 
@@ -1782,15 +1781,15 @@ pure fn
 EvalContext::merged_frame_at(usize        index,
                              usize        total,
                              Maybe<usize> script_source_index) const wontthrow
-    -> MergedFrame
+    -> merged_frame
 {
-  if (index >= total) return MergedFrame{MergedFrame::Kind::Main, 0};
+  if (index >= total) return merged_frame{merged_frame::Kind::Main, 0};
 
   let const target        = total - 1 - index;
   usize     emitted_count = 0;
 
   if (source_store().is_script_run() && !script_source_index.has_value()) {
-    if (target == 0) return MergedFrame{MergedFrame::Kind::Main, 0};
+    if (target == 0) return merged_frame{merged_frame::Kind::Main, 0};
     emitted_count = 1;
   }
 
@@ -1825,10 +1824,10 @@ EvalContext::merged_frame_at(usize        index,
         if (script_source_index.has_value() &&
             *script_source_index == source_index)
         {
-          return MergedFrame{MergedFrame::Kind::Main, source_index};
+          return merged_frame{merged_frame::Kind::Main, source_index};
         }
 
-        return MergedFrame{MergedFrame::Kind::Source, source_index};
+        return merged_frame{merged_frame::Kind::Source, source_index};
       }
 
       emitted_count++;
@@ -1837,17 +1836,17 @@ EvalContext::merged_frame_at(usize        index,
     }
 
     if (emitted_count == target)
-      return MergedFrame{MergedFrame::Kind::Function, function_index};
+      return merged_frame{merged_frame::Kind::Function, function_index};
 
     emitted_count++;
     function_index++;
   }
 
-  return MergedFrame{MergedFrame::Kind::Main, 0};
+  return merged_frame{merged_frame::Kind::Main, 0};
 }
 
 pure fn
-EvalContext::merged_frame_at(usize index) const wontthrow -> MergedFrame
+EvalContext::merged_frame_at(usize index) const wontthrow -> merged_frame
 {
   let const script_source_index = script_source_frame_index();
 
@@ -1869,10 +1868,10 @@ EvalContext::funcname_frame_at(usize index) const wontthrow -> StringView
   let const frame = merged_frame_at(index);
 
   switch (frame.kind) {
-  case MergedFrame::Kind::Function:
+  case merged_frame::Kind::Function:
     return function_store().call_frames()[frame.storage_index].name.view();
-  case MergedFrame::Kind::Source: return StringView{"source"};
-  case MergedFrame::Kind::Main:   break;
+  case merged_frame::Kind::Source: return StringView{"source"};
+  case merged_frame::Kind::Main:   break;
   }
 
   return StringView{"main"};
@@ -1964,20 +1963,20 @@ EvalContext::funcname_line_at(usize index) const throws -> usize
   let const frame = merged_frame_at(index);
 
   switch (frame.kind) {
-  case MergedFrame::Kind::Function: {
+  case merged_frame::Kind::Function: {
     let const &call_frame = function_store().call_frames()[frame.storage_index];
 
     return line_number_at_location(call_frame.location, call_frame.source,
                                    frame.storage_index);
   }
-  case MergedFrame::Kind::Source: {
+  case merged_frame::Kind::Source: {
     let const &source = source_store().source_frames()[frame.storage_index];
 
     return line_number_at_location(source.call_site,
                                    borrowed_frame_source(source),
                                    source.function_call_depth);
   }
-  case MergedFrame::Kind::Main: break;
+  case merged_frame::Kind::Main: break;
   }
 
   return 0;
@@ -1994,7 +1993,7 @@ EvalContext::bash_source_frame_at(usize index) const wontthrow -> StringView
   let const frame = merged_frame_at(index, total, script_source_index);
 
   switch (frame.kind) {
-  case MergedFrame::Kind::Function: {
+  case merged_frame::Kind::Function: {
     let const *info = function_store()
                           .call_frames()[frame.storage_index]
                           .storage.get_definition_info();
@@ -2011,11 +2010,11 @@ EvalContext::bash_source_frame_at(usize index) const wontthrow -> StringView
 
     return execution_store().get_shell_name();
   }
-  case MergedFrame::Kind::Source:
+  case merged_frame::Kind::Source:
     return source_store()
         .source_frames()[frame.storage_index]
         .source_path.view();
-  case MergedFrame::Kind::Main: break;
+  case merged_frame::Kind::Main: break;
   }
 
   return execution_store().get_shell_name();
@@ -2236,7 +2235,7 @@ ExecContext::close_fds() throws -> void
 }
 
 pure fn
-ExecContext::builtin_kind() const wontthrow -> const Builtin::Kind &
+ExecContext::builtin_kind() const wontthrow -> const builtin::Kind &
 {
   ASSERT(is_builtin());
 
@@ -2280,7 +2279,7 @@ dot_parent_steps(StringView word) wontthrow -> Maybe<usize>
 
 fn
 EvalContextState::find_enabled_builtin(StringView name) const throws
-    -> Maybe<Builtin::Kind>
+    -> Maybe<builtin::Kind>
 {
   let const kind = search_builtin(name);
 
@@ -2333,7 +2332,7 @@ ExecContext::make_from(const SourceLocation       &location,
   let resolution_program   = program.view();
   let is_missing_directory = false;
 
-  Maybe<Builtin::Kind>                            resolved_builtin;
+  Maybe<builtin::Kind>                            resolved_builtin;
   Maybe<Path>                                     resolved_program_path;
   Maybe<utils::unavailable_path_source_component> unavailable_component;
 
@@ -2426,7 +2425,7 @@ ExecContext::make_from(const SourceLocation       &location,
       arg_locations.push(resolution_location);
       arg_locations.push(resolution_location);
 
-      return {location, ResolvedCommand::from_builtin(Builtin::Kind::Cd),
+      return {location, ResolvedCommand::from_builtin(builtin::Kind::Cd),
               steal(args), steal(arg_locations)};
     }
   }
@@ -2444,7 +2443,7 @@ ExecContext::make_from(const SourceLocation       &location,
     } else if (command_lookup.is_koshkit_utility_reachable(program.view())) {
       LOG(Debug, "no program matches '%s', using the koshkit utility",
           program.c_str());
-      kind = ResolvedCommand::from_builtin(Builtin::Kind::Koshkit);
+      kind = ResolvedCommand::from_builtin(builtin::Kind::Koshkit);
     } else {
       LOG(Debug, "no builtin or program matches '%s'", program.c_str());
       if (is_missing_directory) {

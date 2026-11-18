@@ -663,10 +663,10 @@ pure fn
 get_tree_connector(bool is_last) wontthrow -> tree_connector;
 
 fn
-append_report_text(String             &output,
-                   StringView          text,
-                   colors::color_style style,
-                   bool                should_color) throws -> void;
+append_report_text(String            &output,
+                   StringView         text,
+                   colors::ColorStyle style,
+                   bool               should_color) throws -> void;
 
 enum class report_table_alignment : u8
 {
@@ -678,19 +678,19 @@ struct report_table_column
 {
   String                 heading;
   report_table_alignment alignment;
-  colors::color_style    style;
+  colors::ColorStyle     style;
 };
 
 struct report_table_cell_view
 {
-  StringView          text;
-  colors::color_style style;
+  StringView         text;
+  colors::ColorStyle style;
 };
 
 struct report_table_cell
 {
-  String              text;
-  colors::color_style style;
+  String             text;
+  colors::ColorStyle style;
 };
 
 class ReportTable
@@ -703,7 +703,7 @@ public:
   fn
   add_column(StringView             heading,
              report_table_alignment alignment = report_table_alignment::Left,
-             colors::color_style    style     = {}) throws -> void;
+             colors::ColorStyle     style     = {}) throws -> void;
   fn
   add_heading(StringView             heading,
               report_table_alignment alignment =
@@ -731,9 +731,9 @@ public:
   add_row(const ArrayList<report_table_cell_view> &cells) throws
       -> void;
   fn
-  add_field_row(StringView          name,
-                StringView          value,
-                colors::color_style name_style) throws -> void;
+  add_field_row(StringView         name,
+                StringView         value,
+                colors::ColorStyle name_style) throws -> void;
   fn
   to_string(bool should_color, StringView indentation) const throws
       -> String;
@@ -795,15 +795,15 @@ rolling_window_start(u64 now_nanoseconds, u64 window_nanoseconds) wontthrow
     -> u64;
 
 template <class T>
-struct rolling_history
+struct RollingHistory
 {
   ArrayList<T>   samples;
   ArrayList<u64> timestamps;
   u64            last_seen_nanoseconds{0};
 
-  rolling_history() : rolling_history(heap_allocator()) {}
+  RollingHistory() : RollingHistory(heap_allocator()) {}
 
-  explicit rolling_history(Allocator allocator)
+  explicit RollingHistory(Allocator allocator)
       : samples(allocator), timestamps(allocator)
   {}
 

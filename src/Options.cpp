@@ -20,13 +20,13 @@ namespace koshka {
 
 namespace {
 
-constexpr option_text BOOLEAN_VALUE_NAMES[] = {"off", "on"};
-constexpr option_text MOOD_VALUE_NAMES[] = {"kosh", "sh", "bash", "bash-posix"};
-constexpr option_text TAB_SELECTOR_VALUE_NAMES[]  = {"interactive", "external",
-                                                     "plain"};
-constexpr option_text WARNING_LEVEL_VALUE_NAMES[] = {"0", "1", "2", "3"};
-constexpr option_text EDITOR_MODE_VALUE_NAMES[]   = {"emacs", "vi"};
-constexpr option_text SPACE_AFTER_COMPLETION_VALUE_NAMES[] = {
+constexpr OptionText BOOLEAN_VALUE_NAMES[] = {"off", "on"};
+constexpr OptionText MOOD_VALUE_NAMES[] = {"kosh", "sh", "bash", "bash-posix"};
+constexpr OptionText TAB_SELECTOR_VALUE_NAMES[]  = {"interactive", "external",
+                                                    "plain"};
+constexpr OptionText WARNING_LEVEL_VALUE_NAMES[] = {"0", "1", "2", "3"};
+constexpr OptionText EDITOR_MODE_VALUE_NAMES[]   = {"emacs", "vi"};
+constexpr OptionText SPACE_AFTER_COMPLETION_VALUE_NAMES[] = {
     "off", "on", "on-excluding-trailing-slash"};
 
 static_assert(static_cast<u8>(mimic_mood::Default) == 0);
@@ -39,32 +39,32 @@ static_assert(static_cast<u8>(tab_selector_mode::Plain) == 2);
 
 template <usize Count>
 consteval fn
-enum_values(const option_text (&names)[Count]) wontthrow -> option_enum_values
+enum_values(const OptionText (&names)[Count]) wontthrow -> option_enum_values
 {
   return option_enum_values{names, static_cast<u8>(Count)};
 }
 
 struct entry_shape
 {
-  option_text set_name{};
-  option_text shopt_name{};
-  option_text variable_name{};
-  option_text help{};
-  char        letter{'\0'};
+  OptionText set_name{};
+  OptionText shopt_name{};
+  OptionText variable_name{};
+  OptionText help{};
+  char       letter{'\0'};
 };
 
 consteval fn
 make_entry(u16             id,
-           option_text     koshconf_name,
+           OptionText      koshconf_name,
            option_type     type,
            option_class    category,
            option_storage  storage,
            shell_option_id shell_option,
            entry_shape     shape,
            u8              default_value,
-           u8              bash_default_value) wontthrow -> option_descriptor
+           u8              bash_default_value) wontthrow -> OptionDescriptor
 {
-  option_descriptor entry{};
+  OptionDescriptor entry{};
 
   entry.koshconf_name       = koshconf_name;
   entry.set_name            = shape.set_name;
@@ -91,11 +91,11 @@ make_entry(u16             id,
 
 consteval fn
 flag(u16             id,
-     option_text     koshconf_name,
+     OptionText      koshconf_name,
      option_class    category,
      shell_option_id shell_option,
      entry_shape     shape,
-     bool            is_on) wontthrow -> option_descriptor
+     bool            is_on) wontthrow -> OptionDescriptor
 {
   return make_entry(id, koshconf_name, option_type::Boolean, category,
                     option_storage::ShellOption, shell_option, shape, is_on,
@@ -104,11 +104,11 @@ flag(u16             id,
 
 consteval fn
 posix_flag(u16             id,
-           option_text     koshconf_name,
+           OptionText      koshconf_name,
            option_class    category,
            shell_option_id shell_option,
            entry_shape     shape,
-           bool            is_on) wontthrow -> option_descriptor
+           bool            is_on) wontthrow -> OptionDescriptor
 {
   let entry = flag(id, koshconf_name, category, shell_option, shape, is_on);
 
@@ -119,12 +119,12 @@ posix_flag(u16             id,
 
 consteval fn
 shopt_flag(u16          id,
-           option_text  koshconf_name,
+           OptionText   koshconf_name,
            option_class category,
-           option_text  shopt_name,
-           option_text  help,
+           OptionText   shopt_name,
+           OptionText   help,
            bool         is_on_in_kosh,
-           bool         is_on_in_bash) wontthrow -> option_descriptor
+           bool         is_on_in_bash) wontthrow -> OptionDescriptor
 {
   return make_entry(id, koshconf_name, option_type::Boolean, category,
                     option_storage::Shopt, shell_option_id::Count,
@@ -136,10 +136,10 @@ shopt_flag(u16          id,
    name is the bash.legacy. spelling. */
 consteval fn
 ignored_shopt_flag(u16          id,
-                   option_text  koshconf_name,
+                   OptionText   koshconf_name,
                    option_class category,
-                   option_text  shopt_name,
-                   bool         is_on) wontthrow -> option_descriptor
+                   OptionText   shopt_name,
+                   bool         is_on) wontthrow -> OptionDescriptor
 {
   return shopt_flag(id, koshconf_name, category, shopt_name,
                     "Accept the Bash option without changing behavior.", is_on,
@@ -147,10 +147,10 @@ ignored_shopt_flag(u16          id,
 }
 
 consteval fn
-set_alias(option_text     set_name,
+set_alias(OptionText      set_name,
           shell_option_id shell_option,
-          option_text     help,
-          bool            is_on) wontthrow -> option_descriptor
+          OptionText      help,
+          bool            is_on) wontthrow -> OptionDescriptor
 {
   let entry =
       make_entry(0, {}, option_type::Boolean, option_class::Interactive,
@@ -163,7 +163,7 @@ set_alias(option_text     set_name,
 }
 
 consteval fn
-posix_alias(option_descriptor entry) wontthrow -> option_descriptor
+posix_alias(OptionDescriptor entry) wontthrow -> OptionDescriptor
 {
   entry.is_posix_set_option = true;
 
@@ -171,7 +171,7 @@ posix_alias(option_descriptor entry) wontthrow -> option_descriptor
 }
 
 consteval fn
-set_only(option_descriptor entry) wontthrow -> option_descriptor
+set_only(OptionDescriptor entry) wontthrow -> OptionDescriptor
 {
   entry.id            = 0;
   entry.koshconf_name = {};
@@ -181,7 +181,7 @@ set_only(option_descriptor entry) wontthrow -> option_descriptor
 }
 
 consteval fn
-invocation_only(option_descriptor entry) wontthrow -> option_descriptor
+invocation_only(OptionDescriptor entry) wontthrow -> OptionDescriptor
 {
   entry.is_invocation_only = true;
 
@@ -189,7 +189,7 @@ invocation_only(option_descriptor entry) wontthrow -> option_descriptor
 }
 
 consteval fn
-kept_out_of_koshconf(option_descriptor entry) wontthrow -> option_descriptor
+kept_out_of_koshconf(OptionDescriptor entry) wontthrow -> OptionDescriptor
 {
   entry.is_kept_out_of_koshconf = true;
 
@@ -197,8 +197,8 @@ kept_out_of_koshconf(option_descriptor entry) wontthrow -> option_descriptor
 }
 
 consteval fn
-with_posix_default(option_descriptor entry, u8 value) wontthrow
-    -> option_descriptor
+with_posix_default(OptionDescriptor entry, u8 value)
+    wontthrow -> OptionDescriptor
 {
   entry.posix_default_value = value;
 
@@ -206,8 +206,8 @@ with_posix_default(option_descriptor entry, u8 value) wontthrow
 }
 
 consteval fn
-with_default_text(option_descriptor entry, option_text default_text) wontthrow
-    -> option_descriptor
+with_default_text(OptionDescriptor entry, OptionText default_text) wontthrow
+    -> OptionDescriptor
 {
   entry.default_text = default_text;
 
@@ -215,8 +215,8 @@ with_default_text(option_descriptor entry, option_text default_text) wontthrow
 }
 
 consteval fn
-special(option_descriptor entry, option_storage storage) wontthrow
-    -> option_descriptor
+special(OptionDescriptor entry, option_storage storage) wontthrow
+    -> OptionDescriptor
 {
   entry.storage = storage;
 
@@ -224,8 +224,8 @@ special(option_descriptor entry, option_storage storage) wontthrow
 }
 
 consteval fn
-with_enum(option_descriptor entry, option_enum_values values) wontthrow
-    -> option_descriptor
+with_enum(OptionDescriptor entry, option_enum_values values) wontthrow
+    -> OptionDescriptor
 {
   entry.enum_values = values;
 
@@ -233,8 +233,8 @@ with_enum(option_descriptor entry, option_enum_values values) wontthrow
 }
 
 consteval fn
-fixed_in_kosh(option_descriptor entry, u8 strict_value) wontthrow
-    -> option_descriptor
+fixed_in_kosh(OptionDescriptor entry, u8 strict_value) wontthrow
+    -> OptionDescriptor
 {
   entry.strict_value          = strict_value;
   entry.is_fixed_in_kosh_mood = true;
@@ -243,7 +243,7 @@ fixed_in_kosh(option_descriptor entry, u8 strict_value) wontthrow
 }
 
 consteval fn
-read_only(option_descriptor entry) wontthrow -> option_descriptor
+read_only(OptionDescriptor entry) wontthrow -> OptionDescriptor
 {
   entry.is_read_only = true;
 
@@ -251,7 +251,7 @@ read_only(option_descriptor entry) wontthrow -> option_descriptor
 }
 
 consteval fn
-unlisted(option_descriptor entry) wontthrow -> option_descriptor
+unlisted(OptionDescriptor entry) wontthrow -> OptionDescriptor
 {
   entry.is_listed_by_set = false;
 
@@ -259,7 +259,7 @@ unlisted(option_descriptor entry) wontthrow -> option_descriptor
 }
 
 consteval fn
-session_dependent(option_descriptor entry) wontthrow -> option_descriptor
+session_dependent(OptionDescriptor entry) wontthrow -> OptionDescriptor
 {
   entry.is_session_dependent = true;
 
@@ -267,8 +267,8 @@ session_dependent(option_descriptor entry) wontthrow -> option_descriptor
 }
 
 consteval fn
-bash_default_follows_session(option_descriptor entry) wontthrow
-    -> option_descriptor
+bash_default_follows_session(OptionDescriptor entry)
+    wontthrow -> OptionDescriptor
 {
   entry.is_bash_default_session_dependent = true;
 
@@ -279,7 +279,7 @@ constexpr let INTERACTIVE     = option_class::Interactive;
 constexpr let SEMANTIC        = option_class::Semantic;
 constexpr let NO_SHELL_OPTION = shell_option_id::Count;
 
-constexpr option_descriptor OPTION_REGISTRY[] = {
+constexpr OptionDescriptor OPTION_REGISTRY[] = {
     with_enum(make_entry(1,
                          "mood",
                          option_type::Enum,
@@ -1176,7 +1176,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
 constexpr char SHELL_FLAG_LETTER_ORDER[] = "abefhkmntpuvxBCEHPTARNWISG";
 
 consteval fn
-registry_text_is_before(option_text left, option_text right) wontthrow -> bool
+registry_text_is_before(OptionText left, OptionText right) wontthrow -> bool
 {
   let const shared_length =
       left.length < right.length ? left.length : right.length;
@@ -1237,7 +1237,7 @@ enum class name_kind : u8
 };
 
 consteval fn
-name_of(const option_descriptor &entry, name_kind kind) wontthrow -> option_text
+name_of(const OptionDescriptor &entry, name_kind kind) wontthrow -> OptionText
 {
   switch (kind) {
   case name_kind::Koshconf: return entry.koshconf_name;
@@ -1377,7 +1377,7 @@ static_assert(registry_is_valid());
 template <usize Count>
 struct listing_table
 {
-  option_descriptor entries[Count]{};
+  OptionDescriptor entries[Count]{};
 };
 
 consteval fn
@@ -1463,7 +1463,7 @@ ids_fit_table() wontthrow -> bool
 static_assert(ids_fit_table());
 
 fn
-display_name(const option_descriptor &option, option_origin origin) wontthrow
+display_name(const OptionDescriptor &option, option_origin origin) wontthrow
     -> StringView
 {
   if (origin == option_origin::Set && !option.set_name.is_empty()) {
@@ -1478,8 +1478,8 @@ display_name(const option_descriptor &option, option_origin origin) wontthrow
 }
 
 fn
-read_boolean(const EvalContext       &cxt,
-             const option_descriptor &option) throws -> bool
+read_boolean(const EvalContext      &cxt,
+             const OptionDescriptor &option) throws -> bool
 {
   let const &state = cxt.runtime_state();
 
@@ -1521,9 +1521,9 @@ read_boolean(const EvalContext       &cxt,
 }
 
 fn
-write_shell_option(EvalContext             &cxt,
-                   const option_descriptor &option,
-                   bool                     is_enabled) throws -> void
+write_shell_option(EvalContext            &cxt,
+                   const OptionDescriptor &option,
+                   bool                    is_enabled) throws -> void
 {
   if (option.shell_option == shell_option_id::Privileged && !is_enabled &&
       os::is_running_secure() && !os::drop_elevated_identity())
@@ -1566,9 +1566,9 @@ write_shell_option(EvalContext             &cxt,
 }
 
 fn
-write_boolean(EvalContext             &cxt,
-              const option_descriptor &option,
-              bool                     is_enabled) throws -> void
+write_boolean(EvalContext            &cxt,
+              const OptionDescriptor &option,
+              bool                    is_enabled) throws -> void
 {
   let &state = cxt.runtime_state();
 
@@ -1634,16 +1634,15 @@ write_boolean(EvalContext             &cxt,
 } /* namespace */
 
 pure fn
-get_option_registry() wontthrow -> option_registry_view
+get_option_registry() wontthrow -> OptionRegistryView
 {
-  return option_registry_view{OPTION_REGISTRY, countof(OPTION_REGISTRY)};
+  return OptionRegistryView{OPTION_REGISTRY, countof(OPTION_REGISTRY)};
 }
 
 pure fn
-get_set_listing_order() wontthrow -> option_registry_view
+get_set_listing_order() wontthrow -> OptionRegistryView
 {
-  return option_registry_view{SET_LISTING.entries,
-                              countof(SET_LISTING.entries)};
+  return OptionRegistryView{SET_LISTING.entries, countof(SET_LISTING.entries)};
 }
 
 pure fn
@@ -1654,7 +1653,7 @@ get_shell_flag_letter_order() wontthrow -> StringView
 }
 
 pure fn
-find_option_by_id(u16 id) wontthrow -> const option_descriptor *
+find_option_by_id(u16 id) wontthrow -> const OptionDescriptor *
 {
   if (id > 0xff) return nullptr;
 
@@ -1664,7 +1663,7 @@ find_option_by_id(u16 id) wontthrow -> const option_descriptor *
 }
 
 fn
-find_option_by_set_name(StringView name) wontthrow -> const option_descriptor *
+find_option_by_set_name(StringView name) wontthrow -> const OptionDescriptor *
 {
   let const position = OPTIONS_BY_SET_NAME.find(name);
 
@@ -1672,8 +1671,7 @@ find_option_by_set_name(StringView name) wontthrow -> const option_descriptor *
 }
 
 fn
-find_option_by_shopt_name(StringView name)
-    wontthrow -> const option_descriptor *
+find_option_by_shopt_name(StringView name) wontthrow -> const OptionDescriptor *
 {
   /* Bash 5.3 spells assoc_expand_once as array_expand_once. */
   if (name == "array_expand_once") name = "assoc_expand_once";
@@ -1690,7 +1688,7 @@ constexpr StringView BASH_ALIAS_PREFIX{"bash.legacy."};
            owned by the caller.
    time:   O(length of the set or shopt name) for the appends. no loop. */
 fn
-get_legacy_koshconf_alias(const option_descriptor &option) throws
+get_legacy_koshconf_alias(const OptionDescriptor &option) throws
     -> Maybe<String>
 {
   if (option.is_set_alias && option.storage == option_storage::EditorMode) {
@@ -1733,7 +1731,7 @@ get_legacy_koshconf_alias(const option_descriptor &option) throws
            and an editor mode alias scans OPTION_REGISTRY linearly. */
 fn
 find_option_by_koshconf_name(StringView name) wontthrow
-    -> const option_descriptor *
+    -> const OptionDescriptor *
 {
   let const position = OPTIONS_BY_KOSHCONF_NAME.find(name);
 
@@ -1777,7 +1775,7 @@ find_option_by_koshconf_name(StringView name) wontthrow
 }
 
 pure fn
-find_option_by_letter(char letter) wontthrow -> const option_descriptor *
+find_option_by_letter(char letter) wontthrow -> const OptionDescriptor *
 {
   let const position = OPTIONS_BY_LETTER.positions[static_cast<u8>(letter)];
 
@@ -1882,16 +1880,16 @@ shopt_default_is_on(u8 index) wontthrow -> bool
 }
 
 fn
-option_is_available(const EvalContext       &cxt,
-                    const option_descriptor &option) wontthrow -> bool
+option_is_available(const EvalContext      &cxt,
+                    const OptionDescriptor &option) wontthrow -> bool
 {
   return option.shell_option != shell_option_id::Physical ||
          !cxt.runtime_state().is_posix_mode();
 }
 
 fn
-read_option_number(const EvalContext       &cxt,
-                   const option_descriptor &option) throws -> u32
+read_option_number(const EvalContext      &cxt,
+                   const OptionDescriptor &option) throws -> u32
 {
   let const &state = cxt.runtime_state();
 
@@ -1924,7 +1922,7 @@ read_option_number(const EvalContext       &cxt,
    time:   O(length of the enum value text) for an enum index, otherwise
            O(digits in value) for the decimal text. */
 fn
-format_option_number(const option_descriptor &option, u32 value) throws
+format_option_number(const OptionDescriptor &option, u32 value) throws
     -> String
 {
   if (value < option.enum_values.name_count)
@@ -1935,8 +1933,8 @@ format_option_number(const option_descriptor &option, u32 value) throws
 }
 
 fn
-read_option_text(const EvalContext       &cxt,
-                 const option_descriptor &option) throws -> String
+read_option_text(const EvalContext      &cxt,
+                 const OptionDescriptor &option) throws -> String
 {
   if (option.storage == option_storage::Variable) {
     let value = cxt.get_variable_value(option.variable_name);
@@ -1953,8 +1951,8 @@ read_option_text(const EvalContext       &cxt,
 }
 
 fn
-parse_option_number(const option_descriptor &option,
-                    StringView               text) throws -> Maybe<u32>
+parse_option_number(const OptionDescriptor &option,
+                    StringView              text) throws -> Maybe<u32>
 {
   if (option.type == option_type::Boolean) {
     static constexpr static_string_entry<u8> BOOLEAN_SPELLINGS[] = {
@@ -2005,7 +2003,7 @@ parse_option_number(const option_descriptor &option,
 /* memory: a heap String returned to the caller, who owns it.
    time:   O(total length of the value strings). */
 fn
-describe_option_values(const option_descriptor &option) throws -> String
+describe_option_values(const OptionDescriptor &option) throws -> String
 {
   if (option.type == option_type::Boolean)
     return String{heap_allocator(),
@@ -2034,10 +2032,10 @@ describe_option_values(const option_descriptor &option) throws -> String
 }
 
 fn
-write_option_number(EvalContext             &cxt,
-                    const option_descriptor &option,
-                    u32                      value,
-                    option_origin            origin) throws -> void
+write_option_number(EvalContext            &cxt,
+                    const OptionDescriptor &option,
+                    u32                     value,
+                    option_origin           origin) throws -> void
 {
   if (option.is_read_only)
     throw Error{StringView{"Unable to change '"} +
@@ -2116,10 +2114,10 @@ write_option_number(EvalContext             &cxt,
 }
 
 fn
-write_option_text(EvalContext             &cxt,
-                  const option_descriptor &option,
-                  StringView               text,
-                  option_origin            origin) throws -> void
+write_option_text(EvalContext            &cxt,
+                  const OptionDescriptor &option,
+                  StringView              text,
+                  option_origin           origin) throws -> void
 {
   if (option.storage == option_storage::Variable) {
     cxt.set_shell_variable(option.variable_name, text);

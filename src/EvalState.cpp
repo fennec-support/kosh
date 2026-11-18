@@ -132,7 +132,7 @@ EvalContext::set_coprocess_descriptors(i32        read_fd,
     }
   }
 
-  subshell_store().coprocess() = coprocess_descriptors{
+  subshell_store().coprocess() = CoprocessDescriptors{
       read_fd, write_fd, process_id, String{heap_allocator(), name}
   };
 }
@@ -170,7 +170,7 @@ EvalContext::release_finished_coprocess() throws -> void
 
   for (let const &entry : table.jobs()) {
     if (entry.process_id == coprocess.process_id &&
-        entry.state != job::State::Done)
+        entry.state != Job::State::Done)
     {
       return;
     }
@@ -189,7 +189,7 @@ EvalContext::release_finished_coprocess() throws -> void
 
   let name = steal(coprocess.name);
 
-  coprocess = coprocess_descriptors{};
+  coprocess = CoprocessDescriptors{};
   unset_shell_variable(name.view());
   name += "_PID";
   unset_shell_variable(name.view());
@@ -213,7 +213,7 @@ EvalContext::hide_coprocess_descriptors() throws -> void
     if (shell_fd >= 0) unused(os::close_shell_fd(shell_fd));
   }
 
-  subshell_store().coprocess() = coprocess_descriptors{};
+  subshell_store().coprocess() = CoprocessDescriptors{};
 }
 
 pure fn
@@ -342,7 +342,7 @@ EvalContext::push_root_source_frame(const String     *parent_source,
 {
   ASSERT(kind != source_frame_kind::Ordinary);
 
-  source_store().source_frames().push(source_frame{
+  source_store().source_frames().push(SourceFrame{
       String{heap_allocator(), StringView{"the command line"}},
       call_site,
       parent_source, source_generation_for(parent_source),
@@ -395,7 +395,7 @@ struct backtrace_entry
   const String  *text{nullptr};
   isize          line_offset{0};
   bool          *was_printed{nullptr};
-  source_frame  *frame{nullptr};
+  SourceFrame   *frame{nullptr};
   usize          call_index{0};
   usize          repeat_count{0};
   bool           is_definition{false};
@@ -421,7 +421,7 @@ EvalContext::print_source_backtrace(
     return;
   }
 
-  source_frame *deferring_frame = nullptr;
+  SourceFrame *deferring_frame = nullptr;
 
   if (!is_replay && should_defer_for_source_file) {
     for (usize i = source_store().source_frames().count(); i > 0; i--) {
@@ -476,8 +476,8 @@ EvalContext::print_source_backtrace(
            rendered.location.length == error_site->location.length;
   };
 
-  let const do_frame_identity_match = [&](const source_frame &left,
-                                          const source_frame &right) {
+  let const do_frame_identity_match = [&](const SourceFrame &left,
+                                          const SourceFrame &right) {
     let const *left_source  = borrowed_frame_source(left);
     let const *right_source = borrowed_frame_source(right);
 
@@ -890,7 +890,7 @@ EvalContext::suggest_similar_variable_name(StringView name) const throws
            the list. */
 fn
 EvalContext::sorted_variable_assignments() const throws
-    -> SortedArrayList<String, order_comparator<String>>
+    -> SortedArrayList<String, OrderComparator<String>>
 {
   let assignments = ArrayList<String>{heap_allocator()};
 
@@ -1036,7 +1036,7 @@ EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   subshell_store().coprocess() = snapshot.coprocess;
 
   if (trap_store().count() != 0 || snapshot.traps.traps.read().count() != 0) {
-    trap_store().list([&](StringView condition, const trap_definition &trap) {
+    trap_store().list([&](StringView condition, const TrapDefinition &trap) {
       unused(trap);
       if (condition == "EXIT") return;
       if (snapshot.traps.traps.read().find(condition).has_value()) return;
@@ -1196,7 +1196,7 @@ append_wire_source_names(String               &output,
 }
 
 fn
-dynamic_clock_state::append_wire(String &output) const throws -> void
+DynamicClockState::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Clock, [&](String &payload) {
     append_subshell_bootstrap_u64(payload, random_state);
@@ -1206,7 +1206,7 @@ dynamic_clock_state::append_wire(String &output) const throws -> void
 }
 
 fn
-getopts_cursor::append_wire(String &output) const throws -> void
+GetoptsCursor::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Getopts, [&](String &payload) {
     append_subshell_bootstrap_u64(payload, static_cast<u64>(char_index));
@@ -1215,7 +1215,7 @@ getopts_cursor::append_wire(String &output) const throws -> void
 }
 
 fn
-definition_state::append_wire(String &output) const throws -> void
+DefinitionState::append_wire(String &output) const throws -> void
 {
   output.push(static_cast<char>(mood));
   output.push(static_cast<char>(reporting.warning_level));
@@ -1529,7 +1529,7 @@ CompletionStore::append_wire(String &output) const throws -> void
     let        collected_names = ArrayList<String>{heap_allocator()};
     let const &data            = m_data.read();
 
-    data.specs.for_each([&](StringView command, const completion_spec &) {
+    data.specs.for_each([&](StringView command, const CompletionSpec &) {
       collected_names.push_managed(command);
     });
 
@@ -1538,7 +1538,7 @@ CompletionStore::append_wire(String &output) const throws -> void
     append_subshell_bootstrap_u32(payload, static_cast<u32>(names.count()));
 
     let const do_append_spec =
-        [&](const completion_spec &spec) throws -> void {
+        [&](const CompletionSpec &spec) throws -> void {
       append_subshell_bootstrap_text(payload, spec.function_name.view());
       append_subshell_bootstrap_text(payload, spec.word_list.view());
       append_subshell_bootstrap_text(payload, spec.glob_pattern.view());
@@ -1570,7 +1570,7 @@ CompletionStore::append_wire(String &output) const throws -> void
 }
 
 fn
-JobTable::append_wire(String &output, os::subshell_bootstrap &bootstrap) const
+JobTable::append_wire(String &output, os::SubshellBootstrap &bootstrap) const
     throws -> void
 {
   append_wire_section(output, wire_section::Jobs, [&](String &payload) {
@@ -1624,7 +1624,7 @@ JobTable::append_wire(String &output, os::subshell_bootstrap &bootstrap) const
   });
 }
 
-struct subshell_bootstrap_reader
+struct SubshellBootstrapReader
 {
   StringView bytes;
   usize      position{0};
@@ -1643,8 +1643,7 @@ struct subshell_bootstrap_reader
   }
 
   fn
-  read_section(wire_section section, subshell_bootstrap_reader &payload)
-      wontthrow
+  read_section(wire_section section, SubshellBootstrapReader &payload) wontthrow
       -> bool
   {
     let const identity = read_u8();
@@ -1659,7 +1658,7 @@ struct subshell_bootstrap_reader
     }
 
     payload =
-        subshell_bootstrap_reader{bytes.substring_of_length(position, length)};
+        SubshellBootstrapReader{bytes.substring_of_length(position, length)};
     position += length;
 
     return true;
@@ -1747,8 +1746,8 @@ struct subshell_bootstrap_reader
 };
 
 static fn
-read_subshell_bootstrap_bool(subshell_bootstrap_reader &reader,
-                             bool                      &value) wontthrow -> bool
+read_subshell_bootstrap_bool(SubshellBootstrapReader &reader,
+                             bool                    &value) wontthrow -> bool
 {
   let const encoded = reader.read_u8();
 
@@ -1762,8 +1761,8 @@ read_subshell_bootstrap_bool(subshell_bootstrap_reader &reader,
 }
 
 static fn
-read_wire_source_names(subshell_bootstrap_reader &reader,
-                       ArrayList<u32>            &names) throws -> bool
+read_wire_source_names(SubshellBootstrapReader &reader,
+                       ArrayList<u32>          &names) throws -> bool
 {
   let const name_count = static_cast<usize>(reader.read_u32());
   if (!reader.is_valid || name_count > reader.get_remaining_length()) {
@@ -1796,9 +1795,9 @@ read_wire_source_names(subshell_bootstrap_reader &reader,
 }
 
 static fn
-read_wire_source_name(subshell_bootstrap_reader &reader,
-                      const ArrayList<u32>      &names,
-                      u32                       &name_index) wontthrow -> bool
+read_wire_source_name(SubshellBootstrapReader &reader,
+                      const ArrayList<u32>    &names,
+                      u32                     &name_index) wontthrow -> bool
 {
   let const position = static_cast<usize>(reader.read_u32());
 
@@ -1812,10 +1811,10 @@ read_wire_source_name(subshell_bootstrap_reader &reader,
 }
 
 fn
-dynamic_clock_state::from_wire(subshell_bootstrap_reader &reader,
-                               dynamic_clock_state       &clock) wontthrow -> bool
+DynamicClockState::from_wire(SubshellBootstrapReader &reader,
+                             DynamicClockState       &clock) wontthrow -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Clock, payload)) return false;
 
@@ -1827,10 +1826,10 @@ dynamic_clock_state::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-getopts_cursor::from_wire(subshell_bootstrap_reader &reader,
-                          getopts_cursor            &cursor) wontthrow -> bool
+GetoptsCursor::from_wire(SubshellBootstrapReader &reader,
+                         GetoptsCursor           &cursor) wontthrow -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Getopts, payload)) return false;
 
@@ -1851,8 +1850,8 @@ getopts_cursor::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-definition_state::from_wire(subshell_bootstrap_reader &reader,
-                            definition_state          &state) wontthrow -> bool
+DefinitionState::from_wire(SubshellBootstrapReader &reader,
+                           DefinitionState         &state) wontthrow -> bool
 {
   let const mood                    = reader.read_u8();
   let const warning_level           = reader.read_u8();
@@ -1875,10 +1874,10 @@ definition_state::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-RuntimeState::from_wire(subshell_bootstrap_reader &reader,
-                        RuntimeState              &runtime) wontthrow -> bool
+RuntimeState::from_wire(SubshellBootstrapReader &reader,
+                        RuntimeState            &runtime) wontthrow -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Runtime, payload)) return false;
 
@@ -1888,7 +1887,7 @@ RuntimeState::from_wire(subshell_bootstrap_reader &reader,
   let const flags         = payload.read_u8();
   let const wrap_width    = payload.read_u64();
   let const shell_options = payload.read_u64();
-  let const shopt         = shopt_state{payload.read_u64(), payload.read_u64()};
+  let const shopt         = ShoptState{payload.read_u64(), payload.read_u64()};
 
   static_assert(static_cast<u8>(shell_option_id::Count) < 64);
 
@@ -1919,10 +1918,10 @@ RuntimeState::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-RuntimeControlStore::from_wire(subshell_bootstrap_reader &reader,
-                               runtime_control_wire      &wire) wontthrow -> bool
+RuntimeControlStore::from_wire(SubshellBootstrapReader &reader,
+                               runtime_control_wire    &wire) wontthrow -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Control, payload)) return false;
 
@@ -1937,10 +1936,10 @@ RuntimeControlStore::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-ExecutionStore::from_wire(subshell_bootstrap_reader &reader,
-                          execution_wire            &wire) throws -> bool
+ExecutionStore::from_wire(SubshellBootstrapReader &reader,
+                          execution_wire          &wire) throws -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Execution, payload)) return false;
 
@@ -1962,10 +1961,10 @@ ExecutionStore::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-VariableStore::from_wire(subshell_bootstrap_reader &reader,
-                         variable_wire             &wire) throws -> bool
+VariableStore::from_wire(SubshellBootstrapReader &reader,
+                         variable_wire           &wire) throws -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Variables, payload)) return false;
 
@@ -2058,10 +2057,10 @@ VariableStore::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-StartupStore::from_wire(subshell_bootstrap_reader &reader,
-                        startup_wire              &wire) throws -> bool
+StartupStore::from_wire(SubshellBootstrapReader &reader,
+                        startup_wire            &wire) throws -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Startup, payload)) return false;
 
@@ -2077,10 +2076,10 @@ StartupStore::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-DiagnosticsStore::from_wire(subshell_bootstrap_reader &reader,
+DiagnosticsStore::from_wire(SubshellBootstrapReader &reader,
                             bool &is_source_traces_enabled) wontthrow -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Diagnostics, payload)) return false;
 
@@ -2089,10 +2088,10 @@ DiagnosticsStore::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-EnabledCommandStore::from_wire(subshell_bootstrap_reader &reader,
-                               EnabledCommandStore       &store) wontthrow -> bool
+EnabledCommandStore::from_wire(SubshellBootstrapReader &reader,
+                               EnabledCommandStore     &store) wontthrow -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::EnabledCommands, payload))
     return false;
@@ -2107,10 +2106,10 @@ EnabledCommandStore::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-FunctionStore::from_wire(subshell_bootstrap_reader &reader,
-                         function_wire             &wire) throws -> bool
+FunctionStore::from_wire(SubshellBootstrapReader &reader,
+                         function_wire           &wire) throws -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Functions, payload)) return false;
 
@@ -2228,10 +2227,10 @@ FunctionStore::apply_wire_definitions(function_wire &wire) throws
 
 fn
 ScopeStore::from_wire(
-    subshell_bootstrap_reader           &reader,
+    SubshellBootstrapReader             &reader,
     ArrayList<ArrayList<local_binding>> &local_scopes) throws -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Scopes, payload)) return false;
 
@@ -2380,10 +2379,10 @@ ScopeStore::from_wire(
 }
 
 fn
-TrapStore::from_wire(subshell_bootstrap_reader &reader,
-                     u64                       &startup_ignored_signals) wontthrow -> bool
+TrapStore::from_wire(SubshellBootstrapReader &reader,
+                     u64                     &startup_ignored_signals) wontthrow -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Traps, payload)) return false;
 
@@ -2394,10 +2393,10 @@ TrapStore::from_wire(subshell_bootstrap_reader &reader,
 
 fn
 ProgramResolver::from_wire(
-    subshell_bootstrap_reader &reader,
-    StringMap<CacheEntry>     &execution_cache) throws -> bool
+    SubshellBootstrapReader &reader,
+    StringMap<CacheEntry>   &execution_cache) throws -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Programs, payload)) return false;
 
@@ -2452,10 +2451,10 @@ ProgramResolver::from_wire(
 }
 
 fn
-CompletionStore::from_wire(subshell_bootstrap_reader &reader,
-                           completion_snapshot       &wire) throws -> bool
+CompletionStore::from_wire(SubshellBootstrapReader &reader,
+                           CompletionSnapshot      &wire) throws -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Completion, payload)) return false;
 
@@ -2470,7 +2469,7 @@ CompletionStore::from_wire(subshell_bootstrap_reader &reader,
 
   wire.specs.reserve(spec_count);
 
-  let const do_read_spec = [&](completion_spec &spec) throws -> bool {
+  let const do_read_spec = [&](CompletionSpec &spec) throws -> bool {
     let const function_name  = payload.read_text();
     let const word_list      = payload.read_text();
     let const glob_pattern   = payload.read_text();
@@ -2485,7 +2484,7 @@ CompletionStore::from_wire(subshell_bootstrap_reader &reader,
     if (!payload.is_valid || (action_mask >> COMPGEN_ACTION_COUNT) != 0 ||
         (option_mask >> COMPLETION_OPTION_COUNT) != 0 ||
         (argument_mask >> COMPLETION_ARGUMENT_COUNT) != 0 ||
-        !definition_state::from_wire(payload, spec.defining_state))
+        !DefinitionState::from_wire(payload, spec.defining_state))
     {
       return false;
     }
@@ -2506,7 +2505,7 @@ CompletionStore::from_wire(subshell_bootstrap_reader &reader,
 
   for (usize spec_index = 0; spec_index < spec_count; spec_index++) {
     let const command = payload.read_text();
-    let       spec    = completion_spec{};
+    let       spec    = CompletionSpec{};
 
     if (!payload.is_valid || !do_read_spec(spec) ||
         wire.specs.find(command).has_value())
@@ -2525,7 +2524,7 @@ CompletionStore::from_wire(subshell_bootstrap_reader &reader,
     if (!read_subshell_bootstrap_bool(payload, has_slot_spec)) return false;
     if (!has_slot_spec) continue;
 
-    let spec = completion_spec{};
+    let spec = CompletionSpec{};
 
     if (!do_read_spec(spec)) return false;
     *slot_spec = steal(spec);
@@ -2535,10 +2534,10 @@ CompletionStore::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-JobTable::from_wire(subshell_bootstrap_reader &reader,
-                    job_table_wire            &wire) throws -> bool
+JobTable::from_wire(SubshellBootstrapReader &reader,
+                    JobTableWire            &wire) throws -> bool
 {
-  subshell_bootstrap_reader payload;
+  SubshellBootstrapReader payload;
 
   if (!reader.read_section(wire_section::Jobs, payload)) return false;
 
@@ -2562,7 +2561,7 @@ JobTable::from_wire(subshell_bootstrap_reader &reader,
   i32 previous_job_id = 0;
 
   for (usize job_index = 0; job_index < job_count; job_index++) {
-    let child_job = job{wire.jobs.allocator()};
+    let child_job = Job{wire.jobs.allocator()};
 
     child_job.id = payload.read_i32();
 
@@ -2590,13 +2589,13 @@ JobTable::from_wire(subshell_bootstrap_reader &reader,
         !read_subshell_bootstrap_bool(payload, has_unreported_state_change) ||
         child_job.id <= previous_job_id || child_job.id >= wire.next_job_id ||
         child_job.process_group_id < 0 ||
-        state > static_cast<u8>(job::State::Done))
+        state > static_cast<u8>(Job::State::Done))
     {
       return false;
     }
 
     previous_job_id                       = child_job.id;
-    child_job.state                       = static_cast<job::State>(state);
+    child_job.state                       = static_cast<Job::State>(state);
     child_job.is_primary_process_active   = is_primary_process_active;
     child_job.has_unreported_state_change = has_unreported_state_change;
 
@@ -2607,7 +2606,7 @@ JobTable::from_wire(subshell_bootstrap_reader &reader,
          primary_process_index == NO_BOOTSTRAP_PROCESS) ||
         (!is_primary_process_active &&
          primary_process_index != NO_BOOTSTRAP_PROCESS) ||
-        (child_job.state == job::State::Done && is_primary_process_active))
+        (child_job.state == Job::State::Done && is_primary_process_active))
     {
       return false;
     }
@@ -2627,8 +2626,8 @@ JobTable::from_wire(subshell_bootstrap_reader &reader,
       return false;
     }
 
-    if ((child_job.state == job::State::Done && earlier_process_count != 0) ||
-        (child_job.state != job::State::Done && !is_primary_process_active &&
+    if ((child_job.state == Job::State::Done && earlier_process_count != 0) ||
+        (child_job.state != Job::State::Done && !is_primary_process_active &&
          earlier_process_count == 0))
     {
       return false;
@@ -2670,7 +2669,7 @@ JobTable::from_wire(subshell_bootstrap_reader &reader,
 }
 
 fn
-job_table_wire::bind_processes(const os::subshell_bootstrap &bootstrap)
+JobTableWire::bind_processes(const os::SubshellBootstrap &bootstrap)
     throws -> bool
 {
   if (process_references.count() != bootstrap.processes.count()) return false;
@@ -2713,7 +2712,7 @@ job_table_wire::bind_processes(const os::subshell_bootstrap &bootstrap)
 }
 
 fn
-JobTable::apply_wire(job_table_wire wire) wontthrow -> void
+JobTable::apply_wire(JobTableWire wire) wontthrow -> void
 {
   m_last_background_pid    = wire.last_background_pid;
   m_jobs                   = steal(wire.jobs);
@@ -2729,9 +2728,9 @@ invalid_subshell_bootstrap() throws -> void
 
 fn
 EvalContext::make_subshell_bootstrap() const throws
-    -> os::subshell_bootstrap
+    -> os::SubshellBootstrap
 {
-  let     bootstrap       = os::subshell_bootstrap{};
+  let     bootstrap       = os::SubshellBootstrap{};
   String &source          = bootstrap.payload;
   let     collected_names = ArrayList<String>{heap_allocator()};
 
@@ -2866,7 +2865,7 @@ EvalContext::make_subshell_bootstrap() const throws
   }
 
   trap_store().list(
-      [&](StringView condition, const trap_definition &trap) throws {
+      [&](StringView condition, const TrapDefinition &trap) throws {
         if (condition == "EXIT") return;
         source += "trap -- ";
         append_shell_quoted_arg(source, trap.action_text.view());
@@ -2961,7 +2960,7 @@ EvalContext::make_subshell_bootstrap() const throws
 }
 
 fn
-EvalContext::make_child_evaluator_state(os::subshell_bootstrap &bootstrap) const throws -> os::child_evaluator_state
+EvalContext::make_child_evaluator_state(os::SubshellBootstrap &bootstrap) const throws -> os::child_evaluator_state
 {
   prepare_child_environment();
 
@@ -2975,21 +2974,21 @@ EvalContext::make_child_evaluator_state(os::subshell_bootstrap &bootstrap) const
       .bootstrap  = should_launch_fresh_evaluator ? &bootstrap : nullptr,
       .shell_name = execution_store().get_shell_name(),
       .inherited =
-          os::inherited_subshell_state{
-                                       .previous_exit_status    = execution_store().last_exit_status(),
-                                       .shell_process_id        = os::get_shell_process_id(),
-                                       .shell_parent_process_id = os::get_shell_parent_process_id(),
-                                       .subshell_depth          = execution_store().subshell_depth() + 1,
-                                       },
+          os::InheritedSubshellState{
+                                     .previous_exit_status    = execution_store().last_exit_status(),
+                                     .shell_process_id        = os::get_shell_process_id(),
+                                     .shell_parent_process_id = os::get_shell_parent_process_id(),
+                                     .subshell_depth          = execution_store().subshell_depth() + 1,
+                                     },
       .mood = runtime_state().get_mood(),
   };
 }
 
 fn
 EvalContext::set_child_source_origin(
-    os::subshell_bootstrap &bootstrap,
-    StringView              child_source,
-    const SourceLocation   &launch_location) const throws -> void
+    os::SubshellBootstrap &bootstrap,
+    StringView             child_source,
+    const SourceLocation  &launch_location) const throws -> void
 {
   bootstrap.source_origin.clear();
   if (bootstrap.payload.is_empty()) return;
@@ -3253,8 +3252,8 @@ EvalContext::register_inherited_source_origin(
 {
   if (origin.is_empty()) return false;
 
-  let  reader        = subshell_bootstrap_reader{origin};
-  let  payload       = subshell_bootstrap_reader{StringView{}};
+  let  reader        = SubshellBootstrapReader{origin};
+  let  payload       = SubshellBootstrapReader{StringView{}};
   let  names         = ArrayList<u32>{heap_allocator()};
   bool is_script_run = false;
   bool has_origin    = false;
@@ -3407,9 +3406,9 @@ EvalContext::register_inherited_source_origin(
     let       frame_source_path        = String{heap_allocator(), source_path};
 
     source_store().source_frames().push(
-        source_frame{steal(frame_origin_text), call_site, parent_source,
-                     parent_source_generation, steal(frame_source_path),
-                     static_cast<source_frame_kind>(kind)});
+        SourceFrame{steal(frame_origin_text), call_site, parent_source,
+                    parent_source_generation, steal(frame_source_path),
+                    static_cast<source_frame_kind>(kind)});
 
     let &frame = source_store().source_frames().back();
 
@@ -3476,7 +3475,7 @@ EvalContext::register_inherited_source_origin(
    time:   O(payload bytes) to decode each section once, plus one
            run_source() call that parses and evaluates the replayed source. */
 fn
-EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
+EvalContext::apply_subshell_bootstrap(os::SubshellBootstrap bootstrap)
     throws -> void
 {
   if (bootstrap.source_length > bootstrap.payload.count())
@@ -3484,7 +3483,7 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
 
   let const encoded = bootstrap.payload.view().substring(
       static_cast<usize>(bootstrap.source_length));
-  let reader = subshell_bootstrap_reader{encoded};
+  let reader = SubshellBootstrapReader{encoded};
 
   if (reader.read_u32() != SUBSHELL_BOOTSTRAP_MAGIC ||
       reader.read_u32() != SUBSHELL_BOOTSTRAP_VERSION)
@@ -3499,9 +3498,9 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
   }
 
   let  execution                = execution_wire{};
-  let  jobs                     = job_table_wire{};
-  let  clock                    = dynamic_clock_state{};
-  let  getopts                  = getopts_cursor{};
+  let  jobs                     = JobTableWire{};
+  let  clock                    = DynamicClockState{};
+  let  getopts                  = GetoptsCursor{};
   let  runtime                  = RuntimeState{};
   let  variables                = variable_wire{};
   let  startup                  = startup_wire{};
@@ -3509,7 +3508,7 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
   let  enabled_commands         = EnabledCommandStore{};
   let  functions                = function_wire{};
   let  local_scopes = ArrayList<ArrayList<local_binding>>{heap_allocator()};
-  let  completion   = completion_snapshot{};
+  let  completion   = CompletionSnapshot{};
   u64  startup_ignored_signals = 0;
   let  control                 = runtime_control_wire{};
   let  execution_cache =
@@ -3517,8 +3516,8 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
 
   if (!ExecutionStore::from_wire(reader, execution) ||
       !JobTable::from_wire(reader, jobs) ||
-      !dynamic_clock_state::from_wire(reader, clock) ||
-      !getopts_cursor::from_wire(reader, getopts) ||
+      !DynamicClockState::from_wire(reader, clock) ||
+      !GetoptsCursor::from_wire(reader, getopts) ||
       !RuntimeState::from_wire(reader, runtime) ||
       !VariableStore::from_wire(reader, variables) ||
       !StartupStore::from_wire(reader, startup) ||
@@ -3593,7 +3592,7 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
   }
 
   completion_store().restore(
-      CopyOnWrite<completion_snapshot>{heap_allocator(), steal(completion)});
+      CopyOnWrite<CompletionSnapshot>{heap_allocator(), steal(completion)});
   job_table_store().apply_wire(steal(jobs));
   job_table_store().inherit_parent_jobs(false);
   bootstrap.release_process_ownership();

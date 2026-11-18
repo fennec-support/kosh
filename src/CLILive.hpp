@@ -5,7 +5,7 @@
  * This file declares the shared live view driver for the Evil utilities, which
  * owns terminal handling, sample and refresh timing, interrupts, and one write
  * per frame. It also declares the pager behind more and less, the retained row
- * update, and live_report_options, which parses --live and --cumulative.
+ * update, and LiveReportOptions, which parses --live and --cumulative.
  */
 
 #pragma once
@@ -89,7 +89,7 @@ struct live_view_options
   i32   interrupt_status{130};
 };
 
-struct live_view_scroll
+struct LiveViewScroll
 {
   static constexpr usize PAGE_ROW_COUNT  = 10;
   static constexpr usize WHEEL_ROW_COUNT = 3;
@@ -180,7 +180,7 @@ public:
 private:
   const ExecContext        &m_ec;
   live_view_options         m_options;
-  live_view_scroll          m_scroll;
+  LiveViewScroll            m_scroll;
   os::descriptor            m_output_fd;
   os::descriptor            m_input_fd;
   u64                       m_sample_interval_nanoseconds{0};
@@ -193,7 +193,7 @@ private:
   bool                      m_has_input{false};
 };
 
-struct live_report_options
+struct LiveReportOptions
 {
   f64  interval_seconds{0.5};
   f64  window_seconds{1.0};
@@ -205,7 +205,7 @@ struct live_report_options
         EvalContext             &cxt,
         const FlagOptionalValue &live_flag,
         const FlagOptionalValue &cumulative_flag,
-        Allocator                allocator) throws -> Maybe<live_report_options>;
+        Allocator                allocator) throws -> Maybe<LiveReportOptions>;
   static fn
   parse_with_window(const ExecContext       &ec,
                     EvalContext             &cxt,
@@ -213,7 +213,7 @@ struct live_report_options
                     bool                     is_cumulative,
                     f64                      window_seconds,
                     Allocator                allocator) throws
-      -> Maybe<live_report_options>;
+      -> Maybe<LiveReportOptions>;
   static fn
   parse_window_seconds(const ExecContext &ec,
                        EvalContext       &cxt,
@@ -419,19 +419,19 @@ fn
 escape_terminal_text(Allocator allocator, StringView text) throws
     -> String;
 
-struct live_process_identity
+struct LiveProcessIdentity
 {
   i64 pid{0};
   u64 start_token{0};
 
   pure fn
-  operator<(const live_process_identity &other) const wontthrow -> bool
+  operator<(const LiveProcessIdentity &other) const wontthrow -> bool
   {
     return pid != other.pid ? pid < other.pid : start_token < other.start_token;
   }
 };
 
-struct no_retained_update
+struct NoRetainedUpdate
 {
   template <class Item, class Row>
   fn
@@ -449,7 +449,7 @@ template <class Row,
           class DoGetValue,
           class DoIsReset,
           class DoMakeRow,
-          class DoUpdated = no_retained_update>
+          class DoUpdated = NoRetainedUpdate>
 fn
 update_retained_rows(ArrayList<Row> &retained,
                      Items          &observed,

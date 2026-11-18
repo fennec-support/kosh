@@ -47,18 +47,18 @@ enum class jobs_color_mode : u8
 };
 
 fn
-state_color(job::State state, jobs_color_mode color_mode) throws
-    -> colors::color_style
+state_color(Job::State state, jobs_color_mode color_mode) throws
+    -> colors::ColorStyle
 {
   if (color_mode == jobs_color_mode::Plain) return {};
   switch (state) {
-  case job::State::Running:
-    return colors::color_style{colors::color::BoldGreen,
-                               colors::color_variant::Soft};
-  case job::State::Stopped:
-    return colors::color_style{colors::color::BoldYellow,
-                               colors::color_variant::Soft};
-  case job::State::Done: return colors::color::Dim;
+  case Job::State::Running:
+    return colors::ColorStyle{colors::color::BoldGreen,
+                              colors::color_variant::Soft};
+  case Job::State::Stopped:
+    return colors::ColorStyle{colors::color::BoldYellow,
+                              colors::color_variant::Soft};
+  case Job::State::Done: return colors::color::Dim;
   }
 
   return {};
@@ -115,10 +115,10 @@ Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let out = String{cxt.scratch_allocator()};
 
   for (let index : selected) {
-    job &job = jobs[index];
+    Job &job = jobs[index];
 
-    if ((FLAG_JOBS_RUNNING.is_enabled() && job.state != job::State::Running) ||
-        (FLAG_JOBS_STOPPED.is_enabled() && job.state != job::State::Stopped) ||
+    if ((FLAG_JOBS_RUNNING.is_enabled() && job.state != Job::State::Running) ||
+        (FLAG_JOBS_STOPPED.is_enabled() && job.state != Job::State::Stopped) ||
         (FLAG_JOBS_CHANGED.is_enabled() && !job.has_unreported_state_change))
     {
       continue;

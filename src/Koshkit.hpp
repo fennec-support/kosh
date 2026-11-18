@@ -41,7 +41,7 @@ fn
 take_interrupt_request() wontthrow -> bool;
 
 template <class Key>
-struct koshkit_key_resolution
+struct KoshkitKeyResolution
 {
   Maybe<Key> key{};
   usize      match_count{0};
@@ -176,7 +176,7 @@ report_unresolved_sort_key(const ExecContext &ec,
   X(GoodCore, "goodcore")                                                      \
   X(Slurp, "slurp")
 
-class Utility
+class utility
 {
 public:
 #define T__KOSHKIT_KIND(util, name) util,
@@ -187,8 +187,8 @@ public:
 #undef T__KOSHKIT_KIND
 };
 
-#define T__KOSHKIT_ENTRY(util, name) {SSK(name), Utility::Kind::util},
-inline constexpr static_string_entry<Utility::Kind> KOSHKIT_ENTRIES[] = {
+#define T__KOSHKIT_ENTRY(util, name) {SSK(name), utility::Kind::util},
+inline constexpr static_string_entry<utility::Kind> KOSHKIT_ENTRIES[] = {
     KOSHKIT_UTILITY_LIST(T__KOSHKIT_ENTRY)};
 #undef T__KOSHKIT_ENTRY
 
@@ -196,15 +196,15 @@ inline constexpr StaticStringMap KOSHKIT_UTILS{KOSHKIT_ENTRIES};
 
 struct koshkit_alias
 {
-  Utility::Kind kind;
+  utility::Kind kind;
   StringView    implied_argument;
 };
 
 inline constexpr static_string_entry<koshkit_alias> KOSHKIT_ALIAS_ENTRIES[] = {
-    {SSK("egrep"), {Utility::Kind::Grep, "-E"} },
-    {SSK("fgrep"), {Utility::Kind::Grep, "-F"} },
-    {SSK("vi"),    {Utility::Kind::Slurp, "-V"}},
-    {SSK("emacs"), {Utility::Kind::Slurp, "-e"}},
+    {SSK("egrep"), {utility::Kind::Grep, "-E"} },
+    {SSK("fgrep"), {utility::Kind::Grep, "-F"} },
+    {SSK("vi"),    {utility::Kind::Slurp, "-V"}},
+    {SSK("emacs"), {utility::Kind::Slurp, "-e"}},
 };
 
 inline constexpr StaticStringMap KOSHKIT_ALIASES{KOSHKIT_ALIAS_ENTRIES};
@@ -212,16 +212,16 @@ inline constexpr StaticStringMap KOSHKIT_ALIASES{KOSHKIT_ALIAS_ENTRIES};
 inline constexpr usize KOSHKIT_UTIL_COUNT = countof(KOSHKIT_ENTRIES);
 
 fn
-register_koshkit_util_flags(Utility::Kind       chosen,
+register_koshkit_util_flags(utility::Kind       chosen,
                             const FlagList     *flags,
                             const SynopsisList *synopsis,
                             StringView          description) wontthrow -> void;
 fn
-koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *;
+koshkit_util_flag_list(utility::Kind chosen) wontthrow -> const FlagList *;
 fn
-koshkit_util_synopsis(Utility::Kind chosen) wontthrow -> const SynopsisList *;
+koshkit_util_synopsis(utility::Kind chosen) wontthrow -> const SynopsisList *;
 fn
-koshkit_util_description(Utility::Kind chosen) wontthrow -> StringView;
+koshkit_util_description(utility::Kind chosen) wontthrow -> StringView;
 
 #define KOSHKIT_UTIL_DECL(synopsis, description)                               \
   FLAG_LIST_DECL();                                                            \
@@ -237,7 +237,7 @@ koshkit_util_description(Utility::Kind chosen) wontthrow -> StringView;
       maybeunused{koshka::flag_parse_options(__VA_ARGS__)};                    \
   static uchar t__koshkit_flag_registrar =                                     \
       (koshka::koshkit::register_koshkit_util_flags(                           \
-           koshka::koshkit::Utility::Kind::util, &FLAG_LIST, &HELP_SYNOPSIS,   \
+           koshka::koshkit::utility::Kind::util, &FLAG_LIST, &HELP_SYNOPSIS,   \
            HELP_DESCRIPTION),                                                  \
        0)
 
@@ -246,7 +246,7 @@ koshkit_util_description(Utility::Kind chosen) wontthrow -> StringView;
   REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(util __VA_OPT__(, ) __VA_ARGS__)
 
 fn
-find_util(StringView name) throws -> Maybe<Utility::Kind>;
+find_util(StringView name) throws -> Maybe<utility::Kind>;
 
 fn
 set_koshkit_color_mode(cli_color_mode mode) wontthrow -> void;
@@ -292,14 +292,14 @@ enum class make_shell_source_kind : u8
   ShellFunction,
 };
 
-struct make_shell_source_range
+struct MakeShellSourceRange
 {
   usize                  start_position;
   usize                  end_position;
   make_shell_source_kind kind;
 
   pure fn
-  operator<(const make_shell_source_range &other) const wontthrow -> bool
+  operator<(const MakeShellSourceRange &other) const wontthrow -> bool
   {
     return start_position < other.start_position;
   }
@@ -308,27 +308,27 @@ struct make_shell_source_range
 fn
 parse_makefile_shell_sources(StringView source,
                              Allocator  allocator) throws
-    -> SortedArrayList<make_shell_source_range,
-                       order_comparator<make_shell_source_range>>;
+    -> SortedArrayList<MakeShellSourceRange,
+                       OrderComparator<MakeShellSourceRange>>;
 fn
-makefile_shell_analysis_source(
-    StringView source, const make_shell_source_range &range) throws
+makefile_shell_analysis_source(StringView                  source,
+                               const MakeShellSourceRange &range) throws
     -> String;
 
 fn
 dispatch(const ExecContext   &ec,
          EvalContext         &cxt,
          usize                name_index,
-         Maybe<Utility::Kind> chosen) throws -> i32;
+         Maybe<utility::Kind> chosen) throws -> i32;
 
 fn
 run_as_multicall(StringView           util_name,
-                 Maybe<Utility::Kind> chosen,
+                 Maybe<utility::Kind> chosen,
                  ArrayList<String>    operands,
                  EvalContext         &cxt) throws -> i32;
 
 fn
-run_util(Utility::Kind                    chosen,
+run_util(utility::Kind                    chosen,
          const ExecContext               &ec,
          EvalContext                     &cxt,
          const ArrayList<String>         &args,
@@ -396,7 +396,7 @@ path_error_message(StringView verb,
                    Allocator  allocator) throws -> String;
 
 #define U_CASE(util, name)                                                     \
-  case Utility::Kind::util: {                                                  \
+  case utility::Kind::util: {                                                  \
     util utility;                                                              \
     return utility.execute(ec, cxt, args, arg_locations);                      \
   }
@@ -591,7 +591,7 @@ public:
     Interrupted,
   };
 
-  struct Chunk
+  struct chunk
   {
     StringView              content;
     usize                   source_index{0};
@@ -611,9 +611,9 @@ public:
   ~SourceBatchReader();
 
   fn
-  read_next(ArrayList<Chunk> &chunks) throws -> ReadResult;
+  read_next(ArrayList<chunk> &chunks) throws -> ReadResult;
   fn
-  read_next_ordered(ArrayList<Chunk> &chunks) throws -> ReadResult;
+  read_next_ordered(ArrayList<chunk> &chunks) throws -> ReadResult;
 
   fn
   finish_source(usize source_index) wontthrow -> void;
@@ -626,7 +626,7 @@ public:
   operator=(const SourceBatchReader &) -> SourceBatchReader & = delete;
 
 private:
-  struct Reader
+  struct reader
   {
     ArrayList<char>      buffer{heap_allocator()};
     u64                  byte_offset{0};
@@ -643,7 +643,7 @@ private:
   };
 
   static fn
-  close_reader(Reader &reader) wontthrow -> void;
+  close_reader(reader &reader) wontthrow -> void;
   fn
   retire_completed_readers() throws -> void;
   fn
@@ -653,16 +653,16 @@ private:
   fn
   read_sequential() throws -> ReadResult;
   fn
-  append_pending_chunks(ArrayList<Chunk> &chunks,
+  append_pending_chunks(ArrayList<chunk> &chunks,
                         ChunkEmitMode     emit_mode) throws -> void;
   fn
-  read_next_internal(ArrayList<Chunk> &chunks,
+  read_next_internal(ArrayList<chunk> &chunks,
                      ChunkEmitMode     emit_mode) throws -> ReadResult;
 
   const ExecContext           &m_ec;
   const ArrayList<StringView> &m_sources;
-  ArrayList<Reader>            m_readers;
-  Maybe<Reader>                m_sequential_reader;
+  ArrayList<reader>            m_readers;
+  Maybe<reader>                m_sequential_reader;
   os::Batch                    m_batch;
   ArrayList<os::batch_result>  m_results;
   ArrayList<usize>             m_reader_positions;
@@ -709,7 +709,7 @@ visit_ordered_sources(const ExecContext           &ec,
     results.push({None, 0, source_completion_state::Pending});
 
   let   reader            = SourceBatchReader{ec, sources, allocator};
-  let   chunks            = ArrayList<SourceBatchReader::Chunk>{allocator};
+  let   chunks            = ArrayList<SourceBatchReader::chunk>{allocator};
   usize next_source_index = 0;
 
   loop {
@@ -858,7 +858,7 @@ fn
 filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64;
 
 fn
-usage_style(u64 percent) wontthrow -> colors::color_style;
+usage_style(u64 percent) wontthrow -> colors::ColorStyle;
 
 pure fn
 file_type_name(const os::file_status &status) wontthrow -> StringView;

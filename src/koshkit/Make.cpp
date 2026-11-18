@@ -291,12 +291,12 @@ enum class make_variable_flavor : u8
   Undefined,
 };
 
-struct make_variable
+struct MakeVariable
 {
-  make_variable(String               name,
-                String               value,
-                make_variable_origin origin,
-                make_variable_flavor flavor)
+  MakeVariable(String               name,
+               String               value,
+               make_variable_origin origin,
+               make_variable_flavor flavor)
       : name(steal(name)), value(steal(value)), origin(origin), flavor(flavor)
   {}
 
@@ -306,9 +306,9 @@ struct make_variable
   make_variable_flavor flavor;
 };
 
-struct make_pattern
+struct MakePattern
 {
-  explicit make_pattern(Allocator allocator)
+  explicit MakePattern(Allocator allocator)
       : prefix(allocator), suffix(allocator)
   {}
 
@@ -317,9 +317,9 @@ struct make_pattern
   bool   has_wildcard{false};
 };
 
-struct make_rule
+struct MakeRule
 {
-  explicit make_rule(Allocator allocator)
+  explicit MakeRule(Allocator allocator)
       : target(allocator), prerequisites(allocator), recipe_lines(allocator),
         variable_assignments(allocator), prerequisite_line_locations(allocator),
         recipe_line_locations(allocator), static_stem(allocator),
@@ -347,14 +347,14 @@ struct make_dependent
   Maybe<usize> rule_index;
 };
 
-struct make_pattern_rule
+struct MakePatternRule
 {
-  explicit make_pattern_rule(Allocator allocator)
+  explicit MakePatternRule(Allocator allocator)
       : rule(allocator), pattern(allocator)
   {}
 
-  make_rule    rule;
-  make_pattern pattern;
+  MakeRule    rule;
+  MakePattern pattern;
 };
 
 struct make_source_document
@@ -363,9 +363,9 @@ struct make_source_document
   u32    source_name_index;
 };
 
-struct makefile
+struct Makefile
 {
-  explicit makefile(Allocator allocator)
+  explicit Makefile(Allocator allocator)
       : variables(allocator), rules(allocator), pattern_rules(allocator),
         default_goal(allocator), variable_index(allocator),
         rule_index(allocator), command_variable_names(allocator),
@@ -375,9 +375,9 @@ struct makefile
         ignored_targets(allocator), silent_targets(allocator)
   {}
 
-  ArrayList<make_variable>         variables;
-  ArrayList<make_rule>             rules;
-  ArrayList<make_pattern_rule>     pattern_rules;
+  ArrayList<MakeVariable>          variables;
+  ArrayList<MakeRule>              rules;
+  ArrayList<MakePatternRule>       pattern_rules;
   String                           default_goal;
   StringMap<usize>                 variable_index;
   StringMap<usize>                 rule_index;
@@ -409,7 +409,7 @@ struct makefile
 
   fn
   find_variable_record(StringView name) const throws
-      -> const make_variable *
+      -> const MakeVariable *
   {
     if (let const index = variable_index.find(name); index.has_value())
       return &variables[*index.value()];
@@ -418,7 +418,7 @@ struct makefile
   }
 
   fn
-  find_rule(StringView target) const throws -> const make_rule *
+  find_rule(StringView target) const throws -> const MakeRule *
   {
     let const index = rule_index.find(target);
 
@@ -426,7 +426,7 @@ struct makefile
   }
 
   fn
-  find_mutable_rule(StringView target) throws -> make_rule *
+  find_mutable_rule(StringView target) throws -> MakeRule *
   {
     let const index = rule_index.find(target);
 
@@ -434,7 +434,7 @@ struct makefile
   }
 
   fn
-  add_rule(make_rule &&rule) throws -> usize
+  add_rule(MakeRule &&rule) throws -> usize
   {
     let const index = rules.count();
     rule_index.set(rule.target.view(), index);
@@ -467,7 +467,7 @@ struct makefile
 
 static fn
 parse_makefile_into(EvalContext                     &cxt,
-                    makefile                        &mk,
+                    Makefile                        &mk,
                     ArrayList<make_source_document> &sources,
                     usize first_source_position) throws -> void;
 static fn
@@ -944,13 +944,13 @@ archive_member_modification_time(const Path &archive,
 
 static fn
 expand(EvalContext &cxt,
-       makefile    &mk,
+       Makefile    &mk,
        StringView   text,
        usize        depth) throws -> String;
 
-struct make_variable_lookup
+struct MakeVariableLookup
 {
-  explicit make_variable_lookup(Allocator allocator) : owned_value(allocator) {}
+  explicit MakeVariableLookup(Allocator allocator) : owned_value(allocator) {}
 
   String               owned_value;
   StringView           value;
@@ -982,19 +982,19 @@ struct make_variable_lookup
 
 static fn
 lookup_make_variable(EvalContext    &cxt,
-                     const makefile &mk,
-                     StringView      name) throws -> make_variable_lookup
+                     const Makefile &mk,
+                     StringView      name) throws -> MakeVariableLookup
 {
-  make_variable_lookup lookup{cxt.scratch_allocator()};
+  MakeVariableLookup lookup{cxt.scratch_allocator()};
 
-  let const do_use_stored = [&](const make_variable &variable) {
+  let const do_use_stored = [&](const MakeVariable &variable) {
     lookup.set_borrowed_value(variable.value.view());
     lookup.origin = variable.origin;
     lookup.flavor = variable.flavor;
   };
 
   if (mk.command_variable_names.find(name).has_value())
-    if (const make_variable *variable = mk.find_variable_record(name);
+    if (const MakeVariable *variable = mk.find_variable_record(name);
         variable != nullptr)
     {
       do_use_stored(*variable);
@@ -1007,7 +1007,7 @@ lookup_make_variable(EvalContext    &cxt,
   {
     let const base_name = name.substring_of_length(0, 1);
 
-    if (const make_variable *variable = mk.find_variable_record(base_name);
+    if (const MakeVariable *variable = mk.find_variable_record(base_name);
         variable != nullptr &&
         variable->origin == make_variable_origin::Automatic)
     {
@@ -1039,7 +1039,7 @@ lookup_make_variable(EvalContext    &cxt,
   }
 
   if (name == StringView{"SHELL"}) {
-    if (const make_variable *variable = mk.find_variable_record(name);
+    if (const MakeVariable *variable = mk.find_variable_record(name);
         variable != nullptr)
     {
       do_use_stored(*variable);
@@ -1055,7 +1055,7 @@ lookup_make_variable(EvalContext    &cxt,
     return lookup;
   }
 
-  const make_variable *variable = mk.find_variable_record(name);
+  const MakeVariable *variable = mk.find_variable_record(name);
 
   if (variable == nullptr || mk.is_environment_overriding) {
     if (Maybe<String> from_environment = os::get_environment_variable(name);
@@ -1090,7 +1090,7 @@ lookup_make_variable(EvalContext    &cxt,
 
 static fn
 expand_variable(EvalContext &cxt,
-                makefile    &mk,
+                Makefile    &mk,
                 StringView   name,
                 usize        depth) throws -> String
 {
@@ -1164,19 +1164,19 @@ recipe_references_make_variable(StringView recipe) wontthrow -> bool
          recipe.find_substring("${MAKE}").has_value();
 }
 
-struct make_percent_text
+struct MakePercentText
 {
-  explicit make_percent_text(Allocator allocator) : text(allocator) {}
+  explicit MakePercentText(Allocator allocator) : text(allocator) {}
   String       text;
   Maybe<usize> wildcard_position;
 };
 
 static fn
 decode_make_percent_text(StringView source, Allocator allocator) throws
-    -> make_percent_text
+    -> MakePercentText
 {
-  make_percent_text decoded{allocator};
-  usize             source_position = 0;
+  MakePercentText decoded{allocator};
+  usize           source_position = 0;
 
   /* e.g. source = x\%y%z
           x is pushed: text "x"
@@ -1234,10 +1234,10 @@ decode_make_percent_text(StringView source, Allocator allocator) throws
 
 static fn
 parse_make_pattern(StringView pattern, Allocator allocator) throws
-    -> make_pattern
+    -> MakePattern
 {
-  make_pattern parsed{allocator};
-  let          decoded = decode_make_percent_text(pattern, allocator);
+  MakePattern parsed{allocator};
+  let         decoded = decode_make_percent_text(pattern, allocator);
 
   if (decoded.wildcard_position.has_value()) {
     parsed.has_wildcard = true;
@@ -1253,7 +1253,7 @@ parse_make_pattern(StringView pattern, Allocator allocator) throws
 }
 
 static fn
-match_make_pattern(const make_pattern &pattern, StringView word) wontthrow
+match_make_pattern(const MakePattern &pattern, StringView word) wontthrow
     -> Maybe<StringView>
 {
   if (!pattern.has_wildcard)
@@ -1337,9 +1337,9 @@ substitute_make_words(StringView source,
   return result;
 }
 
-struct make_variable_snapshot
+struct MakeVariableSnapshot
 {
-  explicit make_variable_snapshot(Allocator allocator)
+  explicit MakeVariableSnapshot(Allocator allocator)
       : name(allocator), value(allocator)
   {}
 
@@ -1351,14 +1351,14 @@ struct make_variable_snapshot
 };
 
 static fn
-save_make_variable(const makefile &mk,
+save_make_variable(const Makefile &mk,
                    StringView      name,
-                   Allocator       allocator) throws -> make_variable_snapshot
+                   Allocator       allocator) throws -> MakeVariableSnapshot
 {
-  make_variable_snapshot snapshot{allocator};
+  MakeVariableSnapshot snapshot{allocator};
 
   snapshot.name = String{allocator, name};
-  if (const make_variable *variable = mk.find_variable_record(name);
+  if (const MakeVariable *variable = mk.find_variable_record(name);
       variable != nullptr)
   {
     snapshot.value       = variable->value.clone_to(allocator);
@@ -1371,13 +1371,13 @@ save_make_variable(const makefile &mk,
 }
 
 static fn
-set_scoped_make_variable(makefile  &mk,
+set_scoped_make_variable(Makefile  &mk,
                          StringView name,
                          StringView value,
                          Allocator  allocator) throws -> void
 {
   if (let const index = mk.variable_index.find(name); index.has_value()) {
-    make_variable &variable = mk.variables[*index.value()];
+    MakeVariable &variable = mk.variables[*index.value()];
 
     variable.value  = String{allocator, value};
     variable.origin = make_variable_origin::Automatic;
@@ -1387,7 +1387,7 @@ set_scoped_make_variable(makefile  &mk,
   }
 
   mk.variable_index.set(name, mk.variables.count());
-  mk.variables.push(make_variable{
+  mk.variables.push(MakeVariable{
       String{allocator, name },
       String{allocator, value},
       make_variable_origin::Automatic, make_variable_flavor::Simple
@@ -1395,9 +1395,9 @@ set_scoped_make_variable(makefile  &mk,
 }
 
 static fn
-restore_make_variable(makefile                     &mk,
-                      const make_variable_snapshot &snapshot,
-                      Allocator                     allocator) throws -> void
+restore_make_variable(Makefile                   &mk,
+                      const MakeVariableSnapshot &snapshot,
+                      Allocator                   allocator) throws -> void
 {
   if (!snapshot.was_present) {
     mk.remove_variable(snapshot.name.view());
@@ -1411,7 +1411,7 @@ restore_make_variable(makefile                     &mk,
 
   /* at this point: was_present is true, and index holds the slot of
      snapshot.name in mk.variables. */
-  make_variable &variable = mk.variables[*index.value()];
+  MakeVariable &variable = mk.variables[*index.value()];
 
   variable.value  = snapshot.value.clone_to(allocator);
   variable.origin = snapshot.origin;
@@ -1490,7 +1490,7 @@ make_wildcard(EvalContext &cxt, StringView patterns) throws -> String
            loop is O(captured bytes). */
 static fn
 run_make_shell_function(EvalContext &cxt,
-                        makefile    &mk,
+                        Makefile    &mk,
                         StringView   command) throws -> String
 {
   let source = String{cxt.scratch_allocator(), command};
@@ -1542,7 +1542,7 @@ run_make_shell_function(EvalContext &cxt,
 
 static fn
 try_substitution_reference(EvalContext &cxt,
-                           makefile    &mk,
+                           Makefile    &mk,
                            StringView   name,
                            usize        depth) throws -> Maybe<String>
 {
@@ -1681,7 +1681,7 @@ last_suffix_position(StringView path) wontthrow -> Maybe<usize>
 
 static fn
 show_located_make_error(EvalContext             &cxt,
-                        const makefile          &mk,
+                        const Makefile          &mk,
                         const ErrorWithLocation &error) throws -> bool;
 
 /* memory: the returned String and each expanded argument are allocated in
@@ -1692,7 +1692,7 @@ show_located_make_error(EvalContext             &cxt,
            input bytes. */
 static fn
 evaluate_make_function(EvalContext                 &cxt,
-                       makefile                    &mk,
+                       Makefile                    &mk,
                        StringView                   function_name,
                        const make_function_spec    &spec,
                        const ArrayList<StringView> &arguments,
@@ -1781,7 +1781,7 @@ evaluate_make_function(EvalContext                 &cxt,
     let const pattern_text      = do_expand(0);
     let const source            = do_expand(1);
     let       literal_patterns  = StringMap<bool>{allocator};
-    let       wildcard_patterns = ArrayList<make_pattern>{allocator};
+    let       wildcard_patterns = ArrayList<MakePattern>{allocator};
 
     for (StringView pattern_text_value :
          split_word_views(pattern_text.view(), allocator))
@@ -2028,7 +2028,7 @@ evaluate_make_function(EvalContext                 &cxt,
     let const binding_count = arguments.count() > mk.call_max_argument_count
                                   ? arguments.count()
                                   : mk.call_max_argument_count;
-    let       snapshots     = ArrayList<make_variable_snapshot>{allocator};
+    let       snapshots     = ArrayList<MakeVariableSnapshot>{allocator};
 
     snapshots.reserve(binding_count);
 
@@ -2164,7 +2164,7 @@ evaluate_make_function(EvalContext                 &cxt,
 
 static fn
 expand(EvalContext &cxt,
-       makefile    &mk,
+       Makefile    &mk,
        StringView   text,
        usize        depth) throws -> String
 {
@@ -2395,7 +2395,7 @@ is_target_variable_assignment(StringView after_colon) wontthrow -> bool
 
 static fn
 apply_assignment(EvalContext &cxt,
-                 makefile    &mk,
+                 Makefile    &mk,
                  StringView   name_part,
                  StringView   operator_and_value,
                  bool         is_command_line = false,
@@ -2457,7 +2457,7 @@ apply_assignment(EvalContext &cxt,
 
       if (let const current = mk.variable_index.find(name); current.has_value())
       {
-        make_variable &variable = mk.variables[*current.value()];
+        MakeVariable &variable = mk.variables[*current.value()];
 
         if (!variable.value.is_empty()) variable.value += " ";
         variable.value += appended_value.view();
@@ -2467,7 +2467,7 @@ apply_assignment(EvalContext &cxt,
       }
 
       mk.variable_index.set(name, mk.variables.count());
-      mk.variables.push(make_variable{
+      mk.variables.push(MakeVariable{
           String{cxt.scratch_allocator(), name},
           appended_value.clone_to(cxt.scratch_allocator()), assignment_origin,
           make_variable_flavor::Recursive
@@ -2481,7 +2481,7 @@ apply_assignment(EvalContext &cxt,
                              : String{cxt.scratch_allocator(), trimmed_value};
 
     if (let const current = mk.variable_index.find(name); current.has_value()) {
-      make_variable &variable = mk.variables[*current.value()];
+      MakeVariable &variable = mk.variables[*current.value()];
 
       variable.value  = steal(value_to_store);
       variable.origin = assignment_origin;
@@ -2493,7 +2493,7 @@ apply_assignment(EvalContext &cxt,
     }
 
     mk.variable_index.set(name, mk.variables.count());
-    mk.variables.push(make_variable{
+    mk.variables.push(MakeVariable{
         String{cxt.scratch_allocator(), name},
         steal(value_to_store),
         assignment_origin,
@@ -2509,7 +2509,7 @@ apply_assignment(EvalContext &cxt,
                            : String{cxt.scratch_allocator(), trimmed_value};
 
   mk.variable_index.set(name, mk.variables.count());
-  mk.variables.push(make_variable{
+  mk.variables.push(MakeVariable{
       String{cxt.scratch_allocator(), name},
       steal(value_to_store),
       assignment_origin,
@@ -2749,7 +2749,7 @@ split_conditional_arguments_at_top_level_comma(StringView  rest,
 
 static fn
 evaluate_conditional(EvalContext &cxt,
-                     makefile    &mk,
+                     Makefile    &mk,
                      StringView   directive,
                      StringView   rest) throws -> bool
 {
@@ -2790,12 +2790,12 @@ struct conditional_state
   bool is_parent_active;
 };
 
-struct make_source_frame
+struct MakeSourceFrame
 {
-  explicit make_source_frame(ArrayList<make_logical_line> &&new_lines,
-                             u32                            new_listed_source,
-                             bool  new_should_list_source,
-                             usize new_include_depth = 0)
+  explicit MakeSourceFrame(ArrayList<make_logical_line> &&new_lines,
+                           u32                            new_listed_source,
+                           bool  new_should_list_source,
+                           usize new_include_depth = 0)
       : lines(steal(new_lines)), include_depth(new_include_depth),
         listed_source_name_index(new_listed_source),
         should_list_source(new_should_list_source)
@@ -2810,7 +2810,7 @@ struct make_source_frame
 
 static fn
 parse_makefile_into(EvalContext                     &cxt,
-                    makefile                        &mk,
+                    Makefile                        &mk,
                     ArrayList<make_source_document> &sources,
                     usize first_source_position) throws -> void
 {
@@ -2844,11 +2844,11 @@ parse_makefile_into(EvalContext                     &cxt,
     mk.rules[index].recipe_line_locations.push(mk.active_source_span);
   };
 
-  ArrayList<make_source_frame> source_frames{cxt.scratch_allocator()};
+  ArrayList<MakeSourceFrame> source_frames{cxt.scratch_allocator()};
 
   for (usize source_position = sources.count();
        source_position > first_source_position; source_position--)
-    source_frames.push(make_source_frame{
+    source_frames.push(MakeSourceFrame{
         join_continuations(sources[source_position - 1].source.view(),
                            sources[source_position - 1].source_name_index,
                            cxt.scratch_allocator()),
@@ -2857,8 +2857,7 @@ parse_makefile_into(EvalContext                     &cxt,
 
   try {
     while (!source_frames.is_empty()) {
-      make_source_frame &source_frame =
-          source_frames[source_frames.count() - 1];
+      MakeSourceFrame &source_frame = source_frames[source_frames.count() - 1];
 
       if (source_frame.should_list_source) {
         let listed_assignment = String{cxt.scratch_allocator(), "="};
@@ -3042,7 +3041,7 @@ parse_makefile_into(EvalContext                     &cxt,
           sources.push(
               make_source_document{steal(*included_source),
                                    intern_source_name(include_path.view())});
-          source_frames.push(make_source_frame{
+          source_frames.push(MakeSourceFrame{
               join_continuations(sources.back().source.view(),
                                  sources.back().source_name_index,
                                  cxt.scratch_allocator()),
@@ -3174,10 +3173,10 @@ parse_makefile_into(EvalContext                     &cxt,
           for (let const &target : split_make_file_words(
                    targets.view(), true, cxt.scratch_allocator()))
           {
-            make_rule *rule = mk.find_mutable_rule(target.view());
+            MakeRule *rule = mk.find_mutable_rule(target.view());
 
             if (rule == nullptr) {
-              make_rule fresh{cxt.scratch_allocator()};
+              MakeRule fresh{cxt.scratch_allocator()};
               fresh.target = target.clone();
               rule         = &mk.rules[mk.add_rule(steal(fresh))];
             }
@@ -3201,7 +3200,7 @@ parse_makefile_into(EvalContext                     &cxt,
 
         let const static_colon =
             first_colon_not_followed_by_equals(prerequisite_text);
-        let static_pattern = make_pattern{cxt.scratch_allocator()};
+        let static_pattern = MakePattern{cxt.scratch_allocator()};
 
         if (static_colon.has_value()) {
           let const pattern_text = expand(
@@ -3342,7 +3341,7 @@ parse_makefile_into(EvalContext                     &cxt,
           }
 
           if (!parsed_target.has_wildcard)
-            if (make_rule *existing =
+            if (MakeRule *existing =
                     mk.find_mutable_rule(normalized_target.view());
                 existing != nullptr)
             {
@@ -3361,7 +3360,7 @@ parse_makefile_into(EvalContext                     &cxt,
               if (has_content && is_double_colon) {
                 let const existing_index =
                     static_cast<usize>(existing - mk.rules.begin());
-                make_rule sibling{cxt.scratch_allocator()};
+                MakeRule sibling{cxt.scratch_allocator()};
 
                 sibling.target          = normalized_target.clone();
                 sibling.is_double_colon = true;
@@ -3404,7 +3403,7 @@ parse_makefile_into(EvalContext                     &cxt,
             }
 
           if (parsed_target.has_wildcard) {
-            make_pattern_rule pattern_rule{cxt.scratch_allocator()};
+            MakePatternRule pattern_rule{cxt.scratch_allocator()};
 
             pattern_rule.rule.target        = target.clone();
             pattern_rule.rule.prerequisites = steal(new_prerequisites);
@@ -3412,7 +3411,7 @@ parse_makefile_into(EvalContext                     &cxt,
             mk.pattern_rules.push(steal(pattern_rule));
             current_pattern_indices.push(mk.pattern_rules.count() - 1);
           } else {
-            make_rule rule{cxt.scratch_allocator()};
+            MakeRule rule{cxt.scratch_allocator()};
 
             rule.target          = steal(normalized_target);
             rule.static_stem     = steal(static_stem);
@@ -3472,9 +3471,9 @@ parse_makefile(EvalContext                     &cxt,
                bool                             should_use_builtin_rules,
                StringView                       initial_makeflags = {},
                StringView                       command_goals     = {},
-               StringView                       make_level = {}) throws -> makefile
+               StringView                       make_level = {}) throws -> Makefile
 {
-  makefile mk{cxt.scratch_allocator()};
+  Makefile mk{cxt.scratch_allocator()};
 
   mk.source_documents          = &sources;
   mk.is_environment_overriding = is_environment_overriding;
@@ -3483,7 +3482,7 @@ parse_makefile(EvalContext                     &cxt,
                                              make_variable_origin origin,
                                              make_variable_flavor flavor) {
     mk.variable_index.set(name, mk.variables.count());
-    mk.variables.push(make_variable{
+    mk.variables.push(MakeVariable{
         String{cxt.scratch_allocator(), name },
         String{cxt.scratch_allocator(), value},
         origin, flavor
@@ -3523,13 +3522,13 @@ parse_makefile(EvalContext                     &cxt,
 
   parse_makefile_into(cxt, mk, sources, 0);
 
-  ArrayList<make_pattern_rule> retained_pattern_rules{cxt.scratch_allocator()};
+  ArrayList<MakePatternRule> retained_pattern_rules{cxt.scratch_allocator()};
 
   for (usize pattern_position = 0; pattern_position < mk.pattern_rules.count();
        pattern_position++)
   {
-    make_pattern_rule &pattern_rule = mk.pattern_rules[pattern_position];
-    make_rule         &pattern      = pattern_rule.rule;
+    MakePatternRule &pattern_rule = mk.pattern_rules[pattern_position];
+    MakeRule        &pattern      = pattern_rule.rule;
     if (pattern.recipe_lines.is_empty()) continue;
     bool is_canceled = false;
 
@@ -3583,7 +3582,7 @@ parse_makefile(EvalContext                     &cxt,
         continue;
       }
 
-      make_rule rule{cxt.scratch_allocator()};
+      MakeRule rule{cxt.scratch_allocator()};
       rule.target = String{rule.target.allocator(), entry.target};
 
       for (let const *recipe_line : entry.recipe_lines) {
@@ -3623,9 +3622,9 @@ struct make_build_options
 /* A pattern rule applies once along one chain of targets, which bounds a chain
    through a rule such as %: %.c. A negative answer reached while a rule was
    excluded is not cached, because that rule can apply on another chain. */
-struct make_supply_search
+struct MakeSupplySearch
 {
-  explicit make_supply_search(Allocator allocator)
+  explicit MakeSupplySearch(Allocator allocator)
       : active_targets(allocator), supplyability_cache(allocator),
         active_pattern_rule_positions(allocator)
   {}
@@ -3637,10 +3636,10 @@ struct make_supply_search
 };
 
 static fn
-is_make_target_supplyable(EvalContext        &cxt,
-                          makefile           &mk,
-                          StringView          goal,
-                          make_supply_search &search) throws -> bool
+is_make_target_supplyable(EvalContext      &cxt,
+                          Makefile         &mk,
+                          StringView        goal,
+                          MakeSupplySearch &search) throws -> bool
 {
   let &active_targets      = search.active_targets;
   let &supplyability_cache = search.supplyability_cache;
@@ -3748,7 +3747,7 @@ is_make_target_supplyable(EvalContext        &cxt,
 }
 
 static fn
-find_prerequisite_line_location(const makefile       &mk,
+find_prerequisite_line_location(const Makefile       &mk,
                                 const make_dependent &dependent,
                                 StringView            goal) wontthrow -> SourceLocation
 {
@@ -3767,7 +3766,7 @@ find_prerequisite_line_location(const makefile       &mk,
 
 static fn
 show_located_make_error(EvalContext             &cxt,
-                        const makefile          &mk,
+                        const Makefile          &mk,
                         const ErrorWithLocation &error) throws -> bool
 {
   if (mk.source_documents == nullptr) return false;
@@ -3788,7 +3787,7 @@ show_located_make_error(EvalContext             &cxt,
 static fn
 build_target(const ExecContext        &ec,
              EvalContext              &cxt,
-             makefile                 &mk,
+             Makefile                 &mk,
              StringView                goal,
              const make_dependent     &dependent,
              StringMap<bool>          &active_targets,
@@ -3828,7 +3827,7 @@ build_target(const ExecContext        &ec,
   ArrayList<String>         explicit_prerequisites{cxt.scratch_allocator()};
   String                    target_stem{cxt.scratch_allocator()};
 
-  let const do_take_recipe = [&](const make_rule &rule) throws {
+  let const do_take_recipe = [&](const MakeRule &rule) throws {
     recipe_lines.clear();
     recipe_locations.clear();
 
@@ -3837,10 +3836,10 @@ build_target(const ExecContext        &ec,
       recipe_locations.push(rule.recipe_line_locations[index]);
     }
   };
-  String           inferred_first_prerequisite{cxt.scratch_allocator()};
-  const make_rule *explicit_rule = double_colon_rule_index.has_value()
-                                       ? &mk.rules[*double_colon_rule_index]
-                                       : mk.find_rule(goal);
+  String          inferred_first_prerequisite{cxt.scratch_allocator()};
+  const MakeRule *explicit_rule = double_colon_rule_index.has_value()
+                                      ? &mk.rules[*double_colon_rule_index]
+                                      : mk.find_rule(goal);
 
   if (explicit_rule != nullptr && !double_colon_rule_index.has_value() &&
       !explicit_rule->double_colon_rule_indices.is_empty())
@@ -3917,10 +3916,10 @@ build_target(const ExecContext        &ec,
   }
 
   if (recipe_lines.is_empty()) {
-    make_supply_search supply_search{cxt.scratch_allocator()};
-    ArrayList<String>  inferred_prerequisites{cxt.scratch_allocator()};
-    usize              best_stem_length   = ~usize{0};
-    let const          pattern_rule_count = mk.pattern_rules.count();
+    MakeSupplySearch  supply_search{cxt.scratch_allocator()};
+    ArrayList<String> inferred_prerequisites{cxt.scratch_allocator()};
+    usize             best_stem_length   = ~usize{0};
+    let const         pattern_rule_count = mk.pattern_rules.count();
 
     for (usize pattern_rule_position = 0;
          pattern_rule_position < pattern_rule_count; pattern_rule_position++)
@@ -3935,7 +3934,7 @@ build_target(const ExecContext        &ec,
         continue;
       }
 
-      make_pattern_rule pattern_rule{cxt.scratch_allocator()};
+      MakePatternRule pattern_rule{cxt.scratch_allocator()};
 
       pattern_rule.pattern.prefix = stored_pattern_rule.pattern.prefix.clone();
       pattern_rule.pattern.suffix = stored_pattern_rule.pattern.suffix.clone();
@@ -4065,7 +4064,7 @@ build_target(const ExecContext        &ec,
     }
 
     if (recipe_lines.is_empty() && !has_explicit_rule) {
-      if (const make_rule *fallback = mk.find_rule(".DEFAULT");
+      if (const MakeRule *fallback = mk.find_rule(".DEFAULT");
           fallback != nullptr)
       {
         do_take_recipe(*fallback);
@@ -4129,7 +4128,7 @@ build_target(const ExecContext        &ec,
   }
 
   let saved_variables =
-      ArrayList<make_variable_snapshot>{cxt.scratch_allocator()};
+      ArrayList<MakeVariableSnapshot>{cxt.scratch_allocator()};
 
   defer {
     for (usize i = saved_variables.count(); i-- > 0;) {
@@ -4335,7 +4334,7 @@ build_target(const ExecContext        &ec,
   };
 
   let automatic_snapshots =
-      ArrayList<make_variable_snapshot>{cxt.scratch_allocator()};
+      ArrayList<MakeVariableSnapshot>{cxt.scratch_allocator()};
 
   automatic_snapshots.reserve(countof(automatic_values));
 
@@ -4516,10 +4515,10 @@ build_target(const ExecContext        &ec,
 fn
 parse_makefile_shell_sources(StringView source,
                              Allocator  allocator) throws
-    -> SortedArrayList<make_shell_source_range,
-                       order_comparator<make_shell_source_range>>
+    -> SortedArrayList<MakeShellSourceRange,
+                       OrderComparator<MakeShellSourceRange>>
 {
-  let       ranges           = ArrayList<make_shell_source_range>{allocator};
+  let       ranges           = ArrayList<MakeShellSourceRange>{allocator};
   let const logical_lines    = join_continuations(source, 0, allocator);
   bool      has_current_rule = false;
   usize     define_depth     = 0;
@@ -4551,8 +4550,8 @@ parse_makefile_shell_sources(StringView source,
         }
 
         if (start_position < end_position)
-          ranges.push(make_shell_source_range{start_position, end_position,
-                                              make_shell_source_kind::Recipe});
+          ranges.push(MakeShellSourceRange{start_position, end_position,
+                                           make_shell_source_kind::Recipe});
       }
 
       continue;
@@ -4637,8 +4636,8 @@ parse_makefile_shell_sources(StringView source,
       }
 
       if (start_position < end_position)
-        ranges.push(make_shell_source_range{start_position, end_position,
-                                            make_shell_source_kind::Recipe});
+        ranges.push(MakeShellSourceRange{start_position, end_position,
+                                         make_shell_source_kind::Recipe});
       continue;
     }
 
@@ -4729,7 +4728,7 @@ parse_makefile_shell_sources(StringView source,
       }
 
       if (!do_is_inside_recipe(body_start) && body_start < *expansion_end) {
-        ranges.push(make_shell_source_range{
+        ranges.push(MakeShellSourceRange{
             body_start, *expansion_end, make_shell_source_kind::ShellFunction});
       }
 
@@ -4750,8 +4749,8 @@ parse_makefile_shell_sources(StringView source,
            unmatched or out-of-range expansions can scan to the end of source.
            these repeated suffix and prefix scans can take quadratic work. */
 fn
-makefile_shell_analysis_source(
-    StringView source, const make_shell_source_range &range) throws
+makefile_shell_analysis_source(StringView                  source,
+                               const MakeShellSourceRange &range) throws
     -> String
 {
   let analysis_source = String{heap_allocator()};
@@ -5145,7 +5144,7 @@ Make::execute(const ExecContext               &ec,
     command_goals += goal.view();
   }
 
-  Maybe<makefile> parsed_makefile;
+  Maybe<Makefile> parsed_makefile;
 
   try {
     parsed_makefile = parse_makefile(

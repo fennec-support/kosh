@@ -1330,9 +1330,9 @@ launch_compound_stage(const compound_stage_options &options) throws
 }
 
 fn
-take_subshell_bootstrap() wontthrow -> subshell_bootstrap
+take_subshell_bootstrap() wontthrow -> SubshellBootstrap
 {
-  return subshell_bootstrap{};
+  return SubshellBootstrap{};
 }
 
 wontreturn fn

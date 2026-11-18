@@ -78,8 +78,8 @@ Fuser::execute(const ExecContext               &ec,
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
-    batch.add(os::batch_operation::stat(operand_paths[operand_position],
-                                        file_statuses[operand_position]));
+    batch.add(os::BatchOperation::stat(operand_paths[operand_position],
+                                       file_statuses[operand_position]));
   }
 
   let const results = batch.execute();

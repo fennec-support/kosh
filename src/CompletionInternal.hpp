@@ -21,7 +21,7 @@
 namespace koshka {
 
 namespace utils {
-struct decoded_shell_word;
+struct DecodedShellWord;
 struct leading_expansion;
 } /* namespace utils */
 
@@ -95,16 +95,15 @@ append_with_quoted_controls(String &candidate, StringView text) throws
     -> void;
 
 pure fn
-shell_syntax_candidate_is_unchanged(
-    StringView                       raw_token,
-    const utils::decoded_shell_word &decoded_word,
-    StringView                       decoded_candidate,
-    bool                             should_quote_words) wontthrow -> bool;
+shell_syntax_candidate_is_unchanged(StringView                     raw_token,
+                                    const utils::DecodedShellWord &decoded_word,
+                                    StringView decoded_candidate,
+                                    bool       should_quote_words) wontthrow -> bool;
 fn
-rebuild_shell_syntax_candidate(StringView                       raw_token,
-                               const utils::decoded_shell_word &decoded_word,
-                               StringView decoded_candidate,
-                               bool       should_quote_words = true) throws
+rebuild_shell_syntax_candidate(StringView                     raw_token,
+                               const utils::DecodedShellWord &decoded_word,
+                               StringView                     decoded_candidate,
+                               bool should_quote_words = true) throws
     -> String;
 
 fn
@@ -141,10 +140,10 @@ pure fn
 word_defines_function(StringView line, usize word_end, usize end) wontthrow
     -> bool;
 fn
-advance_shell_keyword_state(
-    StringView                       word,
-    usize                            frame_depth,
-    completion::shell_lexical_state &state) throws -> Maybe<bool>;
+advance_shell_keyword_state(StringView                     word,
+                            usize                          frame_depth,
+                            completion::ShellLexicalState &state) throws
+    -> Maybe<bool>;
 
 /* the minimum byte distance between recorded highlight restart points. */
 constexpr usize HIGHLIGHT_RESTART_GAP_BYTE_COUNT = 4096;
@@ -264,10 +263,10 @@ struct shell_lexical_scan_target
 
 fn
 advance_shell_lexical_state(
-    StringView                       source,
-    usize                            end,
-    completion::shell_lexical_state &state,
-    shell_lexical_scan_target       *target = nullptr) throws -> void;
+    StringView                     source,
+    usize                          end,
+    completion::ShellLexicalState &state,
+    shell_lexical_scan_target     *target = nullptr) throws -> void;
 
 fn
 command_substitution_range(StringView line, usize cursor) throws

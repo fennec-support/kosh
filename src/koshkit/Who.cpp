@@ -122,8 +122,8 @@ Who::execute(const ExecContext               &ec,
 
     if (FLAG_WHO_HEADING.is_enabled()) {
       append_report_text(output, "NAME LINE TIME",
-                         colors::color_style{colors::color::BoldCyan,
-                                             colors::color_variant::Soft},
+                         colors::ColorStyle{colors::color::BoldCyan,
+                                            colors::color_variant::Soft},
                          koshkit_should_color());
       output += '\n';
     }

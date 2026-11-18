@@ -654,28 +654,28 @@ bc_format_in_base(StringView   decimal,
   return formatted;
 }
 
-struct bc_function_parameter
+struct BcFunctionParameter
 {
-  explicit bc_function_parameter(Allocator allocator) : name(allocator) {}
+  explicit BcFunctionParameter(Allocator allocator) : name(allocator) {}
 
   String name;
   bool   is_array{false};
 };
 
-struct bc_function
+struct BcFunction
 {
-  explicit bc_function(Allocator allocator)
+  explicit BcFunction(Allocator allocator)
       : name(allocator), parameters(allocator), body(allocator)
   {}
 
-  String                           name;
-  ArrayList<bc_function_parameter> parameters;
-  String                           body;
+  String                         name;
+  ArrayList<BcFunctionParameter> parameters;
+  String                         body;
 };
 
-struct bc_function_argument
+struct BcFunctionArgument
 {
-  explicit bc_function_argument(Allocator allocator)
+  explicit BcFunctionArgument(Allocator allocator)
       : scalar(allocator), array(allocator)
   {}
 
@@ -683,20 +683,20 @@ struct bc_function_argument
   ArrayList<String> array;
 };
 
-struct bc_runtime
+struct BcRuntime
 {
-  explicit bc_runtime(Allocator allocator)
+  explicit BcRuntime(Allocator allocator)
       : functions(allocator), return_value(allocator)
   {}
 
-  u32                    scale{0};
-  u32                    input_base{10};
-  u32                    output_base{10};
-  i32                    status{0};
-  bool                   has_math_library{false};
-  usize                  statement_depth{0};
-  ArrayList<bc_function> functions;
-  String                 return_value;
+  u32                   scale{0};
+  u32                   input_base{10};
+  u32                   output_base{10};
+  i32                   status{0};
+  bool                  has_math_library{false};
+  usize                 statement_depth{0};
+  ArrayList<BcFunction> functions;
+  String                return_value;
 };
 
 enum class bc_flow : u8
@@ -717,13 +717,13 @@ static fn
 bc_run_program(StringView         program,
                const ExecContext &ec,
                EvalContext       &cxt,
-               bc_runtime        &runtime) throws -> bc_flow;
+               BcRuntime         &runtime) throws -> bc_flow;
 
 static fn
 bc_expand_function_calls(StringView         expression,
                          const ExecContext &ec,
                          EvalContext       &cxt,
-                         bc_runtime        &runtime,
+                         BcRuntime         &runtime,
                          Allocator          allocator) throws -> String;
 
 static fn
@@ -812,7 +812,7 @@ bc_group_nested_assignment(StringView expression,
 static fn
 bc_evaluate_text(StringView         expression,
                  EvalContext       &cxt,
-                 bc_runtime        &runtime,
+                 BcRuntime         &runtime,
                  const ExecContext &ec) throws -> String
 {
   let const allocator = cxt.scratch_allocator();
@@ -830,7 +830,7 @@ static fn
 bc_print_result(String             result,
                 const ExecContext &ec,
                 EvalContext       &cxt,
-                bc_runtime        &runtime,
+                BcRuntime         &runtime,
                 bool               is_print_statement = false) throws -> void
 {
   let const allocator = cxt.scratch_allocator();
@@ -881,8 +881,7 @@ bc_print_result(String             result,
 }
 
 static fn
-bc_find_function(bc_runtime &runtime, StringView name)
-    wontthrow -> bc_function *
+bc_find_function(BcRuntime &runtime, StringView name) wontthrow -> BcFunction *
 {
   for (let &function : runtime.functions) {
     if (function.name.view() == name) return &function;
@@ -892,9 +891,9 @@ bc_find_function(bc_runtime &runtime, StringView name)
 }
 
 static fn
-bc_define_function(StringView  statement,
-                   bc_runtime &runtime,
-                   Allocator   allocator) throws -> bool
+bc_define_function(StringView statement,
+                   BcRuntime &runtime,
+                   Allocator  allocator) throws -> bool
 {
   if (!statement.starts_with("define") ||
       (statement.length > 6 && statement[6] != ' ' && statement[6] != '\t'))
@@ -971,7 +970,7 @@ bc_define_function(StringView  statement,
 
   /* at this point: statement has the form "define name(parameters) {body}",
      the braces are balanced, and only blanks follow the closing brace. */
-  bc_function function{allocator};
+  BcFunction function{allocator};
 
   function.name = String{allocator, name};
   function.body = String{allocator, statement.substring_of_length(
@@ -992,7 +991,7 @@ bc_define_function(StringView  statement,
 
     if (parameter.is_empty()) continue;
 
-    bc_function_parameter parsed{allocator};
+    BcFunctionParameter parsed{allocator};
 
     if (parameter.length >= 2 && parameter[parameter.length - 2] == '[' &&
         parameter[parameter.length - 1] == ']')
@@ -1069,7 +1068,7 @@ static fn
 bc_evaluate_function_call(StringView         statement,
                           const ExecContext &ec,
                           EvalContext       &cxt,
-                          bc_runtime        &runtime) throws -> Maybe<String>
+                          BcRuntime         &runtime) throws -> Maybe<String>
 {
   usize position = 0;
 
@@ -1156,13 +1155,13 @@ bc_evaluate_function_call(StringView         statement,
                                " arguments"};
   }
 
-  /* at this point: function points to the bc_function for name, and
+  /* at this point: function points to the BcFunction for name, and
      arguments holds one non-empty StringView per parameter. */
-  let prepared = ArrayList<bc_function_argument>{cxt.scratch_allocator()};
+  let prepared = ArrayList<BcFunctionArgument>{cxt.scratch_allocator()};
 
   for (usize index = 0; index < function->parameters.count(); index++) {
-    bc_function_argument argument{cxt.scratch_allocator()};
-    let const            source = arguments[index];
+    BcFunctionArgument argument{cxt.scratch_allocator()};
+    let const          source = arguments[index];
 
     if (function->parameters[index].is_array) {
       let source_name = source;
@@ -1222,7 +1221,7 @@ static fn
 bc_expand_function_calls(StringView         expression,
                          const ExecContext &ec,
                          EvalContext       &cxt,
-                         bc_runtime        &runtime,
+                         BcRuntime         &runtime,
                          Allocator          allocator) throws -> String
 {
   let   expanded = String{allocator};
@@ -1299,7 +1298,7 @@ static fn
 bc_try_function_call(StringView         statement,
                      const ExecContext &ec,
                      EvalContext       &cxt,
-                     bc_runtime        &runtime,
+                     BcRuntime         &runtime,
                      bc_output_mode     output_mode) throws -> bool
 {
   Maybe<String> result{};
@@ -1323,7 +1322,7 @@ static fn
 bc_execute_simple(StringView         statement,
                   const ExecContext &ec,
                   EvalContext       &cxt,
-                  bc_runtime        &runtime,
+                  BcRuntime         &runtime,
                   bc_output_mode     output_mode) throws -> void
 {
   let const allocator = cxt.scratch_allocator();
@@ -1415,7 +1414,7 @@ static fn
 bc_condition_is_true(StringView         condition,
                      const ExecContext &ec,
                      EvalContext       &cxt,
-                     bc_runtime        &runtime) throws -> bool
+                     BcRuntime         &runtime) throws -> bool
 {
   let const allocator = cxt.scratch_allocator();
   let const expanded =
@@ -1545,7 +1544,7 @@ static fn
 bc_execute_print(StringView         items,
                  const ExecContext &ec,
                  EvalContext       &cxt,
-                 bc_runtime        &runtime) throws -> void
+                 BcRuntime         &runtime) throws -> void
 {
   usize depth        = 0;
   usize item_start   = 0;
@@ -1597,7 +1596,7 @@ static fn
 bc_execute_statement(StringView         statement,
                      const ExecContext &ec,
                      EvalContext       &cxt,
-                     bc_runtime        &runtime) throws -> bc_flow
+                     BcRuntime         &runtime) throws -> bc_flow
 {
   static constexpr usize MAX_STATEMENT_DEPTH = 2048;
 
@@ -1766,7 +1765,7 @@ static fn
 bc_run_program(StringView         program,
                const ExecContext &ec,
                EvalContext       &cxt,
-               bc_runtime        &runtime) throws -> bc_flow
+               BcRuntime         &runtime) throws -> bc_flow
 {
   usize statement_start   = 0;
   usize parenthesis_depth = 0;
@@ -1861,7 +1860,7 @@ Bc::execute(const ExecContext               &ec,
      each one followed by a newline. */
   program = bc_strip_comments(program.view(), cxt.scratch_allocator());
 
-  bc_runtime runtime{cxt.scratch_allocator()};
+  BcRuntime runtime{cxt.scratch_allocator()};
 
   runtime.has_math_library = FLAG_BC_MATH_LIBRARY.is_enabled();
   if (runtime.has_math_library) runtime.scale = 20;

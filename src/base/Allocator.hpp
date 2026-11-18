@@ -137,7 +137,7 @@ public:
 
     /* at this point: pointer is non-null, class_index indexes m_bins, and
        m_counts[class_index] is below class_limit. */
-    let const recycled = static_cast<Node *>(pointer);
+    let const recycled = static_cast<pool_node *>(pointer);
 
     /* a block that is already the bin head was freed twice. */
     if (recycled == m_bins[class_index]) t__debugtrap();
@@ -156,17 +156,17 @@ private:
 
   /* a freed block stores its next pointer xored with its own address shifted
      right by 12 and with a startup secret. */
-  struct Node
+  struct pool_node
   {
     uintptr mangled_next;
   };
 
-  Node   *m_bins[CLASS_COUNT]   = {};
-  u16     m_counts[CLASS_COUNT] = {};
-  uintptr m_secret = static_cast<uintptr>(os::get_startup_random());
+  pool_node *m_bins[CLASS_COUNT]   = {};
+  u16        m_counts[CLASS_COUNT] = {};
+  uintptr    m_secret = static_cast<uintptr>(os::get_startup_random());
 
   hot fn
-  mangle(const Node *node, const Node *next) const wontthrow -> uintptr
+  mangle(const pool_node *node, const pool_node *next) const wontthrow -> uintptr
   {
     return reinterpret_cast<uintptr>(next) ^
            (reinterpret_cast<uintptr>(node) >> 12) ^ m_secret;
@@ -174,14 +174,14 @@ private:
 
   /* traps when a decoded link is not malloc-aligned. */
   hot fn
-  unmangle(const Node *node) const wontthrow -> Node *
+  unmangle(const pool_node *node) const wontthrow -> pool_node *
   {
     let const next =
         node->mangled_next ^ (reinterpret_cast<uintptr>(node) >> 12) ^ m_secret;
 
     if ((next & (alignof(max_align_t) - 1)) != 0) t__debugtrap();
 
-    return reinterpret_cast<Node *>(next);
+    return reinterpret_cast<pool_node *>(next);
   }
 
   hot static fn

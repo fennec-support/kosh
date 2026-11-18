@@ -426,7 +426,7 @@ parser_format_add_fragment(parsed_format_document &document,
 
   let const host_text =
       host_source.substring_of_length(host_start, host_end - host_start);
-  let fragment = parser_format_fragment{};
+  let fragment = ParserFormatFragment{};
 
   fragment.analysis_source = prepared_analysis_source.has_value()
                                  ? prepared_analysis_source.take()
@@ -791,17 +791,17 @@ replace_in_order(StringView                                    text,
 }
 
 fn
-parser_format_formattable_source(
-    const parser_format_fragment &fragment) throws -> Maybe<String>
+parser_format_formattable_source(const ParserFormatFragment &fragment)
+    throws -> Maybe<String>
 {
   return replace_in_order(fragment.shell_source.view(), fragment.template_spans,
                           false);
 }
 
 fn
-parser_format_host_replacement(const parser_format_fragment &fragment,
-                               StringView                    host_source,
-                               StringView                    formatted) throws
+parser_format_host_replacement(const ParserFormatFragment &fragment,
+                               StringView                  host_source,
+                               StringView                  formatted) throws
     -> Maybe<String>
 {
   let restored = replace_in_order(formatted, fragment.template_spans, true);
@@ -2717,9 +2717,9 @@ trimmed_of_trailing_newlines(StringView text) wontthrow -> StringView
 }
 
 static fn
-encode_continued(const parser_format_fragment &fragment,
-                 StringView                    replacement,
-                 String                       &encoded) throws -> void
+encode_continued(const ParserFormatFragment &fragment,
+                 StringView                  replacement,
+                 String                     &encoded) throws -> void
 {
   let const body     = trimmed_of_trailing_newlines(replacement);
   let       lines    = ArrayList<StringView>{heap_allocator()};
@@ -2794,8 +2794,8 @@ encode_continued(const parser_format_fragment &fragment,
 }
 
 fn
-parser_format_encode(const parser_format_fragment &fragment,
-                     StringView                    replacement) throws -> Maybe<String>
+parser_format_encode(const ParserFormatFragment &fragment,
+                     StringView                  replacement) throws -> Maybe<String>
 {
   let encoded = String{heap_allocator()};
 
@@ -3143,10 +3143,10 @@ parse_format_document(const parser_format_input &input) throws
     break;
   }
 
-  document.fragments.sort([](const parser_format_fragment &left,
-                             const parser_format_fragment &right) {
-    return left.host_start < right.host_start;
-  });
+  document.fragments.sort(
+      [](const ParserFormatFragment &left, const ParserFormatFragment &right) {
+        return left.host_start < right.host_start;
+      });
 
   usize     host_variable_count = 0;
   let const host_variables =

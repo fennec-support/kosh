@@ -185,13 +185,13 @@ Path::append_raw(StringView bytes) throws -> Path &
 }
 
 fn
-Path::next_component(usize &position) const wontthrow -> Component
+Path::next_component(usize &position) const wontthrow -> component
 {
   return next_component(m_text.view(), position);
 }
 
 fn
-Path::next_component(StringView path, usize &position) wontthrow -> Component
+Path::next_component(StringView path, usize &position) wontthrow -> component
 {
   while (position < path.length && os::is_directory_separator(path[position])) {
     position++;
@@ -204,7 +204,7 @@ Path::next_component(StringView path, usize &position) wontthrow -> Component
     position++;
   }
 
-  return Component{path.substring_of_length(start, position - start), start,
+  return component{path.substring_of_length(start, position - start), start,
                    position};
 }
 
@@ -534,7 +534,7 @@ Path::current_directory() throws -> Path
 }
 
 fn
-Path::set_current_directory(const Path &path) throws -> ErrorOr<Ok>
+Path::set_current_directory(const Path &path) throws -> ErrorOr<ok>
 {
   return os::change_current_directory(path.view());
 }

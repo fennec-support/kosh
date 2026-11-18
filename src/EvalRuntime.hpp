@@ -32,10 +32,10 @@ public:
   Path          program_path{};
   i32           unresolved_status{127};
   Kind          kind{Kind::Program};
-  Builtin::Kind builtin_kind{};
+  builtin::Kind builtin_kind{};
 
   mustuse static ResolvedCommand
-  from_builtin(Builtin::Kind chosen_builtin)
+  from_builtin(builtin::Kind chosen_builtin)
   {
     ResolvedCommand resolved{};
     resolved.kind         = Kind::Builtin;
@@ -165,14 +165,14 @@ dynamic_reader_mask(dynamic_reader_id id) wontthrow -> u8
   return static_cast<u8>(1U << static_cast<u8>(id));
 }
 
-struct reporting_state
+struct ReportingState
 {
   u8   warning_level{0};
   bool is_annoying_disabled{false};
   bool is_diagnostics_disabled{false};
 
   pure fn
-  operator==(const reporting_state &other) const wontthrow -> bool
+  operator==(const ReportingState &other) const wontthrow -> bool
   {
     return warning_level == other.warning_level &&
            is_annoying_disabled == other.is_annoying_disabled &&
@@ -180,24 +180,24 @@ struct reporting_state
   }
 };
 
-struct inheritable_analysis_state
+struct InheritableAnalysisState
 {
   static constexpr StringView ENVIRONMENT_NAME{"KOSH_ANALYSIS"};
 
-  bool            is_mimicry_enabled{false};
-  reporting_state reporting;
+  bool           is_mimicry_enabled{false};
+  ReportingState reporting;
 
   static fn
-  decode(StringView text) throws -> inheritable_analysis_state;
+  decode(StringView text) throws -> InheritableAnalysisState;
   static fn
-  from_environment() throws -> inheritable_analysis_state;
+  from_environment() throws -> InheritableAnalysisState;
   fn
   encode(String &text) const throws -> void;
 };
 
-struct subshell_bootstrap_reader;
+struct SubshellBootstrapReader;
 
-struct shopt_state
+struct ShoptState
 {
   u64 overrides{0};
   u64 values{0};
@@ -209,7 +209,7 @@ struct shopt_state
   }
 };
 
-struct dynamic_clock_state
+struct DynamicClockState
 {
   u64  random_state{0};
   i64  shell_start_time{0};
@@ -219,11 +219,11 @@ struct dynamic_clock_state
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            dynamic_clock_state       &clock) wontthrow -> bool;
+  from_wire(SubshellBootstrapReader &reader, DynamicClockState &clock) wontthrow
+      -> bool;
 };
 
-struct getopts_cursor
+struct GetoptsCursor
 {
   usize char_index{1};
   i64   last_optind{0};
@@ -231,7 +231,7 @@ struct getopts_cursor
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader, getopts_cursor &cursor) wontthrow
+  from_wire(SubshellBootstrapReader &reader, GetoptsCursor &cursor) wontthrow
       -> bool;
 };
 
@@ -241,7 +241,7 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader, RuntimeState &runtime) wontthrow
+  from_wire(SubshellBootstrapReader &reader, RuntimeState &runtime) wontthrow
       -> bool;
 
   pure fn
@@ -399,27 +399,28 @@ public:
   }
 
   pure fn
-  get_inheritable_analysis_state() const wontthrow -> inheritable_analysis_state
+  get_inheritable_analysis_state() const wontthrow -> InheritableAnalysisState
   {
     return {is_mimicry_enabled(), get_reporting_state()};
   }
 
   fn
-  set_inheritable_analysis_state(
-      const inheritable_analysis_state &state) wontthrow -> void
+  set_inheritable_analysis_state(const InheritableAnalysisState &state)
+      wontthrow
+      -> void
   {
     set_mimicry(state.is_mimicry_enabled);
     set_reporting_state(state.reporting);
   }
 
   pure fn
-  get_reporting_state() const wontthrow -> reporting_state
+  get_reporting_state() const wontthrow -> ReportingState
   {
     return m_reporting;
   }
 
   fn
-  set_reporting_state(const reporting_state &state) wontthrow -> void
+  set_reporting_state(const ReportingState &state) wontthrow -> void
   {
     m_reporting = state;
   }
@@ -594,9 +595,9 @@ private:
   mimic_mood        m_mood{mimic_mood::Default};
   tab_selector_mode m_tab_selector{tab_selector_mode::Interactive};
   u8                m_flags{0};
-  reporting_state   m_reporting{};
+  ReportingState    m_reporting{};
   u16               m_wrap_width{80};
-  u64         m_shell_options{option_mask(shell_option_id::ExtendedArithmetic) |
+  u64        m_shell_options{option_mask(shell_option_id::ExtendedArithmetic) |
                       option_mask(shell_option_id::Failglob) |
                       option_mask(shell_option_id::Hashall) |
                       option_mask(shell_option_id::HistoryPrefixSearch) |
@@ -608,18 +609,18 @@ private:
                       option_mask(shell_option_id::DevNullCompatibility) |
                       option_mask(shell_option_id::SlashTmpCompatibility) |
                       option_mask(shell_option_id::Braceexpand)};
-  shopt_state m_shopt;
+  ShoptState m_shopt;
 };
 
 static_assert(sizeof(RuntimeState) == 32);
 
-struct definition_state
+struct DefinitionState
 {
-  mimic_mood      mood{mimic_mood::Default};
-  reporting_state reporting;
+  mimic_mood     mood{mimic_mood::Default};
+  ReportingState reporting;
 
   static fn
-  from(const RuntimeState &runtime) wontthrow -> definition_state
+  from(const RuntimeState &runtime) wontthrow -> DefinitionState
   {
     return {runtime.get_mood(), runtime.get_reporting_state()};
   }
@@ -632,7 +633,7 @@ struct definition_state
   }
 
   pure fn
-  operator==(const definition_state &other) const wontthrow -> bool
+  operator==(const DefinitionState &other) const wontthrow -> bool
   {
     return mood == other.mood && reporting == other.reporting;
   }
@@ -640,8 +641,7 @@ struct definition_state
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader, definition_state &state)
-      wontthrow
+  from_wire(SubshellBootstrapReader &reader, DefinitionState &state) wontthrow
       -> bool;
 };
 
@@ -724,8 +724,9 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            EnabledCommandStore       &store) wontthrow -> bool;
+  from_wire(SubshellBootstrapReader &reader, EnabledCommandStore &store)
+      wontthrow
+      -> bool;
 
 private:
   static_assert(BUILTIN_ENTRY_COUNT <= WORD_COUNT * 64);

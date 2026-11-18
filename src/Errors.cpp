@@ -20,32 +20,32 @@
 
 namespace koshka {
 
-struct interned_source_name
+struct InternedSourceName
 {
   char                *data;
   u32                  length;
   source_identity_kind kind;
 
-  interned_source_name(char *data, u32 length, source_identity_kind kind)
+  InternedSourceName(char *data, u32 length, source_identity_kind kind)
       : data{data}, length{length}, kind{kind}
   {}
-  interned_source_name(const interned_source_name &) = delete;
-  interned_source_name(interned_source_name &&other) noexcept
+  InternedSourceName(const InternedSourceName &) = delete;
+  InternedSourceName(InternedSourceName &&other) noexcept
       : data{other.data}, length{other.length}, kind{other.kind}
   {
     other.data = nullptr;
   }
 
-  ~interned_source_name()
+  ~InternedSourceName()
   {
     heap_allocator().free_array(data, static_cast<usize>(length) + 1);
   }
 };
 
 static fn
-get_source_name_table() wontthrow -> ArrayList<interned_source_name> &
+get_source_name_table() wontthrow -> ArrayList<InternedSourceName> &
 {
-  static ArrayList<interned_source_name> table{heap_allocator()};
+  static ArrayList<InternedSourceName> table{heap_allocator()};
 
   return table;
 }
@@ -76,7 +76,7 @@ intern_source_name(StringView name) throws -> u32
 
   memcpy(copy, name.data, name.length);
   copy[name.length] = '\0';
-  table.push(interned_source_name{copy, static_cast<u32>(name.length), kind});
+  table.push(InternedSourceName{copy, static_cast<u32>(name.length), kind});
 
   return static_cast<u32>(table.count());
 }
@@ -111,59 +111,57 @@ source_name_at(u32 source_name_index) wontthrow -> Maybe<StringView>
   return StringView{row.data, row.length};
 }
 
-struct diagnostic_color
+struct DiagnosticColor
 {
-  colors::color_style severity;
-  colors::color_style location;
-  colors::color_style message;
-  colors::color_style caret;
+  colors::ColorStyle severity;
+  colors::ColorStyle location;
+  colors::ColorStyle message;
+  colors::ColorStyle caret;
 
   pure fn
-  get_reset() const wontthrow -> colors::color_style
+  get_reset() const wontthrow -> colors::ColorStyle
   {
     return severity.value == colors::color::None
-               ? colors::color_style{}
-               : colors::color_style{colors::color::Reset};
+               ? colors::ColorStyle{}
+               : colors::ColorStyle{colors::color::Reset};
   }
 };
 
 cold static fn
-diagnostic_colors_for(error_severity severity) throws
-    -> diagnostic_color
+diagnostic_colors_for(error_severity severity) throws -> DiagnosticColor
 {
-  if (!colors::stderr_wants_color()) return diagnostic_color{};
+  if (!colors::stderr_wants_color()) return DiagnosticColor{};
 
   switch (severity) {
   case error_severity::error:
-    return diagnostic_color{
-        colors::color_style{colors::color::BoldBrightRed,
-                            colors::color_variant::Soft},
+    return DiagnosticColor{
+        colors::ColorStyle{colors::color::BoldBrightRed,
+                           colors::color_variant::Soft},
         colors::color::Bold, colors::color::Bold,
-        colors::color_style{colors::color::BoldBrightRed,
-                            colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::BoldBrightRed,
+                           colors::color_variant::Soft}
     };
   case error_severity::warning:
-    return diagnostic_color{
-        colors::color_style{colors::color::Yellow, colors::color_variant::Soft},
+    return DiagnosticColor{
+        colors::ColorStyle{colors::color::Yellow, colors::color_variant::Soft},
         {},
         {},
-        colors::color_style{colors::color::Yellow,
-                            colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Yellow, colors::color_variant::Soft}
     };
   case error_severity::note:
   case error_severity::trace:
-    return diagnostic_color{
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft},
+    return DiagnosticColor{
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft},
         {},
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft},
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft},
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft}
     };
   case error_severity::details:
-    return diagnostic_color{
-        colors::color_style{colors::color::Blue, colors::color_variant::Soft},
+    return DiagnosticColor{
+        colors::ColorStyle{colors::color::Blue, colors::color_variant::Soft},
         {},
-        colors::color_style{colors::color::Blue, colors::color_variant::Soft},
-        colors::color_style{colors::color::Blue, colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Blue, colors::color_variant::Soft},
+        colors::ColorStyle{colors::color::Blue, colors::color_variant::Soft}
     };
   }
 
@@ -193,9 +191,9 @@ append_diagnostic_text(String &out, StringView text) throws -> void
 }
 
 cold static fn
-append_diagnostic_message(String                 &out,
-                          StringView              message,
-                          const diagnostic_color &color) throws -> void
+append_diagnostic_message(String                &out,
+                          StringView             message,
+                          const DiagnosticColor &color) throws -> void
 {
   let const reset       = color.get_reset();
   usize     digit_start = message.length;
@@ -267,7 +265,7 @@ get_context_pointing_to(StringView                         source,
                         const utils::source_line_position &full_line_position,
                         isize                              line_offset,
                         Maybe<StringView>                  message,
-                        const diagnostic_color            &color,
+                        const DiagnosticColor             &color,
                         EvalContext *eval_context) throws -> String
 {
   let const line_number =
@@ -672,7 +670,7 @@ append_location_prefix(String                            &result,
                        bool                               is_filename_hidden,
                        const utils::source_line_position &line_position,
                        usize                              byte_position,
-                       const diagnostic_color            &color,
+                       const DiagnosticColor             &color,
                        StringView                         severity_word) throws -> void
 {
   const usize column =

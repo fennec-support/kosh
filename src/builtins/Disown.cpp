@@ -71,7 +71,7 @@ Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let ids = ArrayList<i32>{cxt.scratch_allocator()};
 
     for (let const &job : cxt.job_table_store().jobs()) {
-      if (!should_keep_stopped || job.state == job::State::Running) {
+      if (!should_keep_stopped || job.state == Job::State::Running) {
         ids.push(job.id);
       }
     }

@@ -74,7 +74,7 @@ struct arith_node
   u8              flags{0};
 };
 
-struct arith_tree
+struct ArithTree
 {
   const arith_node *nodes{nullptr};
   const char       *text{nullptr};
@@ -99,32 +99,32 @@ struct arith_tree
   }
 
   fn
-  clone_to(Allocator allocator) const throws -> const arith_tree *;
+  clone_to(Allocator allocator) const throws -> const ArithTree *;
 
   static fn
-  release(const arith_tree *tree) wontthrow -> void;
+  release(const ArithTree *tree) wontthrow -> void;
 };
 
-struct parameter_reference;
+struct ParameterReference;
 
 fn
 build_parameter_reference(StringView   text,
                           Allocator    allocator,
                           bool         is_function_arena,
                           Maybe<usize> source_position = None) throws
-    -> parameter_reference *;
+    -> ParameterReference *;
 fn
-destroy_parameter_reference(parameter_reference *reference) wontthrow -> void;
+destroy_parameter_reference(ParameterReference *reference) wontthrow -> void;
 
 struct segment_eval_cache
 {
-  const Expression           *substitution_ast{nullptr};
-  const arith_tree           *arithmetic_tree{nullptr};
-  StringView                  exact_constant_text{};
-  BumpArena::LifetimeIdentity substitution_lifetime{};
-  BumpArena::LifetimeIdentity arithmetic_lifetime{};
-  bool                        has_optimizer_arithmetic_result{false};
-  bool                        has_exact_constant_text{false};
+  const Expression            *substitution_ast{nullptr};
+  const ArithTree             *arithmetic_tree{nullptr};
+  StringView                   exact_constant_text{};
+  BumpArena::lifetime_identity substitution_lifetime{};
+  BumpArena::lifetime_identity arithmetic_lifetime{};
+  bool                         has_optimizer_arithmetic_result{false};
+  bool                         has_exact_constant_text{false};
 };
 
 class SegmentText
@@ -558,11 +558,11 @@ public:
       -> segment_eval_cache &;
 
   hot pure fn
-  get_parameter_reference() const wontthrow -> const parameter_reference *;
+  get_parameter_reference() const wontthrow -> const ParameterReference *;
 
   fn
-  set_parameter_reference(parameter_reference *reference,
-                          bool                 is_in_arena) throws -> void;
+  set_parameter_reference(ParameterReference *reference,
+                          bool                is_in_arena) throws -> void;
 
   pure fn
   is_split_eligible() const wontthrow -> bool;
@@ -621,7 +621,7 @@ public:
   }
 
   pure fn
-  get_arithmetic_tree() const wontthrow -> const arith_tree *
+  get_arithmetic_tree() const wontthrow -> const ArithTree *
   {
     return kind != Kind::VariableReference && m_eval_cache != nullptr
                ? m_eval_cache->arithmetic_tree
@@ -629,7 +629,7 @@ public:
   }
 
   fn
-  set_arithmetic_tree(const arith_tree *tree, BumpArena *cache_arena) const throws -> void;
+  set_arithmetic_tree(const ArithTree *tree, BumpArena *cache_arena) const throws -> void;
 
   fn
   clear_arithmetic_tree() wontthrow -> void
@@ -638,7 +638,7 @@ public:
       return;
     }
 
-    arith_tree::release(m_eval_cache->arithmetic_tree);
+    ArithTree::release(m_eval_cache->arithmetic_tree);
     m_eval_cache->arithmetic_tree = nullptr;
   }
 
@@ -720,7 +720,7 @@ private:
   union
   {
     mutable segment_eval_cache *m_eval_cache{nullptr};
-    parameter_reference        *m_parameter;
+    ParameterReference         *m_parameter;
   };
 };
 
@@ -927,7 +927,7 @@ struct parameter_operand_part
   u32 segment_index;
 };
 
-struct parameter_reference
+struct ParameterReference
 {
   enum class Form : u8
   {
@@ -1043,15 +1043,15 @@ struct parameter_reference
   }
 };
 
-static_assert(sizeof(usize) != 8 || sizeof(parameter_reference) == 56);
+static_assert(sizeof(usize) != 8 || sizeof(ParameterReference) == 56);
 
 fn
-analyze_parameter_reference(StringView           text,
-                            parameter_reference &reference) wontthrow -> void;
+analyze_parameter_reference(StringView          text,
+                            ParameterReference &reference) wontthrow -> void;
 
 hot pure inline fn
 WordSegment::get_parameter_reference() const wontthrow
-    -> const parameter_reference *
+    -> const ParameterReference *
 {
   if (kind != Kind::VariableReference || m_parameter == nullptr ||
       m_parameter->text_length != text.count())

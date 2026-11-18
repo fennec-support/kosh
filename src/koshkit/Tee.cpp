@@ -114,7 +114,7 @@ Tee::execute(const ExecContext               &ec,
 
         if (written_byte_count == *read_byte_count) continue;
 
-        batch.add(os::batch_operation::write_current(
+        batch.add(os::BatchOperation::write_current(
             output_descriptors[output_index], buffer + written_byte_count,
             *read_byte_count - written_byte_count));
         output_positions.push(output_index);

@@ -29,7 +29,7 @@ namespace koshka {
 static fn
 resume_job_in_background(ExecContext &ec,
                          EvalContext &cxt,
-                         job         *job) throws -> void
+                         Job         *job) throws -> void
 {
   LOG(Info, "bg resuming job %d in the background", job->id);
   continue_job(*job);
@@ -48,7 +48,7 @@ Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   cxt.job_table_store().update_jobs();
 
   if (args.count() <= 1) {
-    job *job = cxt.job_table_store().most_recent_job();
+    Job *job = cxt.job_table_store().most_recent_job();
 
     if (job == nullptr)
       throw ErrorWithDetails{"There is no such job", "List jobs with `jobs`"};
@@ -60,12 +60,12 @@ Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* at this point: args holds at least one job spec after args[0]. */
   for (usize arg_position = 1; arg_position < args.count(); arg_position++) {
-    job *job = cxt.job_table_store().find_job_by_spec(args[arg_position]);
+    Job *job = cxt.job_table_store().find_job_by_spec(args[arg_position]);
 
     if (job == nullptr)
       throw make_error_for_arg(ec, arg_position, "There is no such job",
                                "List jobs with `jobs`");
-    if (job->state == job::State::Done) {
+    if (job->state == Job::State::Done) {
       throw make_error_for_arg(ec, arg_position, "The job has already finished",
                                "List jobs with `jobs`");
     }

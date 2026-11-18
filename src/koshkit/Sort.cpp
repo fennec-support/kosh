@@ -120,7 +120,7 @@ struct sort_key
    order and a shortened number prefix of a parsed -h first key. Two
    different prefixes decide the comparison without reading the lines. The
    line length is a u32, so the entry stays 24 bytes. */
-struct sort_entry
+struct SortEntry
 {
   const char *line_data;
   u32         line_length;
@@ -134,12 +134,12 @@ struct sort_entry
   }
 };
 
-static_assert(sizeof(sort_entry) == 24);
+static_assert(sizeof(SortEntry) == 24);
 
 /* compares two lines byte by byte, as StringView ordering does. */
 pure static fn
-compare_sort_lines(const sort_entry &left, const sort_entry &right) wontthrow
-    -> int
+compare_sort_lines(const SortEntry &left, const SortEntry &right)
+    wontthrow -> int
 {
   if (left.prefix != right.prefix) return left.prefix < right.prefix ? -1 : 1;
   if (left.get_line() == right.get_line()) return 0;
@@ -1019,8 +1019,8 @@ store_parsed_sort_values(sort_settings        &settings,
    comparisons in compare_sort_keys() keep their inlining. */
 noinline static fn
 compare_sort_keys_with_parsed_values(
-    const sort_entry    &left,
-    const sort_entry    &right,
+    const SortEntry     &left,
+    const SortEntry     &right,
     const sort_settings &settings) throws -> int
 {
   let const key_text_count = settings.key_text_count;
@@ -1073,8 +1073,8 @@ compare_sort_keys_with_parsed_values(
    text and -n comparisons carry no extra branch. */
 template <bool has_parsed_values>
 static fn
-compare_sort_keys(const sort_entry    &left,
-                  const sort_entry    &right,
+compare_sort_keys(const SortEntry     &left,
+                  const SortEntry     &right,
                   const sort_settings &settings) throws -> int
 {
   let const key_text_count = settings.key_text_count;
@@ -1119,8 +1119,8 @@ compare_sort_keys(const sort_entry    &left,
 
 template <bool has_parsed_values>
 static fn
-compare_sort_entries(const sort_entry    &left,
-                     const sort_entry    &right,
+compare_sort_entries(const SortEntry     &left,
+                     const SortEntry     &right,
                      const sort_settings &settings,
                      bool                 is_last_resort_enabled) throws -> int
 {
@@ -1145,8 +1145,8 @@ compare_sort_entries(const sort_entry    &left,
 /* the key comparison with has_parsed_values chosen at run time, for the
    unique filter, which compares a linear number of pairs. */
 static fn
-compare_sort_keys_for(const sort_entry    &left,
-                      const sort_entry    &right,
+compare_sort_keys_for(const SortEntry     &left,
+                      const SortEntry     &right,
                       const sort_settings &settings) throws -> int
 {
   return settings.has_parsed_values
@@ -1158,14 +1158,14 @@ compare_sort_keys_for(const sort_entry    &left,
    the first key, and so the whole comparison. */
 template <bool has_parsed_values>
 static fn
-sort_keyed_lines(ArrayList<sort_entry> &lines,
-                 const sort_settings   &settings,
-                 bool                   is_last_resort_enabled) throws -> void
+sort_keyed_lines(ArrayList<SortEntry> &lines,
+                 const sort_settings  &settings,
+                 bool                  is_last_resort_enabled) throws -> void
 {
   if (settings.prefix_modifiers != nullptr) {
     let const is_reversed = settings.prefix_modifiers->is_reversed;
 
-    lines.sort([&](const sort_entry &left, const sort_entry &right) {
+    lines.sort([&](const SortEntry &left, const SortEntry &right) {
       if (left.prefix != right.prefix)
         return is_reversed ? left.prefix > right.prefix
                            : left.prefix < right.prefix;
@@ -1177,7 +1177,7 @@ sort_keyed_lines(ArrayList<sort_entry> &lines,
     return;
   }
 
-  lines.sort([&](const sort_entry &left, const sort_entry &right) {
+  lines.sort([&](const SortEntry &left, const SortEntry &right) {
     return compare_sort_entries<has_parsed_values>(left, right, settings,
                                                    is_last_resort_enabled) < 0;
   });
@@ -1401,7 +1401,7 @@ Sort::execute(const ExecContext               &ec,
     }
   }
 
-  let collected_lines = ArrayList<sort_entry>{cxt.scratch_allocator()};
+  let collected_lines = ArrayList<SortEntry>{cxt.scratch_allocator()};
   let source_starts   = ArrayList<usize>{cxt.scratch_allocator()};
 
   collected_lines.reserve(line_count);
@@ -1433,7 +1433,7 @@ Sort::execute(const ExecContext               &ec,
 
       let const index = collected_lines.count();
 
-      /* sort_entry stores the line length and the index as u32. */
+      /* SortEntry stores the line length and the index as u32. */
       if (line.length > UINT32_MAX || index >= UINT32_MAX) {
         KOSHKIT_REPORT_ERROR("The input has a line or a line count that is "
                              "too large to sort",
@@ -1463,8 +1463,8 @@ Sort::execute(const ExecContext               &ec,
         prefix = get_sort_text_prefix(first_text, *settings.prefix_modifiers);
       }
 
-      collected_lines.push(sort_entry{line.data, static_cast<u32>(line.length),
-                                      static_cast<u32>(index), prefix});
+      collected_lines.push(SortEntry{line.data, static_cast<u32>(line.length),
+                                     static_cast<u32>(index), prefix});
     }
   }
 
@@ -1504,7 +1504,7 @@ Sort::execute(const ExecContext               &ec,
   if (FLAG_SORT_MERGE.is_enabled()) {
     source_starts.push(collected_lines.count());
 
-    let merged = ArrayList<sort_entry>{cxt.scratch_allocator()};
+    let merged = ArrayList<SortEntry>{cxt.scratch_allocator()};
     let heads  = ArrayList<usize>{cxt.scratch_allocator()};
 
     merged.reserve(collected_lines.count());
@@ -1539,7 +1539,7 @@ Sort::execute(const ExecContext               &ec,
     let const is_reversed = settings.global.is_reversed;
 
     collected_lines.sort(
-        [is_reversed](const sort_entry &left, const sort_entry &right) {
+        [is_reversed](const SortEntry &left, const SortEntry &right) {
           let const result = compare_sort_lines(left, right);
 
           if (result != 0) return is_reversed ? result > 0 : result < 0;
@@ -1601,13 +1601,13 @@ Sort::execute(const ExecContext               &ec,
     output += delimiter;
   };
 
-  let const do_visit = [&](usize index, const sort_entry *previous) -> bool {
+  let const do_visit = [&](usize index, const SortEntry *previous) -> bool {
     return previous == nullptr || !is_unique ||
            compare_sort_keys_for(*previous, collected_lines[index], settings) !=
                0;
   };
 
-  const sort_entry *previous_printed = nullptr;
+  const SortEntry *previous_printed = nullptr;
 
   for (usize index = 0; index < collected_lines.count(); index++) {
     if (!do_visit(index, previous_printed)) continue;

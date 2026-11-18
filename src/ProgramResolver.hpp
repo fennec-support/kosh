@@ -23,11 +23,11 @@
 
 namespace koshka {
 
-struct subshell_bootstrap_reader;
+struct SubshellBootstrapReader;
 
 namespace utils {
 
-struct program_name_comparator
+struct ProgramNameComparator
 {
   pure fn
   operator()(const String &left, const String &right) const wontthrow -> bool
@@ -154,8 +154,8 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            StringMap<CacheEntry>     &execution_cache) throws -> bool;
+  from_wire(SubshellBootstrapReader &reader,
+            StringMap<CacheEntry>   &execution_cache) throws -> bool;
   fn
   apply_wire(StringMap<CacheEntry> execution_cache) wontthrow -> void
   {
@@ -256,14 +256,14 @@ private:
     }
   };
 
-  using NameList = SortedArrayList<String, program_name_comparator>;
+  using NameList = SortedArrayList<String, ProgramNameComparator>;
 
   struct DerivedIndexes
   {
     StringMap<Status>         command_statuses{heap_allocator()};
     ArrayList<DirectoryProbe> directory_probes{heap_allocator()};
-    NameList command_names{heap_allocator(), program_name_comparator{}};
-    NameList regular_names{heap_allocator(), program_name_comparator{}};
+    NameList          command_names{heap_allocator(), ProgramNameComparator{}};
+    NameList          regular_names{heap_allocator(), ProgramNameComparator{}};
     ArrayList<String> path_dirs{heap_allocator()};
     ArrayList<String> index_path_dirs{heap_allocator()};
     ArrayList<u64>    path_directory_generations{heap_allocator()};

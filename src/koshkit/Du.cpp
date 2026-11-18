@@ -462,7 +462,7 @@ total_size(const ExecContext        &ec,
     if (directory.has_value()) {
       for (let &work : stat_work)
         stat_batch.add(
-            os::batch_operation::lstat_at(*directory, work.name, work.status));
+            os::BatchOperation::lstat_at(*directory, work.name, work.status));
 
       stat_batch.execute(batch_results, os::batch_deduplication::Disabled);
     } else {
@@ -471,7 +471,7 @@ total_size(const ExecContext        &ec,
 
         path.append(StringView{work.name});
         fallback_paths.push(steal(path));
-        fallback_batch.add(os::batch_operation::lstat(
+        fallback_batch.add(os::BatchOperation::lstat(
             fallback_paths[fallback_paths.count() - 1], work.status));
       }
 
@@ -875,8 +875,8 @@ render_tree(const ArrayList<du_tree_node> &nodes,
     output.append_repeated(' ', size_width - size_text.length);
 
     append_report_text(output, size_text,
-                       colors::color_style{colors::color::BoldGreen,
-                                           colors::color_variant::Soft},
+                       colors::ColorStyle{colors::color::BoldGreen,
+                                          colors::color_variant::Soft},
                        should_color);
     output += ' ';
     output += prefix;
@@ -1024,7 +1024,7 @@ Du::execute(const ExecContext               &ec,
   for (usize index = 0; index < targets.count(); index++) {
     target_statuses.push({});
     batch.add(
-        os::batch_operation::lstat(targets[index], target_statuses[index]));
+        os::BatchOperation::lstat(targets[index], target_statuses[index]));
   }
 
   let const target_results = batch.execute();
@@ -1219,13 +1219,13 @@ Du::execute(const ExecContext               &ec,
 
     output.append_repeated(' ', size_width - size_text.length);
     append_report_text(output, size_text,
-                       colors::color_style{colors::color::BoldGreen,
-                                           colors::color_variant::Soft},
+                       colors::ColorStyle{colors::color::BoldGreen,
+                                          colors::color_variant::Soft},
                        should_color);
     output += "  ";
     append_report_text(output, row.path.view(),
-                       colors::color_style{colors::color::BoldCyan,
-                                           colors::color_variant::Soft},
+                       colors::ColorStyle{colors::color::BoldCyan,
+                                          colors::color_variant::Soft},
                        should_color);
     output += line_terminator;
     if (output.length() >= 65536) {

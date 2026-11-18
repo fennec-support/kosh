@@ -194,7 +194,7 @@ enum class selector_outcome : u8;
 /* the byte distance between the codepoint marks of the highlight cache. */
 constexpr usize CODEPOINT_MARK_BYTE_COUNT = 4096;
 
-struct completion_session
+struct CompletionSession
 {
   koshka::EvalContext                   *context{nullptr};
   const koshka::Path                    *base_directory{nullptr};
@@ -278,7 +278,7 @@ struct completion_session
   usize bracket_style_count{0};
 };
 
-completion_session COMPLETION_SESSION{};
+CompletionSession COMPLETION_SESSION{};
 
 constexpr koshka::StringView SELECTOR_COMMAND_VARIABLE{
     "KOSH_FZF_COMPLETION_COMMAND"};
@@ -751,8 +751,8 @@ run_selector_program(
 }
 
 fn
-completion_session::run_selector(koshka::completion::completion_result &result,
-                                 usize token_codepoint_count) throws
+CompletionSession::run_selector(koshka::completion::completion_result &result,
+                                usize token_codepoint_count) throws
     -> selector_outcome
 {
   if (tab_selector != koshka::tab_selector_mode::External)
@@ -804,9 +804,9 @@ completion_session::run_selector(koshka::completion::completion_result &result,
 koshka::String SELECTED_HISTORY_ENTRY{koshka::heap_allocator()};
 
 fn
-completion_session::select_history(const char *const *entries,
-                                   size_t             count,
-                                   const char       **out_selected) -> int
+CompletionSession::select_history(const char *const *entries,
+                                  size_t             count,
+                                  const char       **out_selected) -> int
 {
   if (context == nullptr) return 0;
   if (tab_selector != koshka::tab_selector_mode::External) return 0;
@@ -1016,8 +1016,8 @@ koshka::String       OPTION_RESULT{koshka::heap_allocator()};
 /* the text of the value that a koshconf file stores for option. */
 fn
 get_persisted_option_value(
-    const koshka::EvalContext       &cxt,
-    const koshka::option_descriptor &option) throws -> koshka::String
+    const koshka::EvalContext      &cxt,
+    const koshka::OptionDescriptor &option) throws -> koshka::String
 {
   let const text = koshka::read_option_text(cxt, option);
 
@@ -1092,8 +1092,8 @@ describe_unknown_option(koshka::StringView name) throws -> const char *
 }
 
 fn
-show_option(koshka::EvalContext             &cxt,
-            const koshka::option_descriptor &option) throws -> const
+show_option(koshka::EvalContext            &cxt,
+            const koshka::OptionDescriptor &option) throws -> const
     char *
 {
   OPTION_RESULT = koshka::StringView{option.koshconf_name} + "=" +
@@ -1103,9 +1103,9 @@ show_option(koshka::EvalContext             &cxt,
 }
 
 fn
-set_option(koshka::EvalContext             &cxt,
-           const koshka::option_descriptor &option,
-           koshka::StringView               value) throws -> const char *
+set_option(koshka::EvalContext            &cxt,
+           const koshka::OptionDescriptor &option,
+           koshka::StringView              value) throws -> const char *
 {
   if (let const problem = koshka::find_koshconf_value_problem(option, value);
       problem.has_value())
@@ -1299,10 +1299,10 @@ kosh_edit_callback(const char *buffer, const char **out_edited) -> int
 }
 
 fn
-completion_session::complete(const char    *buffer,
-                             size_t         cursor,
-                             tl_completion *out,
-                             int            is_for_listing) -> int
+CompletionSession::complete(const char    *buffer,
+                            size_t         cursor,
+                            tl_completion *out,
+                            int            is_for_listing) -> int
 {
   if (context == nullptr || result == nullptr) {
     return 0;
@@ -1407,7 +1407,7 @@ completion_session::complete(const char    *buffer,
     koshka::arm_message_leading_newline(false);
     /* defer_idle_load() and adopt_idle_load() produce documentation_pending.
        itl_complete_gather() consumes TL_COMPLETE_PENDING and retries the
-       listing callback through completion_session::idle(). */
+       listing callback through CompletionSession::idle(). */
     has_pending_gather = true;
 
     return TL_COMPLETE_PENDING;
@@ -1434,7 +1434,7 @@ kosh_completion_callback(const char    *buffer,
 }
 
 fn
-completion_session::highlight(const char *buffer, tl_highlight *out) -> int
+CompletionSession::highlight(const char *buffer, tl_highlight *out) -> int
 {
   if (context == nullptr) return 0;
   if (!is_highlight_color_enabled) return 0;
@@ -1775,7 +1775,7 @@ kosh_wake_callback(int phase) -> int
 }
 
 fn
-completion_session::validate_ghost(const char *entry) const -> int
+CompletionSession::validate_ghost(const char *entry) const -> int
 {
   if (context == nullptr) return 1;
   try {
@@ -1797,7 +1797,7 @@ kosh_ghost_validate_callback(const char *entry) -> int
 }
 
 fn
-completion_session::hint(const char *buffer, size_t cursor) -> const char *
+CompletionSession::hint(const char *buffer, size_t cursor) -> const char *
 {
   if (context == nullptr) return nullptr;
 
@@ -1878,7 +1878,7 @@ constexpr int IDLE_DELAY_MS  = 250;
 constexpr int IDLE_REPEAT_MS = 20;
 
 fn
-completion_session::idle(const char *buffer, size_t cursor) -> int
+CompletionSession::idle(const char *buffer, size_t cursor) -> int
 {
   if (context == nullptr) return 0;
 
@@ -2014,7 +2014,7 @@ resolve_history_path(StringView env_name, StringView default_file)
 
 static constexpr char KOSH_CALC_HISTORY_FILE[] = ".kosh_calc_history";
 
-struct history_file_tracking
+struct HistoryFileTracking
 {
   os::file_status status{};
   bool            has_status{false};
@@ -2051,9 +2051,9 @@ struct history_file_tracking
   }
 
   fn
-  update_after_append(const history_file_tracking &previous,
-                      const os::file_status       &appended,
-                      bool                         was_empty) -> void
+  update_after_append(const HistoryFileTracking &previous,
+                      const os::file_status     &appended,
+                      bool                       was_empty) -> void
   {
     if (!appended.has_file_identity) {
       is_rewritable = false;
@@ -2067,10 +2067,10 @@ struct history_file_tracking
   }
 
   fn
-  note_append(const Path                  &path,
-              const history_file_tracking &previous,
-              bool                         was_empty,
-              usize                        expected_byte_count) -> void
+  note_append(const Path                &path,
+              const HistoryFileTracking &previous,
+              bool                       was_empty,
+              usize                      expected_byte_count) -> void
   {
     let appended = os::file_status{};
     unused(os::stat_path_following(path.view(), appended));
@@ -2079,14 +2079,14 @@ struct history_file_tracking
   }
 };
 
-static history_file_tracking HISTORY_FILE{};
+static HistoryFileTracking HISTORY_FILE{};
 
 static fn
 load_history(const Path &path, bool should_allow_missing)
-    -> koshka::ErrorOr<koshka::Ok>;
+    -> koshka::ErrorOr<koshka::ok>;
 static fn
 ensure_history_loaded(const Path &path, bool should_allow_missing)
-    -> koshka::ErrorOr<koshka::Ok>;
+    -> koshka::ErrorOr<koshka::ok>;
 
 static fn
 get_history_file_path() -> koshka::Maybe<koshka::Path>
@@ -2177,7 +2177,7 @@ struct history_snapshot
   String                   encoded_contents{koshka::heap_allocator()};
   koshka::ArrayList<usize> offsets{koshka::heap_allocator()};
   koshka::ArrayList<usize> durable_offsets{koshka::heap_allocator()};
-  history_file_tracking    file_tracking{};
+  HistoryFileTracking      file_tracking{};
   usize                    total_count{0};
   usize                    last_event_number{0};
   usize                    file_byte_count{0};
@@ -2558,7 +2558,7 @@ append_encoded_records_to_private_branch_as_unwritten(StringView records)
 }
 
 fn
-write_history() -> koshka::ErrorOr<koshka::Ok>
+write_history() -> koshka::ErrorOr<koshka::ok>
 {
   /* memory: written and durable_offsets are heap containers freed on return,
              and written holds a copy of every buffered record. the process
@@ -2633,7 +2633,7 @@ write_history() -> koshka::ErrorOr<koshka::Ok>
 
 static fn
 load_history(const Path &path, bool should_allow_missing)
-    -> koshka::ErrorOr<koshka::Ok>
+    -> koshka::ErrorOr<koshka::ok>
 {
   HISTORY_FILE.invalidate();
 
@@ -2716,7 +2716,7 @@ load_history(const Path &path, bool should_allow_missing)
 
 static fn
 sync_history(const Path &path, bool should_allow_missing)
-    -> koshka::ErrorOr<koshka::Ok>
+    -> koshka::ErrorOr<koshka::ok>
 {
   let status = os::file_status{};
 
@@ -2734,7 +2734,7 @@ sync_history(const Path &path, bool should_allow_missing)
 
 static fn
 ensure_history_loaded(const Path &path, bool should_allow_missing)
-    -> koshka::ErrorOr<koshka::Ok>
+    -> koshka::ErrorOr<koshka::ok>
 {
   if (::itl_g_history_path != nullptr &&
       StringView{::itl_g_history_path} == path.view())
@@ -2746,7 +2746,7 @@ ensure_history_loaded(const Path &path, bool should_allow_missing)
 }
 
 fn
-read_history() -> koshka::ErrorOr<koshka::Ok>
+read_history() -> koshka::ErrorOr<koshka::ok>
 {
   let const path = get_history_file_path();
 
@@ -2756,7 +2756,7 @@ read_history() -> koshka::ErrorOr<koshka::Ok>
 }
 
 fn
-sync_history() -> koshka::ErrorOr<koshka::Ok>
+sync_history() -> koshka::ErrorOr<koshka::ok>
 {
   let const path = get_history_file_path();
 
@@ -2772,7 +2772,7 @@ sync_history() -> koshka::ErrorOr<koshka::Ok>
 }
 
 fn
-clear_history() -> koshka::ErrorOr<koshka::Ok>
+clear_history() -> koshka::ErrorOr<koshka::ok>
 {
   let const path = get_history_file_path();
 
@@ -2784,7 +2784,7 @@ clear_history() -> koshka::ErrorOr<koshka::Ok>
 }
 
 fn
-import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
+import_history(StringView contents) -> koshka::ErrorOr<koshka::ok>
 {
   let const path = get_history_file_path();
 
@@ -2807,7 +2807,7 @@ import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
 }
 
 fn
-append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
+append_unwritten_history() -> koshka::ErrorOr<koshka::ok>
 {
   /* memory: payload holds the encoded unwritten records, and unwritten_slots
              and unwritten_byte_offsets hold one entry per unwritten record.
@@ -4029,7 +4029,7 @@ struct prompt_cache_input
   Maybe<String> value{};
 };
 
-struct prompt_cache
+struct PromptCache
 {
   String prompt_template{koshka::heap_allocator()};
   koshka::ArrayList<prompt_cache_input> inputs{koshka::heap_allocator()};
@@ -4083,7 +4083,7 @@ struct prompt_cache
   }
 };
 
-static prompt_cache PROMPT_CACHE{};
+static PromptCache PROMPT_CACHE{};
 
 static fn
 scan_prompt_template_inputs_or_report_impure(

@@ -125,9 +125,9 @@ fn
 resolve_sort_key(StringView value,
                  bool       should_show_processes,
                  Allocator  allocator) throws
-    -> koshkit_key_resolution<evilio_sort_key>
+    -> KoshkitKeyResolution<evilio_sort_key>
 {
-  koshkit_key_resolution<evilio_sort_key> result{{}, 0, String{allocator}};
+  KoshkitKeyResolution<evilio_sort_key> result{{}, 0, String{allocator}};
 
   if (let const exact = SORT_KEYS.find(value); exact.has_value()) {
     result.add_match(exact->key, exact->name);
@@ -179,7 +179,7 @@ saturated_sum(u64 left, u64 right) wontthrow -> u64
   return left > UINT64_MAX - right ? UINT64_MAX : left + right;
 }
 
-struct process_io_totals
+struct ProcessIOTotals
 {
   u64  read_byte_count{0};
   u64  written_byte_count{0};
@@ -224,7 +224,7 @@ process_sort_value(const io_row &row, evilio_sort_key key)
   }
 }
 
-struct process_pid_comparator
+struct ProcessPidComparator
 {
   pure fn
   operator()(const io_row &left, const io_row &right) const wontthrow -> bool
@@ -233,7 +233,7 @@ struct process_pid_comparator
   }
 };
 
-struct process_row_comparator
+struct ProcessRowComparator
 {
   Maybe<evilio_sort_key> sort_key;
 
@@ -272,9 +272,9 @@ struct process_row_comparator
 fn
 sort_process_rows(ArrayList<io_row>      rows,
                   Maybe<evilio_sort_key> sort_key) throws
-    -> SortedArrayList<io_row, process_row_comparator>
+    -> SortedArrayList<io_row, ProcessRowComparator>
 {
-  return steal(rows).make_sorted(process_row_comparator{sort_key});
+  return steal(rows).make_sorted(ProcessRowComparator{sort_key});
 }
 
 pure fn
@@ -333,7 +333,7 @@ fn
 read_process_io_rows(Allocator        allocator,
                      Maybe<i64>       selected_pid,
                      evilio_idle_mode idle_mode) throws
-    -> SortedArrayList<io_row, process_pid_comparator>
+    -> SortedArrayList<io_row, ProcessPidComparator>
 {
   let       rows              = ArrayList<io_row>{allocator};
   let const processes         = os::enumerate_processes();
@@ -378,7 +378,7 @@ read_process_io_rows(Allocator        allocator,
                      process.start_token, status});
   }
 
-  return steal(rows).make_sorted(process_pid_comparator{});
+  return steal(rows).make_sorted(ProcessPidComparator{});
 }
 
 /* memory: the sampled rows and their process name strings are allocated in
@@ -392,7 +392,7 @@ sample_process_io_rows(const ArrayList<io_row> &before_rows,
                        Allocator                allocator,
                        Maybe<evilio_sort_key>   sort_key,
                        evilio_idle_mode         idle_mode) throws
-    -> SortedArrayList<io_row, process_row_comparator>
+    -> SortedArrayList<io_row, ProcessRowComparator>
 {
   let   sampled_rows    = ArrayList<io_row>{allocator};
   usize before_position = 0;
@@ -463,10 +463,10 @@ sample_process_io_rows(const ArrayList<io_row> &before_rows,
 
 struct live_process_row
 {
-  i64                                    pid{0};
-  u64                                    start_token{0};
-  String                                 name{heap_allocator()};
-  rolling_history<os::process_io_status> history;
+  i64                                   pid{0};
+  u64                                   start_token{0};
+  String                                name{heap_allocator()};
+  RollingHistory<os::process_io_status> history;
 };
 
 fn
@@ -565,22 +565,22 @@ append_process_io_rate_report(String                  &output,
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     cells.push({
-        pid.view(), colors::color_style{colors::color::BoldMagenta,
-                                        colors::color_variant::Soft}
+        pid.view(), colors::ColorStyle{colors::color::BoldMagenta,
+                                       colors::color_variant::Soft}
     });
     cells.push({
-        read.view(), colors::color_style{colors::color::Green,
-                                         colors::color_variant::Soft}
+        read.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
-        write.view(), colors::color_style{colors::color::Green,
-                                          colors::color_variant::Soft}
+        write.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({read_operations.view(), {}});
     cells.push({write_operations.view(), {}});
     cells.push({
-        row.name.view(), colors::color_style{colors::color::BoldCyan,
-                                             colors::color_variant::Soft}
+        row.name.view(), colors::ColorStyle{colors::color::BoldCyan,
+                                            colors::color_variant::Soft}
     });
     table.add_row(cells);
   }
@@ -590,7 +590,7 @@ append_process_io_rate_report(String                  &output,
 
 pure fn
 find_disk_io_status(const os::disk_io_snapshot &snapshot,
-                    StringView name) wontthrow -> const os::disk_io_status *
+                    StringView name) wontthrow -> const os::DiskIoStatus *
 {
   for (let const &disk : snapshot.disks) {
     if (disk.name == name) return &disk;
@@ -616,19 +616,19 @@ struct disk_io_row
 };
 
 pure fn
-disk_failure_total(const os::disk_io_status *before,
-                   const os::disk_io_status &after,
-                   os::disk_io_field         read_field,
-                   os::disk_io_field         write_field,
-                   u64 os::disk_io_status::*read_member,
-                   u64 os::disk_io_status::*write_member,
-                   report_sampling_mode     sampling) wontthrow -> Maybe<u64>
+disk_failure_total(const os::DiskIoStatus *before,
+                   const os::DiskIoStatus &after,
+                   os::disk_io_field       read_field,
+                   os::disk_io_field       write_field,
+                   u64 os::DiskIoStatus::*read_member,
+                   u64 os::DiskIoStatus::*write_member,
+                   report_sampling_mode   sampling) wontthrow -> Maybe<u64>
 {
   u64  total     = 0;
   bool has_total = false;
 
   let const do_add = [&](os::disk_io_field field,
-                         u64 os::disk_io_status::*member) {
+                         u64 os::DiskIoStatus::*member) {
     if (!after.has_field(field)) return;
 
     let value = Maybe<u64>{after.*member};
@@ -652,11 +652,11 @@ disk_failure_total(const os::disk_io_status *before,
 }
 
 fn
-make_disk_io_row(const os::disk_io_status *before,
-                 const os::disk_io_status &after,
-                 u64                       elapsed_nanoseconds,
-                 Allocator                 allocator,
-                 report_sampling_mode      sampling) throws -> disk_io_row
+make_disk_io_row(const os::DiskIoStatus *before,
+                 const os::DiskIoStatus &after,
+                 u64                     elapsed_nanoseconds,
+                 Allocator               allocator,
+                 report_sampling_mode    sampling) throws -> disk_io_row
 {
   disk_io_row row{};
 
@@ -783,12 +783,12 @@ make_disk_io_row(const os::disk_io_status *before,
     row.queue = after.queue_depth;
   row.errors = disk_failure_total(
       before, after, os::disk_io_field::ReadErrors,
-      os::disk_io_field::WriteErrors, &os::disk_io_status::read_error_count,
-      &os::disk_io_status::write_error_count, sampling);
+      os::disk_io_field::WriteErrors, &os::DiskIoStatus::read_error_count,
+      &os::DiskIoStatus::write_error_count, sampling);
   row.retries = disk_failure_total(
       before, after, os::disk_io_field::ReadRetries,
-      os::disk_io_field::WriteRetries, &os::disk_io_status::read_retry_count,
-      &os::disk_io_status::write_retry_count, sampling);
+      os::disk_io_field::WriteRetries, &os::DiskIoStatus::read_retry_count,
+      &os::DiskIoStatus::write_retry_count, sampling);
 
   return row;
 }
@@ -842,8 +842,8 @@ disk_sort_value(const disk_io_row &row, evilio_sort_key key) wontthrow
 }
 
 pure fn
-disk_io_counter_reset(const os::disk_io_status &before,
-                      const os::disk_io_status &after) wontthrow -> bool
+disk_io_counter_reset(const os::DiskIoStatus &before,
+                      const os::DiskIoStatus &after) wontthrow -> bool
 {
   return after.read_byte_count < before.read_byte_count ||
          after.written_byte_count < before.written_byte_count ||
@@ -979,16 +979,16 @@ append_disk_io_report(String                       &output,
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     cells.push({
-        row.name.view(), colors::color_style{colors::color::BoldGreen,
-                                             colors::color_variant::Soft}
+        row.name.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                            colors::color_variant::Soft}
     });
     cells.push({
-        read.view(), colors::color_style{colors::color::Green,
-                                         colors::color_variant::Soft}
+        read.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
-        write.view(), colors::color_style{colors::color::Green,
-                                          colors::color_variant::Soft}
+        write.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({read_operations.view(), {}});
     cells.push({write_operations.view(), {}});
@@ -1034,18 +1034,17 @@ append_disk_io_report(String                       &output,
     cells.push({queue.view(), {}});
     cells.push({
         errors.view(), row.errors.has_value() && *row.errors != 0
-                           ? colors::color_style{colors::color::BoldRed,
-                                                 colors::color_variant::Soft}
-                           : colors::color_style{colors::color::Green,
-                                                 colors::color_variant::Soft}
+                           ? colors::ColorStyle{colors::color::BoldRed,
+                                                colors::color_variant::Soft}
+                           : colors::ColorStyle{colors::color::Green,
+                                                colors::color_variant::Soft}
     });
     cells.push({
-        retries.view(),
-        row.retries.has_value() && *row.retries != 0
-            ? colors::color_style{colors::color::BoldRed,
-                                  colors::color_variant::Soft}
-            : colors::color_style{colors::color::Green,
-                                  colors::color_variant::Soft}
+        retries.view(), row.retries.has_value() && *row.retries != 0
+                            ? colors::ColorStyle{colors::color::BoldRed,
+                                                 colors::color_variant::Soft}
+                            : colors::ColorStyle{colors::color::Green,
+                                                 colors::color_variant::Soft}
     });
     table.add_row(cells);
   }
@@ -1054,13 +1053,13 @@ append_disk_io_report(String                       &output,
 }
 
 fn
-run_live_process_io(const ExecContext         &ec,
-                    Maybe<i64>                 selected_pid,
-                    usize                      row_limit,
-                    const live_report_options &report_options,
-                    StringView                 sample_duration_label,
-                    Maybe<evilio_sort_key>     sort_key,
-                    bool                       should_color) throws -> i32
+run_live_process_io(const ExecContext       &ec,
+                    Maybe<i64>               selected_pid,
+                    usize                    row_limit,
+                    const LiveReportOptions &report_options,
+                    StringView               sample_duration_label,
+                    Maybe<evilio_sort_key>   sort_key,
+                    bool                     should_color) throws -> i32
 {
   let const allocator               = heap_allocator();
   let       retained                = ArrayList<live_process_row>{allocator};
@@ -1069,7 +1068,7 @@ run_live_process_io(const ExecContext         &ec,
   let const started_at_nanoseconds  = last_sample_nanoseconds;
 
   let const do_get_key = [](const auto &row) {
-    return live_process_identity{row.pid, row.start_token};
+    return LiveProcessIdentity{row.pid, row.start_token};
   };
 
   let const do_get_value =
@@ -1152,8 +1151,8 @@ run_live_process_io(const ExecContext         &ec,
 
 struct live_disk_row
 {
-  String                              name{heap_allocator()};
-  rolling_history<os::disk_io_status> history;
+  String                           name{heap_allocator()};
+  RollingHistory<os::DiskIoStatus> history;
 };
 
 fn
@@ -1165,12 +1164,12 @@ make_disk_window_row(const live_disk_row &row,
   let const &lower    = row.history.samples[boundary.before_index];
   let const &upper    = row.history.samples[boundary.after_index];
   let const &newest   = row.history.get_newest();
-  os::disk_io_status before{};
+  os::DiskIoStatus before{};
 
   before.available_fields = lower.available_fields & upper.available_fields;
 
   let const do_interpolate = [&](os::disk_io_field field,
-                                 u64 os::disk_io_status::*member) {
+                                 u64 os::DiskIoStatus::*member) {
     if (!lower.has_field(field) || !upper.has_field(field)) {
       return;
     }
@@ -1181,31 +1180,31 @@ make_disk_window_row(const live_disk_row &row,
   };
 
   do_interpolate(os::disk_io_field::ReadBytes,
-                 &os::disk_io_status::read_byte_count);
+                 &os::DiskIoStatus::read_byte_count);
   do_interpolate(os::disk_io_field::WrittenBytes,
-                 &os::disk_io_status::written_byte_count);
+                 &os::DiskIoStatus::written_byte_count);
   do_interpolate(os::disk_io_field::ReadOperations,
-                 &os::disk_io_status::read_operation_count);
+                 &os::DiskIoStatus::read_operation_count);
   do_interpolate(os::disk_io_field::WriteOperations,
-                 &os::disk_io_status::write_operation_count);
+                 &os::DiskIoStatus::write_operation_count);
   do_interpolate(os::disk_io_field::ReadTime,
-                 &os::disk_io_status::read_time_nanoseconds);
+                 &os::DiskIoStatus::read_time_nanoseconds);
   do_interpolate(os::disk_io_field::WriteTime,
-                 &os::disk_io_status::write_time_nanoseconds);
+                 &os::DiskIoStatus::write_time_nanoseconds);
   do_interpolate(os::disk_io_field::BusyTime,
-                 &os::disk_io_status::busy_time_nanoseconds);
+                 &os::DiskIoStatus::busy_time_nanoseconds);
   do_interpolate(os::disk_io_field::IdleTime,
-                 &os::disk_io_status::idle_time_nanoseconds);
+                 &os::DiskIoStatus::idle_time_nanoseconds);
   do_interpolate(os::disk_io_field::WeightedBusyTime,
-                 &os::disk_io_status::weighted_busy_time_nanoseconds);
+                 &os::DiskIoStatus::weighted_busy_time_nanoseconds);
   do_interpolate(os::disk_io_field::ReadErrors,
-                 &os::disk_io_status::read_error_count);
+                 &os::DiskIoStatus::read_error_count);
   do_interpolate(os::disk_io_field::WriteErrors,
-                 &os::disk_io_status::write_error_count);
+                 &os::DiskIoStatus::write_error_count);
   do_interpolate(os::disk_io_field::ReadRetries,
-                 &os::disk_io_status::read_retry_count);
+                 &os::DiskIoStatus::read_retry_count);
   do_interpolate(os::disk_io_field::WriteRetries,
-                 &os::disk_io_status::write_retry_count);
+                 &os::DiskIoStatus::write_retry_count);
 
   let const elapsed_nanoseconds =
       row.history.get_newest_timestamp() > boundary.timestamp
@@ -1217,11 +1216,11 @@ make_disk_window_row(const live_disk_row &row,
 }
 
 fn
-run_live_disk_io(const ExecContext         &ec,
-                 const live_report_options &report_options,
-                 StringView                 sample_duration_label,
-                 Maybe<evilio_sort_key>     sort_key,
-                 bool                       should_color) throws -> i32
+run_live_disk_io(const ExecContext       &ec,
+                 const LiveReportOptions &report_options,
+                 StringView               sample_duration_label,
+                 Maybe<evilio_sort_key>   sort_key,
+                 bool                     should_color) throws -> i32
 {
   let const allocator               = heap_allocator();
   let       retained                = ArrayList<live_disk_row>{allocator};
@@ -1231,11 +1230,11 @@ run_live_disk_io(const ExecContext         &ec,
   let const do_get_key = [](const auto &row) { return row.name.view(); };
 
   let const do_get_value =
-      [](const os::disk_io_status &disk) -> const os::disk_io_status & {
+      [](const os::DiskIoStatus &disk) -> const os::DiskIoStatus & {
     return disk;
   };
 
-  let const do_make_row = [&](const os::disk_io_status &disk) {
+  let const do_make_row = [&](const os::DiskIoStatus &disk) {
     live_disk_row entry{};
     entry.name = disk.name.clone_to(allocator);
 
@@ -1294,17 +1293,17 @@ make_metric_table(Allocator allocator) throws -> ReportTable
 }
 
 fn
-add_metric_row(ReportTable        &table,
-               StringView          name,
-               StringView          value,
-               Allocator           allocator,
-               colors::color_style style = {}) throws -> void
+add_metric_row(ReportTable       &table,
+               StringView         name,
+               StringView         value,
+               Allocator          allocator,
+               colors::ColorStyle style = {}) throws -> void
 {
   let cells = ArrayList<report_table_cell_view>{allocator};
 
   cells.push({
-      name, colors::color_style{colors::color::BoldCyan,
-                                colors::color_variant::Soft}
+      name, colors::ColorStyle{colors::color::BoldCyan,
+                               colors::color_variant::Soft}
   });
   cells.push({value, style});
   table.add_row(cells);
@@ -1339,17 +1338,17 @@ add_stall_row(ReportTable &table,
   value += percent_text(*rate, 1000000, allocator).view();
   value += ")";
   add_metric_row(table, name, value.view(), allocator,
-                 *rate == 0 ? colors::color_style{colors::color::BoldCyan,
-                                                  colors::color_variant::Soft}
-                            : colors::color_style{colors::color::BoldRed,
-                                                  colors::color_variant::Soft});
+                 *rate == 0 ? colors::ColorStyle{colors::color::BoldCyan,
+                                                 colors::color_variant::Soft}
+                            : colors::ColorStyle{colors::color::BoldRed,
+                                                 colors::color_variant::Soft});
 }
 
 fn
 append_process_io_report(String                  &output,
                          const ArrayList<io_row> &rows,
                          usize                    row_limit,
-                         const process_io_totals &totals,
+                         const ProcessIOTotals   &totals,
                          Allocator                allocator,
                          bool                     should_color) throws -> void
 {
@@ -1401,16 +1400,16 @@ append_process_io_report(String                  &output,
     let cells            = ArrayList<report_table_cell_view>{allocator};
 
     cells.push({
-        pid.view(), colors::color_style{colors::color::BoldMagenta,
-                                        colors::color_variant::Soft}
+        pid.view(), colors::ColorStyle{colors::color::BoldMagenta,
+                                       colors::color_variant::Soft}
     });
     cells.push({
-        read.view(), colors::color_style{colors::color::Green,
-                                         colors::color_variant::Soft}
+        read.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
-        written.view(), colors::color_style{colors::color::Green,
-                                            colors::color_variant::Soft}
+        written.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     if (has_operation_counts) {
       read_operations =
@@ -1423,19 +1422,19 @@ append_process_io_report(String                  &output,
               : String{allocator, "-"};
       cells.push({
           read_operations.view(),
-          colors::color_style{colors::color::Green,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::Green,
+                             colors::color_variant::Soft}
       });
       cells.push({
           write_operations.view(),
-          colors::color_style{colors::color::Green,
-                              colors::color_variant::Soft}
+          colors::ColorStyle{colors::color::Green,
+                             colors::color_variant::Soft}
       });
     }
 
     cells.push({
-        row.name.view(), colors::color_style{colors::color::BoldCyan,
-                                             colors::color_variant::Soft}
+        row.name.view(), colors::ColorStyle{colors::color::BoldCyan,
+                                            colors::color_variant::Soft}
     });
     process_table.add_row(cells);
   }
@@ -1506,7 +1505,7 @@ EvilIO::execute(const ExecContext               &ec,
   f64 cumulative_duration_seconds = 1.0;
 
   if (sample_duration_operand.has_value()) {
-    let const parsed_duration = live_report_options::parse_window_seconds(
+    let const parsed_duration = LiveReportOptions::parse_window_seconds(
         ec, cxt, *sample_duration_operand, *sample_duration_location,
         "Invalid duration", "The duration must be greater than zero",
         allocator);
@@ -1578,7 +1577,7 @@ EvilIO::execute(const ExecContext               &ec,
   }
 
   let const should_color   = koshkit_should_color();
-  let const report_options = live_report_options::parse_with_window(
+  let const report_options = LiveReportOptions::parse_with_window(
       ec, cxt, FLAG_EVILIO_LIVE, FLAG_EVILIO_CUMULATIVE.is_enabled(),
       cumulative_duration_seconds, allocator);
 
@@ -1707,7 +1706,7 @@ EvilIO::execute(const ExecContext               &ec,
     let const idle_mode = selected_pid.has_value() ? evilio_idle_mode::Include
                                                    : evilio_idle_mode::Omit;
     let       rows = read_process_io_rows(allocator, selected_pid, idle_mode);
-    process_io_totals totals;
+    ProcessIOTotals totals;
 
     for (let const &row : rows)
       totals.add(row);
@@ -1723,17 +1722,17 @@ EvilIO::execute(const ExecContext               &ec,
     return selected_pid.has_value() && sorted_rows.is_empty() ? 1 : 0;
   }
 
-  os::system_activity_status activity_before{};
-  os::system_activity_status activity_after{};
-  os::swap_status            swap_before{};
-  os::swap_status            swap_after{};
-  os::disk_io_snapshot       disk_before{};
-  os::disk_io_snapshot       disk_after{};
-  bool                       has_activity_before = false;
-  bool                       has_activity_after  = false;
-  bool                       has_swap_before     = false;
-  bool                       has_swap_after      = false;
-  u64                        elapsed_nanoseconds = 0;
+  os::SystemActivityStatus activity_before{};
+  os::SystemActivityStatus activity_after{};
+  os::swap_status          swap_before{};
+  os::swap_status          swap_after{};
+  os::disk_io_snapshot     disk_before{};
+  os::disk_io_snapshot     disk_after{};
+  bool                     has_activity_before = false;
+  bool                     has_activity_after  = false;
+  bool                     has_swap_before     = false;
+  bool                     has_swap_after      = false;
+  u64                      elapsed_nanoseconds = 0;
 
   disk_after = os::read_disk_io_snapshot(allocator);
   if (FLAG_EVILIO_ALL.is_enabled()) {
@@ -1764,8 +1763,8 @@ EvilIO::execute(const ExecContext               &ec,
     has_swap_after = os::read_swap_status(swap_after);
   }
 
-  os::memory_status memory{};
-  let const         has_memory_status =
+  os::MemoryStatus memory{};
+  let const        has_memory_status =
       !FLAG_EVILIO_CUMULATIVE.is_enabled() && os::read_memory_status(memory);
 
   let output = String{allocator};

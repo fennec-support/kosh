@@ -50,9 +50,9 @@ enum class file_magic_kind : u8
   String,
 };
 
-struct file_magic_rule
+struct FileMagicRule
 {
-  explicit file_magic_rule(Allocator allocator)
+  explicit FileMagicRule(Allocator allocator)
       : expected_text(allocator), message(allocator)
   {}
 
@@ -207,7 +207,7 @@ next_magic_field(StringView line, usize &position) wontthrow -> StringView
 }
 
 static fn
-parse_magic_type(StringView text, file_magic_rule &rule) throws -> bool
+parse_magic_type(StringView text, FileMagicRule &rule) throws -> bool
 {
   usize position = 0;
 
@@ -316,9 +316,9 @@ parse_magic_type(StringView text, file_magic_rule &rule) throws -> bool
 }
 
 static fn
-parse_magic_rule(StringView       line,
-                 Allocator        allocator,
-                 file_magic_rule &rule) throws -> bool
+parse_magic_rule(StringView     line,
+                 Allocator      allocator,
+                 FileMagicRule &rule) throws -> bool
 {
   line = line.trim_blanks();
   if (line.is_empty() || line[0] == '#') {
@@ -388,9 +388,9 @@ parse_magic_rule(StringView       line,
 }
 
 static fn
-append_magic_database(StringView                  path,
-                      ArrayList<file_magic_rule> &rules,
-                      Allocator                   allocator) throws -> bool
+append_magic_database(StringView                path,
+                      ArrayList<FileMagicRule> &rules,
+                      Allocator                 allocator) throws -> bool
 {
   let contents = Path{path, allocator}.read_entire_file();
 
@@ -402,8 +402,8 @@ append_magic_database(StringView                  path,
   usize position = 0;
 
   while (position < contents->count()) {
-    let const       line = contents->view().next_line(position);
-    file_magic_rule rule{allocator};
+    let const     line = contents->view().next_line(position);
+    FileMagicRule rule{allocator};
 
     if (parse_magic_rule(line, allocator, rule)) rules.push(steal(rule));
   }
@@ -412,9 +412,9 @@ append_magic_database(StringView                  path,
 }
 
 static fn
-read_magic_number(const file_magic_rule &rule,
-                  StringView             bytes,
-                  u64                   &value) wontthrow -> bool
+read_magic_number(const FileMagicRule &rule,
+                  StringView           bytes,
+                  u64                 &value) wontthrow -> bool
 {
   if (rule.offset > bytes.length ||
       rule.byte_count > bytes.length - rule.offset)
@@ -454,9 +454,9 @@ read_magic_number(const file_magic_rule &rule,
 }
 
 static fn
-magic_rule_matches(const file_magic_rule &rule,
-                   StringView             bytes,
-                   u64                   &number) wontthrow -> bool
+magic_rule_matches(const FileMagicRule &rule,
+                   StringView           bytes,
+                   u64                 &number) wontthrow -> bool
 {
   if (rule.kind != file_magic_kind::String)
     return read_magic_number(rule, bytes, number);
@@ -473,9 +473,9 @@ magic_rule_matches(const file_magic_rule &rule,
 }
 
 static fn
-format_magic_message(const file_magic_rule &rule,
-                     u64                    number,
-                     Allocator              allocator) throws -> String
+format_magic_message(const FileMagicRule &rule,
+                     u64                  number,
+                     Allocator            allocator) throws -> String
 {
   let       output              = String{allocator};
   let const message             = rule.message.view();
@@ -542,9 +542,9 @@ format_magic_message(const file_magic_rule &rule,
 }
 
 static fn
-match_magic_rules(const ArrayList<file_magic_rule> &rules,
-                  StringView                        bytes,
-                  Allocator                         allocator) throws -> Maybe<String>
+match_magic_rules(const ArrayList<FileMagicRule> &rules,
+                  StringView                      bytes,
+                  Allocator                       allocator) throws -> Maybe<String>
 {
   for (usize index = 0; index < rules.count(); index++) {
     let const &rule = rules[index];
@@ -987,7 +987,7 @@ File::execute(const ExecContext               &ec,
         return left.position < right.position;
       });
 
-  ArrayList<file_magic_rule> magic_rules{allocator};
+  ArrayList<FileMagicRule> magic_rules{allocator};
 
   for (let const &magic_path : magic_paths) {
     if (!append_magic_database(magic_path.path, magic_rules, allocator)) {
@@ -1019,7 +1019,7 @@ File::execute(const ExecContext               &ec,
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
-    metadata_batch.add(os::batch_operation::lstat(
+    metadata_batch.add(os::BatchOperation::lstat(
         operand_paths[operand_position], file_statuses[operand_position]));
   }
 
@@ -1058,7 +1058,7 @@ File::execute(const ExecContext               &ec,
       content_batch.clear();
 
       for (usize index = 0; index < probe_count; index++) {
-        content_batch.add(os::batch_operation::read(
+        content_batch.add(os::BatchOperation::read(
             probes[index].descriptor, probes[index].bytes,
             FILE_CONTENT_SAMPLE_BYTE_COUNT));
       }
@@ -1173,7 +1173,7 @@ File::execute(const ExecContext               &ec,
         continue;
       }
 
-      metadata_batch.add(os::batch_operation::stat(
+      metadata_batch.add(os::BatchOperation::stat(
           operand_paths[operand_position], file_statuses[operand_position]));
     }
 
@@ -1214,7 +1214,7 @@ File::execute(const ExecContext               &ec,
                           read_byte_count,
                           SourceBatchReader::SourceDashMode::TreatAsPath,
                           SourceBatchReader::SourceKindMode::KnownRegular};
-    let chunks = ArrayList<SourceBatchReader::Chunk>{allocator};
+    let chunks = ArrayList<SourceBatchReader::chunk>{allocator};
 
     loop {
       let const read_result        = reader.read_next(chunks);

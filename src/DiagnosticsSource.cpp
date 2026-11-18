@@ -271,7 +271,7 @@ skip_here_document(StringView source, usize at) throws -> usize
 
   let const delimiter_word = source.substring_of_length(
       tail.word_start, tail.word_end - tail.word_start);
-  let const heredoc = lexer::pending_heredoc{
+  let const heredoc = lexer::PendingHeredoc{
       lexer::unquote_heredoc_delimiter(delimiter_word, heap_allocator()),
       tail.should_strip_tabs, lexer::heredoc_word_joins_lines(delimiter_word)};
 
@@ -634,7 +634,7 @@ path_base_name(StringView path) wontthrow -> StringView
   return last_slash.has_value() ? path.substring(*last_slash + 1) : path;
 }
 
-struct shebang_word_reader
+struct ShebangWordReader
 {
   StringView line;
   usize      at{0};
@@ -801,7 +801,7 @@ check_shebang(AnalysisContext       &actx,
      "-e", so parameter_count = 3. sc2096 is not reported because both
      is_env_interpreter and has_split_string_flag are true. shell_name is
      "bash", which is in KNOWN_SHELLS. */
-  let       reader = shebang_word_reader{first_line, bang_at + 1, bang_at + 1};
+  let       reader = ShebangWordReader{first_line, bang_at + 1, bang_at + 1};
   let const interpreter          = reader.read_next_word();
   let const interpreter_location = reader.word_location();
 

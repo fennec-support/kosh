@@ -207,7 +207,7 @@ color_to_sv(color value, color_variant variant) wontthrow -> StringView
 }
 
 fn
-color_to_sv(color_style style) wontthrow -> StringView
+color_to_sv(ColorStyle style) wontthrow -> StringView
 {
   return color_to_sv(style.value, style.variant);
 }
@@ -290,7 +290,7 @@ color_is_suppressed_by_environment() throws -> bool
 /* the cached answer is valid for one os::get_descriptor_epoch() value.
    redirect_stdout() and restore_stdout() call note_descriptor_rebound() after
    dup2(), so a redirected stdout is probed again. */
-struct cached_terminal_answer
+struct CachedTerminalAnswer
 {
   u64  epoch{static_cast<u64>(-1)};
   bool is_a_terminal{false};
@@ -313,8 +313,8 @@ struct cached_terminal_answer
   }
 };
 
-static cached_terminal_answer STDOUT_TERMINAL_ANSWER{};
-static cached_terminal_answer STDERR_TERMINAL_ANSWER{};
+static CachedTerminalAnswer STDOUT_TERMINAL_ANSWER{};
+static CachedTerminalAnswer STDERR_TERMINAL_ANSWER{};
 
 fn
 stdout_wants_color() throws -> bool
@@ -369,29 +369,29 @@ file_entry_type_of_mode(u32 mode) wontthrow -> file_entry_type
 }
 
 fn
-file_entry_color(file_entry_type type) wontthrow -> color_style
+file_entry_color(file_entry_type type) wontthrow -> ColorStyle
 {
   switch (type) {
   case file_entry_type::Directory:
-    return color_style{color::BoldBlue, color_variant::Soft};
+    return ColorStyle{color::BoldBlue, color_variant::Soft};
 
   case file_entry_type::Symlink:
-    return color_style{color::BoldCyan, color_variant::Soft};
+    return ColorStyle{color::BoldCyan, color_variant::Soft};
 
   case file_entry_type::BrokenSymlink:
-    return color_style{color::BoldRed, color_variant::Soft};
+    return ColorStyle{color::BoldRed, color_variant::Soft};
 
   case file_entry_type::Executable:
-    return color_style{color::BoldGreen, color_variant::Soft};
+    return ColorStyle{color::BoldGreen, color_variant::Soft};
 
   case file_entry_type::Fifo:
-    return color_style{color::Yellow, color_variant::Soft};
+    return ColorStyle{color::Yellow, color_variant::Soft};
 
   case file_entry_type::Socket:
-    return color_style{color::BoldMagenta, color_variant::Soft};
+    return ColorStyle{color::BoldMagenta, color_variant::Soft};
 
   case file_entry_type::Device:
-    return color_style{color::BoldYellow, color_variant::Soft};
+    return ColorStyle{color::BoldYellow, color_variant::Soft};
 
   case file_entry_type::Regular: break;
   }

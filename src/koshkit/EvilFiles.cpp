@@ -139,9 +139,9 @@ struct socket_description
   String     endpoint;
 };
 
-struct socket_directory
+struct SocketDirectory
 {
-  explicit socket_directory(Allocator allocator) : entries(allocator) {}
+  explicit SocketDirectory(Allocator allocator) : entries(allocator) {}
 
   ArrayList<socket_description> entries;
   bool                          did_load{false};
@@ -210,8 +210,8 @@ describe_network_socket(const os::network_socket_entry &socket,
            os::network_sockets() call and one os::kernel_sockets() call read
            the socket tables. */
 fn
-load_socket_directory(socket_directory &directory,
-                      Allocator         allocator) throws -> void
+load_socket_directory(SocketDirectory &directory,
+                      Allocator        allocator) throws -> void
 {
   directory.did_load = true;
   if (os::has_network_socket_listing()) {
@@ -248,9 +248,9 @@ load_socket_directory(socket_directory &directory,
 }
 
 fn
-find_socket_description(socket_directory &directory,
-                        u64               inode,
-                        Allocator         allocator) throws -> Maybe<usize>
+find_socket_description(SocketDirectory &directory,
+                        u64              inode,
+                        Allocator        allocator) throws -> Maybe<usize>
 {
   if (!directory.did_load) load_socket_directory(directory, allocator);
 
@@ -454,7 +454,7 @@ EvilFiles::execute(const ExecContext               &ec,
 
   ArrayList<open_file_row> rows{allocator};
   column_widths            widths{};
-  socket_directory         sockets{allocator};
+  SocketDirectory          sockets{allocator};
   let                      terse_output               = String{allocator};
   bool                     did_match                  = false;
   usize                    inaccessible_process_count = 0;
@@ -532,8 +532,8 @@ EvilFiles::execute(const ExecContext               &ec,
       file_statuses.push({});
 
     for (usize position = 0; position < matching_positions.count(); position++)
-      metadata_batch.add(os::batch_operation::stat(matching_paths[position],
-                                                   file_statuses[position]));
+      metadata_batch.add(os::BatchOperation::stat(matching_paths[position],
+                                                  file_statuses[position]));
 
     let const metadata_results = metadata_batch.execute();
     let const owner = os::process_owner_name(static_cast<u32>(process.pid),
@@ -702,56 +702,56 @@ EvilFiles::execute(const ExecContext               &ec,
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     cells.push({
-        command.view(), colors::color_style{colors::color::BoldGreen,
-                                            colors::color_variant::Soft}
+        command.view(), colors::ColorStyle{colors::color::BoldGreen,
+                                           colors::color_variant::Soft}
     });
     cells.push({
-        row.pid.view(), colors::color_style{colors::color::Green,
-                                            colors::color_variant::Soft}
+        row.pid.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
-        row.user.view(), colors::color_style{colors::color::Yellow,
-                                             colors::color_variant::Soft}
+        row.user.view(), colors::ColorStyle{colors::color::Yellow,
+                                            colors::color_variant::Soft}
     });
     cells.push({
         row.descriptor.view(),
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft}
     });
     cells.push({
-        row.type.view(), colors::color_style{colors::color::BoldMagenta,
-                                             colors::color_variant::Soft}
+        row.type.view(), colors::ColorStyle{colors::color::BoldMagenta,
+                                            colors::color_variant::Soft}
     });
     cells.push({
-        row.mode.view(), colors::color_style{colors::color::BoldMagenta,
-                                             colors::color_variant::Soft}
+        row.mode.view(), colors::ColorStyle{colors::color::BoldMagenta,
+                                            colors::color_variant::Soft}
     });
     cells.push({
         row.state.view(),
         row.state == "deleted"
-            ? colors::color_style{colors::color::BoldRed,
-                                  colors::color_variant::Soft}
-            : colors::color_style{colors::color::Green,
-                                  colors::color_variant::Soft}
+            ? colors::ColorStyle{colors::color::BoldRed,
+                                 colors::color_variant::Soft}
+            : colors::ColorStyle{colors::color::Green,
+                                 colors::color_variant::Soft}
     });
     cells.push({
-        row.device.view(), colors::color_style{colors::color::Green,
-                                               colors::color_variant::Soft}
+        row.device.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
-        row.size.view(), colors::color_style{colors::color::Green,
-                                             colors::color_variant::Soft}
+        row.size.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
-        row.offset.view(), colors::color_style{colors::color::Green,
-                                               colors::color_variant::Soft}
+        row.offset.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
-        row.node.view(), colors::color_style{colors::color::Green,
-                                             colors::color_variant::Soft}
+        row.node.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     cells.push({
         row.endpoint.view(),
-        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+        colors::ColorStyle{colors::color::Cyan, colors::color_variant::Soft}
     });
     cells.push({name.view(), {}});
     table.add_row(cells);

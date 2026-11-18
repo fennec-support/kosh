@@ -120,7 +120,7 @@ constexpr usize TAIL_OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 constexpr f64 TAIL_DEFAULT_SLEEP_SECONDS = 1.0;
 constexpr f64 TAIL_MINIMUM_WAIT_SECONDS  = 0.001;
 
-struct tail_options
+struct TailOptions
 {
   tail_unit    unit{tail_unit::Lines};
   i64          count{10};
@@ -133,9 +133,9 @@ struct tail_options
   i64          watched_process_id{0};
 
   static fn
-  parse(Allocator allocator) throws -> tail_options
+  parse(Allocator allocator) throws -> TailOptions
   {
-    tail_options options;
+    TailOptions options;
 
     let const is_bytes_overriding_lines = FLAG_TAIL_BYTES.is_set();
 
@@ -276,9 +276,9 @@ find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
                                        : static_cast<usize>(state.scan_offset);
 
       state.read_byte_count = block_byte_count;
-      batch.add(os::batch_operation::read(
-          state.descriptor, state.buffer.begin(), block_byte_count,
-          state.scan_offset - block_byte_count));
+      batch.add(os::BatchOperation::read(state.descriptor, state.buffer.begin(),
+                                         block_byte_count,
+                                         state.scan_offset - block_byte_count));
       operation_states.push(state_index);
     }
 
@@ -366,9 +366,8 @@ find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
                                        : static_cast<usize>(remaining);
 
       state.read_byte_count = block_byte_count;
-      batch.add(os::batch_operation::read(state.descriptor,
-                                          state.buffer.begin(),
-                                          block_byte_count, state.scan_offset));
+      batch.add(os::BatchOperation::read(state.descriptor, state.buffer.begin(),
+                                         block_byte_count, state.scan_offset));
       operation_states.push(state_index);
     }
 
@@ -430,7 +429,7 @@ Tail::execute(const ExecContext               &ec,
                              expanded_locations);
   KOSHKIT_PARSE_OPERANDS_OR_HELP(expanded_args, expanded_locations);
 
-  let const options = tail_options::parse(cxt.scratch_allocator());
+  let const options = TailOptions::parse(cxt.scratch_allocator());
 
   if (!options.is_following && options.origin == count_origin::FromEnd &&
       options.count == 0)
@@ -463,7 +462,7 @@ Tail::execute(const ExecContext               &ec,
     if (sources[source_index] == "-") continue;
     metadata_source_indices.push(source_index);
     metadata_batch.add(
-        os::batch_operation::stat(paths[source_index], statuses[source_index]));
+        os::BatchOperation::stat(paths[source_index], statuses[source_index]));
   }
 
   if (metadata_batch.count() != 0) {
@@ -523,8 +522,8 @@ Tail::execute(const ExecContext               &ec,
                                            : sources[source_index];
     header += " <==";
     append_report_text(output, header.view(),
-                       colors::color_style{colors::color::BoldCyan,
-                                           colors::color_variant::Soft},
+                       colors::ColorStyle{colors::color::BoldCyan,
+                                          colors::color_variant::Soft},
                        should_color);
     output += '\n';
   };
@@ -657,8 +656,8 @@ Tail::execute(const ExecContext               &ec,
 
       read_batch.clear();
       read_results.clear();
-      read_batch.add(os::batch_operation::read(state.descriptor, block.begin(),
-                                               block_byte_count, offset));
+      read_batch.add(os::BatchOperation::read(state.descriptor, block.begin(),
+                                              block_byte_count, offset));
       read_batch.execute(read_results);
       if (os::INTERRUPT_REQUESTED) return 0;
 

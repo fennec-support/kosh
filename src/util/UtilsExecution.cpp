@@ -424,7 +424,7 @@ record_stopped_foreground_job(EvalContext                  &cxt,
   let  id    = table.register_pipeline_job(remaining, remaining.back(), command,
                                            process_group_id);
 
-  table.jobs().back().state          = job::State::Stopped;
+  table.jobs().back().state          = Job::State::Stopped;
   table.jobs().back().stopped_status = status;
   table.notify_stopped_job(id);
 }
@@ -663,7 +663,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
   let unresolved_stages = ArrayList<usize>{heap_allocator()};
 
   usize stage_index = 0;
-  let   bootstrap   = os::subshell_bootstrap{};
+  let   bootstrap   = os::SubshellBootstrap{};
 
   for (ExecContext &ec : ecs) {
     Maybe<os::pipe_ends> pipe;
@@ -759,21 +759,21 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
         const usize utility_index = ec.program() == "koshkit" ? 1 : 0;
         bool        should_restore_environment = false;
 
-        if (ec.builtin_kind() == Builtin::Kind::Koshkit &&
+        if (ec.builtin_kind() == builtin::Kind::Koshkit &&
             utility_index < ec.args().count())
         {
           let const utility_kind =
               koshkit::find_util(ec.args()[utility_index].view());
 
           if (utility_kind.has_value()) {
-            if (!is_async && *utility_kind == koshkit::Utility::Kind::Timeout) {
+            if (!is_async && *utility_kind == koshkit::utility::Kind::Timeout) {
               preflight_status = koshkit::preflight_timeout_stage(
                   ec, cxt, utility_index, preflight_location,
                   preflight_message);
             }
 
             should_restore_environment =
-                *utility_kind == koshkit::Utility::Kind::Env;
+                *utility_kind == koshkit::utility::Kind::Env;
           }
         }
 
@@ -811,7 +811,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
             }
           }
 
-          if (ec.builtin_kind() == Builtin::Kind::Koshkit &&
+          if (ec.builtin_kind() == builtin::Kind::Koshkit &&
               ec.program() != "koshkit" &&
               !cxt.runtime_state().option_is_enabled(
                   shell_option_id::Restricted))

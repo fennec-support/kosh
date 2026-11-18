@@ -62,14 +62,14 @@ enum class option_origin : u8
   Startup,
 };
 
-struct option_text
+struct OptionText
 {
   const char *data{nullptr};
   usize       length{0};
 
-  constexpr option_text() = default;
+  constexpr OptionText() = default;
   template <usize Count>
-  consteval option_text(const char (&text)[Count])
+  consteval OptionText(const char (&text)[Count])
       : data(text), length(Count - 1)
   {}
 
@@ -88,18 +88,18 @@ struct option_text
 
 struct option_enum_values
 {
-  const option_text *names{nullptr};
-  u8                 name_count{0};
+  const OptionText *names{nullptr};
+  u8                name_count{0};
 };
 
-struct option_descriptor
+struct OptionDescriptor
 {
-  option_text        koshconf_name;
-  option_text        set_name;
-  option_text        shopt_name;
-  option_text        variable_name;
-  option_text        help;
-  option_text        default_text;
+  OptionText         koshconf_name;
+  OptionText         set_name;
+  OptionText         shopt_name;
+  OptionText         variable_name;
+  OptionText         help;
+  OptionText         default_text;
   option_enum_values enum_values;
   u16                id;
   option_type        type;
@@ -137,78 +137,77 @@ struct option_descriptor
   }
 };
 
-struct option_registry_view
+struct OptionRegistryView
 {
-  const option_descriptor *entries;
-  usize                    entry_count;
+  const OptionDescriptor *entries;
+  usize                   entry_count;
 
   pure fn
-  begin() const wontthrow -> const option_descriptor *
+  begin() const wontthrow -> const OptionDescriptor *
   {
     return entries;
   }
 
   pure fn
-  end() const wontthrow -> const option_descriptor *
+  end() const wontthrow -> const OptionDescriptor *
   {
     return entries + entry_count;
   }
 };
 
 pure fn
-get_option_registry() wontthrow -> option_registry_view;
+get_option_registry() wontthrow -> OptionRegistryView;
 pure fn
-find_option_by_id(u16 id) wontthrow -> const option_descriptor *;
+find_option_by_id(u16 id) wontthrow -> const OptionDescriptor *;
 
 fn
 find_option_by_koshconf_name(StringView name) wontthrow
-    -> const option_descriptor *;
+    -> const OptionDescriptor *;
 fn
-get_legacy_koshconf_alias(const option_descriptor &option) throws
+get_legacy_koshconf_alias(const OptionDescriptor &option) throws
     -> Maybe<String>;
 fn
-find_option_by_set_name(StringView name) wontthrow -> const option_descriptor *;
+find_option_by_set_name(StringView name) wontthrow -> const OptionDescriptor *;
 fn
 find_option_by_shopt_name(StringView name)
-    wontthrow -> const option_descriptor *;
+    wontthrow -> const OptionDescriptor *;
 
 pure fn
-find_option_by_letter(char letter) wontthrow -> const option_descriptor *;
+find_option_by_letter(char letter) wontthrow -> const OptionDescriptor *;
 pure fn
-get_set_listing_order() wontthrow -> option_registry_view;
+get_set_listing_order() wontthrow -> OptionRegistryView;
 pure fn
 get_shell_flag_letter_order() wontthrow -> StringView;
 
 fn
-option_is_available(const EvalContext       &cxt,
-                    const option_descriptor &option) wontthrow -> bool;
+option_is_available(const EvalContext      &cxt,
+                    const OptionDescriptor &option) wontthrow -> bool;
 fn
-read_option_number(const EvalContext       &cxt,
-                   const option_descriptor &option) throws -> u32;
+read_option_number(const EvalContext      &cxt,
+                   const OptionDescriptor &option) throws -> u32;
 fn
-read_option_text(const EvalContext       &cxt,
-                 const option_descriptor &option) throws -> String;
+read_option_text(const EvalContext      &cxt,
+                 const OptionDescriptor &option) throws -> String;
 
 fn
-format_option_number(const option_descriptor &option, u32 value) throws
+format_option_number(const OptionDescriptor &option, u32 value) throws
     -> String;
 fn
-parse_option_number(const option_descriptor &option,
-                    StringView               text) throws -> Maybe<u32>;
+parse_option_number(const OptionDescriptor &option,
+                    StringView              text) throws -> Maybe<u32>;
 fn
-describe_option_values(const option_descriptor &option) throws
-    -> String;
+describe_option_values(const OptionDescriptor &option) throws -> String;
 
 fn
-write_option_number(EvalContext             &cxt,
-                    const option_descriptor &option,
-                    u32                      value,
-                    option_origin            origin) throws -> void;
+write_option_number(EvalContext            &cxt,
+                    const OptionDescriptor &option,
+                    u32                     value,
+                    option_origin           origin) throws -> void;
 fn
-write_option_text(EvalContext             &cxt,
-                  const option_descriptor &option,
-                  StringView               text,
-                  option_origin            origin) throws -> void;
+write_option_text(EvalContext            &cxt,
+                  const OptionDescriptor &option,
+                  StringView              text,
+                  option_origin           origin) throws -> void;
 fn
 step_warning_level(EvalContext &cxt, bool should_raise) throws -> void;
 

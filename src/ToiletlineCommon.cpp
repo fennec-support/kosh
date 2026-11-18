@@ -1155,27 +1155,27 @@ get_default_prompt_template() -> String
 
   if (should_use_color) {
     template_string += R"(${KOSH_GIT_BRANCH:+)";
-    template_string += colors::color_to_sv(colors::color_style{
+    template_string += colors::color_to_sv(colors::ColorStyle{
         colors::color::Blue, colors::color_variant::PromptSoft});
     template_string += R"($KOSH_GIT_BRANCH)";
     template_string += colors::color_to_sv(colors::color::Reset);
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_AHEAD:+ )";
-    template_string += colors::color_to_sv(colors::color_style{
+    template_string += colors::color_to_sv(colors::ColorStyle{
         colors::color::BoldYellow, colors::color_variant::PromptSoft});
     template_string += "\xe2\x86\x91";
     template_string += R"($KOSH_GIT_AHEAD)";
     template_string += colors::color_to_sv(colors::color::Reset);
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_BEHIND:+ )";
-    template_string += colors::color_to_sv(colors::color_style{
+    template_string += colors::color_to_sv(colors::ColorStyle{
         colors::color::BoldYellow, colors::color_variant::PromptSoft});
     template_string += "\xe2\x86\x93";
     template_string += R"($KOSH_GIT_BEHIND)";
     template_string += colors::color_to_sv(colors::color::Reset);
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_BRANCH:+ at }\u@\k )";
-    template_string += colors::color_to_sv(colors::color_style{
+    template_string += colors::color_to_sv(colors::ColorStyle{
         colors::color::Green, colors::color_variant::PromptSoft});
     template_string += R"(\P)";
     template_string += colors::color_to_sv(colors::color::Reset);

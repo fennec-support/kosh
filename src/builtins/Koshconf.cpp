@@ -125,7 +125,7 @@ fn
 find_named_option(const ExecContext       &ec,
                   EvalContext             &cxt,
                   const koshconf_operands &operands,
-                  usize                    index) throws -> const option_descriptor *
+                  usize                    index) throws -> const OptionDescriptor *
 {
   let const *option = find_option_by_koshconf_name(operands.values[index]);
 
@@ -397,8 +397,8 @@ run_list(const ExecContext       &ec,
     return report_usage(ec, cxt, operands.locations[2],
                         "The list form takes no operand");
 
-  let listed   = ArrayList<const option_descriptor *>{cxt.scratch_allocator()};
-  let set_only = ArrayList<const option_descriptor *>{cxt.scratch_allocator()};
+  let listed   = ArrayList<const OptionDescriptor *>{cxt.scratch_allocator()};
+  let set_only = ArrayList<const OptionDescriptor *>{cxt.scratch_allocator()};
 
   for (let const &option : get_option_registry()) {
     if (option.is_set_alias)
@@ -408,7 +408,7 @@ run_list(const ExecContext       &ec,
   }
 
   let const sorted = steal(listed).make_sorted(
-      [](const option_descriptor *left, const option_descriptor *right) {
+      [](const OptionDescriptor *left, const OptionDescriptor *right) {
         return StringView{left->koshconf_name} <
                StringView{right->koshconf_name};
       });

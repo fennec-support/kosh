@@ -187,13 +187,13 @@ CompoundList::write_ast(AstWriter &out) const throws -> void
 }
 
 hot fn
-CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result
+CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> StatusResult
 {
   ASSERT(m_nodes.count() > 0);
 
   static const i32 NOTHING_WAS_EXECUTED = -256;
 
-  status_result ret{NOTHING_WAS_EXECUTED, 0};
+  StatusResult ret{NOTHING_WAS_EXECUTED, 0};
 
   let const was_terminal_exec_allowed =
       cxt.execution_store().is_terminal_exec_allowed();
@@ -306,7 +306,7 @@ CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const t
         is_async_node && cxt.runtime_state().get_mood() != mimic_mood::Default;
 
     let const do_finish_error =
-        [&](const ErrorBase &error) throws -> status_result {
+        [&](const ErrorBase &error) throws -> StatusResult {
       if (error.is_line_discarding() && !is_async_node) {
         if (!is_line_discard_root(cxt, error, this)) throw;
         did_discard_line = true;
@@ -322,7 +322,7 @@ CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const t
               0};
     };
 
-    let const do_run_node = [&]() throws -> status_result {
+    let const do_run_node = [&]() throws -> StatusResult {
       if (should_ignore_errexit) cxt.execution_store().condition_depth()++;
       defer {
         if (should_ignore_errexit) cxt.execution_store().condition_depth()--;
@@ -542,7 +542,7 @@ CompoundListCondition::write_ast(AstWriter &out) const throws -> void
 
 hot fn
 CompoundListCondition::evaluate_impl(EvalContext &cxt,
-                                     root_evaluation_mode mode) const throws -> status_result
+                                     root_evaluation_mode mode) const throws -> StatusResult
 {
   ASSERT(m_cmd != nullptr);
   cxt.evaluation_metrics_store().begin_command_evaluation();
@@ -721,7 +721,7 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   let            pending_pipe           = Maybe<os::pipe_ends>{};
   let            parent_stage_status    = Maybe<i32>{};
   bool           was_pipeline_abandoned = false;
-  let            bootstrap              = os::subshell_bootstrap{};
+  let            bootstrap              = os::SubshellBootstrap{};
   let const      child_evaluator = cxt.make_child_evaluator_state(bootstrap);
   /* bash runs the last stage in the shell only without job control
      (Bash manual, shopt lastpipe). the Monitor test matches
@@ -1038,7 +1038,7 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
            O(args) per stage for expansion. one execute_contexts_with_pipes()
            call runs the stages. */
 hot fn
-Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
+Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> StatusResult
 {
   ASSERT(m_commands.count() > 1);
 

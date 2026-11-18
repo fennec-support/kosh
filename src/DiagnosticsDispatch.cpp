@@ -35,8 +35,8 @@ constexpr u32 VALUE_NAME_READER_GROUPS =
 constexpr u32 VALUE_NAME_NEUTRAL_GROUPS =
     COMMAND_GROUP_NAME_AS_VALUE | COMMAND_GROUP_ENVIRONMENT_NEUTRAL;
 
-constexpr static_string_entry<analysis_command_info>
-    ANALYSIS_COMMAND_ENTRIES[] = {
+constexpr static_string_entry<AnalysisCommandInfo> ANALYSIS_COMMAND_ENTRIES[] =
+    {
         C(".", Dot, COMMAND_GROUP_RUNTIME_DEFINER),
         C(":", Colon, COMMAND_GROUP_ENVIRONMENT_NEUTRAL),
         C("[",
@@ -132,11 +132,9 @@ constexpr StaticStringMap ANALYSIS_COMMANDS{ANALYSIS_COMMAND_ENTRIES};
 } /* namespace */
 
 fn
-get_analysis_command_info(StringView name) throws
-    -> analysis_command_info
+get_analysis_command_info(StringView name) throws -> AnalysisCommandInfo
 {
-  return ANALYSIS_COMMANDS.find(name).value_or(
-      analysis_command_info::unknown());
+  return ANALYSIS_COMMANDS.find(name).value_or(AnalysisCommandInfo::unknown());
 }
 
 } /* namespace koshka */

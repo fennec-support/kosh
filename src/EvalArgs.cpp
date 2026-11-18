@@ -711,7 +711,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
      word leaves out unchanged. */
   let const do_append_subscript_segments =
       [&](StringView head, StringView subscript, Word &out,
-          Maybe<BumpArena::Mark> &mark) throws -> bool {
+          Maybe<BumpArena::arena_mark> &mark) throws -> bool {
     let const do_push_unquoted = [&](StringView text) throws -> void {
       out.segments.push(WordSegment{
           WordSegment::Kind::UnquotedText,
@@ -773,7 +773,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
     try {
       let         fallback_word    = Maybe<Word>{};
       const Word *word             = nullptr;
-      let         parse_arena_mark = Maybe<BumpArena::Mark>{};
+      let         parse_arena_mark = Maybe<BumpArena::arena_mark>{};
 
       defer {
         if (parse_arena_mark.has_value())
@@ -1018,7 +1018,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
               if (reference != nullptr) {
                 if (has_multi_field_marker ||
                     reference->has_route(
-                        parameter_reference::ROUTE_FIELD_MARKER))
+                        ParameterReference::ROUTE_FIELD_MARKER))
                 {
                   is_single_field = false;
                 }
@@ -1053,7 +1053,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
                 let const *reference = segment.get_parameter_reference();
                 let const  is_plain_name =
                     reference != nullptr
-                         ? reference->kind == parameter_reference::Form::Name
+                         ? reference->kind == ParameterReference::Form::Name
                          : lexer::word_is_variable_name(spec);
 
                 if (is_plain_name)
@@ -1089,7 +1089,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         }
 
         if (!did_take_fast_path) {
-          for (glob_field &field : expand_word(expandable)) {
+          for (GlobField &field : expand_word(expandable)) {
             if (runtime_state().no_glob() ||
                 !first_active_glob(field.text.view(), field.glob_active,
                                    get_extglob_mode())

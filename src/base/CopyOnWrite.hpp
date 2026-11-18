@@ -139,8 +139,8 @@ public:
     m_shared = created;
   }
 
-  /* memory: when the value is shared, create() allocates a Shared from
-             m_allocator. the old Shared loses this holder's reference and
+  /* memory: when the value is shared, create() allocates a shared from
+             m_allocator. the old shared loses this holder's reference and
              stays alive for the other holders.
      time:   O(1) when the value is not shared. when it is shared, one
              clone_value() call copies T. */
@@ -161,18 +161,18 @@ public:
   }
 
 private:
-  struct Shared
+  struct shared
   {
     u32 reference_count;
     T   value;
   };
 
   static fn
-  create(Allocator allocator, T value) throws -> Shared *
+  create(Allocator allocator, T value) throws -> shared *
   {
-    let *const storage = allocator.alloc_array<Shared>(1);
+    let *const storage = allocator.alloc_array<shared>(1);
 
-    return new (storage) Shared{1, steal(value)};
+    return new (storage) shared{1, steal(value)};
   }
 
   fn
@@ -181,7 +181,7 @@ private:
     if (m_shared == nullptr) return;
 
     if (--m_shared->reference_count == 0) {
-      m_shared->~Shared();
+      m_shared->~shared();
       m_allocator.free_array(m_shared, 1);
     }
 
@@ -189,7 +189,7 @@ private:
   }
 
   Allocator m_allocator;
-  Shared   *m_shared;
+  shared   *m_shared;
 };
 
 } /* namespace koshka */

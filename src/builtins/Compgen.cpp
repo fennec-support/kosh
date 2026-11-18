@@ -71,9 +71,9 @@ REGISTER_BUILTIN_FLAGS(Compgen);
 
 namespace koshka {
 
-struct compgen_filter
+struct CompgenFilter
 {
-  explicit compgen_filter(Allocator allocator)
+  explicit CompgenFilter(Allocator allocator)
       : pattern(allocator), active(allocator)
   {}
 
@@ -89,9 +89,9 @@ compile_filter(StringView   raw_filter,
                StringView   word,
                Allocator    allocator,
                extglob_mode extglob,
-               glob_charset charset) throws -> compgen_filter
+               glob_charset charset) throws -> CompgenFilter
 {
-  let compiled = compgen_filter{allocator};
+  let compiled = CompgenFilter{allocator};
 
   compiled.extglob = extglob;
   compiled.charset = charset;
@@ -138,8 +138,8 @@ compile_filter(StringView   raw_filter,
 }
 
 static fn
-candidate_is_excluded(StringView            candidate,
-                      const compgen_filter &filter) throws -> bool
+candidate_is_excluded(StringView           candidate,
+                      const CompgenFilter &filter) throws -> bool
 {
   let const matches =
       utils::glob_matches(filter.pattern.view(), candidate, filter.active, 0,
@@ -154,12 +154,12 @@ enum class compgen_sink_mode : u8
   Collect,
 };
 
-struct compgen_sink
+struct CompgenSink
 {
-  compgen_sink(Allocator         text_allocator,
-               compgen_sink_mode mode,
-               StringView        prefix,
-               StringView        suffix)
+  CompgenSink(Allocator         text_allocator,
+              compgen_sink_mode mode,
+              StringView        prefix,
+              StringView        suffix)
       : text(text_allocator), values(heap_allocator()), mode(mode),
         prefix(prefix), suffix(suffix)
   {}
@@ -197,11 +197,11 @@ struct compgen_sink
   bool              has_any_matched{false};
 };
 
-struct compgen_emitter
+struct CompgenEmitter
 {
-  compgen_sink                &sink;
-  StringView                   word;
-  const Maybe<compgen_filter> &filter;
+  CompgenSink                &sink;
+  StringView                  word;
+  const Maybe<CompgenFilter> &filter;
 
   fn
   push_filtered(StringView candidate) throws -> void
@@ -229,7 +229,7 @@ enum class table_field_mode : u8
 };
 
 static fn
-push_table_file_names(compgen_emitter &emitter,
+push_table_file_names(CompgenEmitter  &emitter,
                       StringView       path,
                       table_field_mode mode,
                       Allocator        allocator) throws -> void
@@ -278,9 +278,9 @@ push_table_file_names(compgen_emitter &emitter,
 }
 
 static fn
-run_compgen_actions(EvalContext     &cxt,
-                    u32              action_mask,
-                    compgen_emitter &emitter) throws -> void
+run_compgen_actions(EvalContext    &cxt,
+                    u32             action_mask,
+                    CompgenEmitter &emitter) throws -> void
 {
   let const do_wants = [&](compgen_action action) wontthrow -> bool {
     return (action_mask & compgen_action_bit(action)) != 0;
@@ -417,9 +417,9 @@ run_compgen_actions(EvalContext     &cxt,
     for (let const &entry : cxt.job_table_store().jobs()) {
       let const is_wanted = do_wants(compgen_action::Job) ||
                             (do_wants(compgen_action::Running) &&
-                             entry.state == job::State::Running) ||
+                             entry.state == Job::State::Running) ||
                             (do_wants(compgen_action::Stopped) &&
-                             entry.state == job::State::Stopped);
+                             entry.state == Job::State::Stopped);
 
       if (!is_wanted) continue;
 
@@ -491,7 +491,7 @@ static fn
 run_compgen_generators(EvalContext      &cxt,
                        u32               action_mask,
                        Maybe<StringView> glob_pattern,
-                       compgen_emitter  &emitter) throws -> void
+                       CompgenEmitter   &emitter) throws -> void
 {
   if (action_mask != 0) {
     LOG(Debug, "compgen collecting actions 0x%x for prefix '%.*s'", action_mask,
@@ -525,11 +525,11 @@ completion::collect_compgen_candidates(EvalContext      &context,
     context.expansion_store().scratch_arena().release(scratch);
   };
 
-  let const no_filter = Maybe<compgen_filter>{None};
+  let const no_filter = Maybe<CompgenFilter>{None};
   let       sink =
-      compgen_sink{context.scratch_allocator(), compgen_sink_mode::Collect,
-                   StringView{}, StringView{}};
-  let emitter = compgen_emitter{sink, word, no_filter};
+      CompgenSink{context.scratch_allocator(), compgen_sink_mode::Collect,
+                  StringView{}, StringView{}};
+  let emitter = CompgenEmitter{sink, word, no_filter};
 
   run_compgen_generators(context, action_mask, glob_pattern, emitter);
 
@@ -647,7 +647,7 @@ Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.expansion_store().scratch_arena().release(scratch);
   };
 
-  Maybe<compgen_filter> filter = None;
+  Maybe<CompgenFilter> filter = None;
 
   if (filter_pattern.has_value()) {
     filter = compile_filter(*filter_pattern, word, cxt.scratch_allocator(),
@@ -660,8 +660,8 @@ Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       FLAG_COMPGEN_SUFFIX.is_set() ? FLAG_COMPGEN_SUFFIX.value() : StringView{};
   let const sink_mode = variable_name.has_value() ? compgen_sink_mode::Collect
                                                   : compgen_sink_mode::Print;
-  let sink = compgen_sink{cxt.scratch_allocator(), sink_mode, prefix, suffix};
-  let emitter = compgen_emitter{sink, word, filter};
+  let sink    = CompgenSink{cxt.scratch_allocator(), sink_mode, prefix, suffix};
+  let emitter = CompgenEmitter{sink, word, filter};
 
   run_compgen_generators(cxt, action_mask, glob_pattern, emitter);
 

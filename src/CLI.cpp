@@ -1838,10 +1838,10 @@ get_tree_connector(bool is_last) wontthrow -> tree_connector
 }
 
 fn
-append_report_text(String             &output,
-                   StringView          text,
-                   colors::color_style style,
-                   bool                should_color) throws -> void
+append_report_text(String            &output,
+                   StringView         text,
+                   colors::ColorStyle style,
+                   bool               should_color) throws -> void
 {
   if (text.is_empty()) return;
 
@@ -1855,7 +1855,7 @@ append_report_text(String             &output,
 fn
 ReportTable::add_column(StringView             heading,
                         report_table_alignment alignment,
-                        colors::color_style    style) throws -> void
+                        colors::ColorStyle     style) throws -> void
 {
   m_columns.push({
       String{m_columns.allocator(), heading},
@@ -1868,9 +1868,9 @@ ReportTable::add_heading(StringView             heading,
                          report_table_alignment alignment) throws
     -> void
 {
-  add_column(heading, alignment,
-             colors::color_style{colors::color::BoldCyan,
-                                 colors::color_variant::Soft});
+  add_column(
+      heading, alignment,
+      colors::ColorStyle{colors::color::BoldCyan, colors::color_variant::Soft});
 }
 
 fn
@@ -1891,10 +1891,9 @@ ReportTable::add_row(const ArrayList<report_table_cell_view> &cells)
 }
 
 fn
-ReportTable::add_field_row(StringView          name,
-                           StringView          value,
-                           colors::color_style name_style) throws
-    -> void
+ReportTable::add_field_row(StringView         name,
+                           StringView         value,
+                           colors::ColorStyle name_style) throws -> void
 {
   let row = ArrayList<report_table_cell>{m_grid_rows.allocator()};
 
@@ -1964,7 +1963,7 @@ append_report_grid(String                                        &output,
           let const text =
               index < row.count() ? row[index].text.view() : StringView{};
           let style = index < columns.count() ? columns[index].style
-                                              : colors::color_style{};
+                                              : colors::ColorStyle{};
 
           if (index < row.count() &&
               row[index].style.value != colors::color::None)
@@ -2046,7 +2045,7 @@ append_titled_report_table(String            &output,
 
   append_report_text(
       output, title,
-      colors::color_style{colors::color::BoldBlue, colors::color_variant::Soft},
+      colors::ColorStyle{colors::color::BoldBlue, colors::color_variant::Soft},
       should_color);
   output += '\n';
   output += body.view();
@@ -2081,7 +2080,7 @@ append_report_name_section(String                      &output,
   output += indentation;
   append_report_text(
       output, title,
-      colors::color_style{colors::color::BoldBlue, colors::color_variant::Soft},
+      colors::ColorStyle{colors::color::BoldBlue, colors::color_variant::Soft},
       should_color);
   output += '\n';
 
@@ -2132,15 +2131,15 @@ format_cli_help(StringView text, bool should_color) throws -> String
 
     if (is_heading) {
       append_report_text(output, line,
-                         colors::color_style{colors::color::BoldBlue,
-                                             colors::color_variant::Soft},
+                         colors::ColorStyle{colors::color::BoldBlue,
+                                            colors::color_variant::Soft},
                          true);
       is_synopsis = line == "SYNOPSIS";
     } else if (is_synopsis) {
-      append_report_text(output, line,
-                         colors::color_style{colors::color::Green,
-                                             colors::color_variant::Soft},
-                         true);
+      append_report_text(
+          output, line,
+          colors::ColorStyle{colors::color::Green, colors::color_variant::Soft},
+          true);
     } else {
       output += line;
     }

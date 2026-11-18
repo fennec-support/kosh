@@ -106,7 +106,7 @@ struct tr_run
   usize element_index;
 };
 
-struct tr_set
+struct TrSet
 {
   ArrayList<tr_element> elements;
   ArrayList<tr_run>     runs;
@@ -367,7 +367,7 @@ parse_tr_set(StringView             set,
 }
 
 static fn
-expand_tr_set(tr_set &set) throws -> void
+expand_tr_set(TrSet &set) throws -> void
 {
   set.clear_runs();
 
@@ -407,23 +407,21 @@ struct tr_cursor
    [:lower:] class starts in set1. the two sets are walked one byte at a
    time, and a pair of case classes is passed over as one step. */
 static pure fn
-are_case_classes_aligned(const tr_set &set1, const tr_set &set2)
-    wontthrow -> bool
+are_case_classes_aligned(const TrSet &set1, const TrSet &set2) wontthrow -> bool
 {
-  let const do_is_at_end = [](const tr_set    &set,
+  let const do_is_at_end = [](const TrSet     &set,
                               const tr_cursor &cursor) wontthrow -> bool {
     return cursor.run_index >= set.runs.count();
   };
   let const do_get_case =
-      [&](const tr_set &set, const tr_cursor &cursor)
+      [&](const TrSet &set, const tr_cursor &cursor)
           wontthrow -> tr_case_class {
     return do_is_at_end(set, cursor)
                ? tr_case_class::None
                : set.elements[set.runs[cursor.run_index].element_index]
                      .case_class;
   };
-  let const do_skip_element = [&](const tr_set &set,
-                                  tr_cursor    &cursor) wontthrow {
+  let const do_skip_element = [&](const TrSet &set, tr_cursor &cursor) wontthrow {
     if (do_is_at_end(set, cursor)) return;
 
     let const index = set.runs[cursor.run_index].element_index;
@@ -435,7 +433,7 @@ are_case_classes_aligned(const tr_set &set1, const tr_set &set2)
     }
     cursor.offset = 0;
   };
-  let const do_is_element_start = [&](const tr_set    &set,
+  let const do_is_element_start = [&](const TrSet     &set,
                                       const tr_cursor &cursor)
                                       wontthrow -> bool {
     return do_is_at_end(set, cursor) ||
@@ -444,13 +442,13 @@ are_case_classes_aligned(const tr_set &set1, const tr_set &set2)
              set.runs[cursor.run_index].element_index !=
                  set.runs[cursor.run_index - 1].element_index));
   };
-  let const do_remaining = [&](const tr_set    &set,
+  let const do_remaining = [&](const TrSet     &set,
                                const tr_cursor &cursor) wontthrow -> usize {
     return do_is_at_end(set, cursor)
                ? 1
                : set.runs[cursor.run_index].copy_count - cursor.offset;
   };
-  let const do_advance = [&](const tr_set &set, tr_cursor &cursor,
+  let const do_advance = [&](const TrSet &set, tr_cursor &cursor,
                              usize step_count) wontthrow {
     if (do_is_at_end(set, cursor)) return;
 
@@ -562,9 +560,9 @@ Tr::execute(const ExecContext               &ec,
   let const allocator      = cxt.scratch_allocator();
   let const is_translating = operands.count() == 2 && !is_deleting;
   let       set1 =
-      tr_set{ArrayList<tr_element>{allocator}, ArrayList<tr_run>{allocator}};
+      TrSet{ArrayList<tr_element>{allocator}, ArrayList<tr_run>{allocator}};
   let set2 =
-      tr_set{ArrayList<tr_element>{allocator}, ArrayList<tr_run>{allocator}};
+      TrSet{ArrayList<tr_element>{allocator}, ArrayList<tr_run>{allocator}};
 
   for (usize index = 0; index < operands.count(); index++) {
     let const error =

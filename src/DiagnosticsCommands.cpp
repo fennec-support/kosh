@@ -114,8 +114,8 @@ check_trap_condition_operands(AnalysisContext                &actx,
 } /* namespace */
 
 fn
-check_command_name_lints(AnalysisContext          &actx,
-                         const command_lint_input &input) throws -> void
+check_command_name_lints(AnalysisContext        &actx,
+                         const CommandLintInput &input) throws -> void
 {
   let const &args     = input.args;
   let const  location = input.command_location();
@@ -462,9 +462,8 @@ check_command_name_lints(AnalysisContext          &actx,
 }
 
 fn
-check_command_value_lints(AnalysisContext          &actx,
-                          const command_lint_input &input) throws
-    -> void
+check_command_value_lints(AnalysisContext        &actx,
+                          const CommandLintInput &input) throws -> void
 {
   if (input.is_command_shadowed) return;
 

@@ -123,12 +123,12 @@ EvalContext::first_field_separator() const throws -> StringView
            Directories mode, one batched stat() call covers each matching entry
            of kind Symlink or Unknown. */
 fn
-EvalContext::expand_path_once(const glob_field   &field,
+EvalContext::expand_path_once(const GlobField    &field,
                               glob_expansion_mode expansion_mode) throws
-    -> ArrayList<glob_field>
+    -> ArrayList<GlobField>
 {
   let const scratch  = scratch_allocator();
-  let       expanded = ArrayList<glob_field>{scratch};
+  let       expanded = ArrayList<GlobField>{scratch};
 
   let const path = field.text.view();
 
@@ -164,7 +164,7 @@ EvalContext::expand_path_once(const glob_field   &field,
   }
 
   if (!has_glob) {
-    let literal_field = glob_field{scratch};
+    let literal_field = GlobField{scratch};
     literal_field.text.append(field.text.view());
     literal_field.glob_active = field.glob_active;
     expanded.push(steal(literal_field));
@@ -242,7 +242,7 @@ EvalContext::expand_path_once(const glob_field   &field,
   let const do_append_entry = [&](StringView filename) throws -> void {
     evaluation_metrics_store().add_expansion(runtime_state().stats_enabled());
 
-    let result_field = glob_field{scratch};
+    let result_field = GlobField{scratch};
 
     result_field.text.append(typed_prefix);
     result_field.text.append(filename);
@@ -296,8 +296,8 @@ EvalContext::expand_path_once(const glob_field   &field,
   directory_batch.reserve(uncertain_paths.count());
 
   for (usize index = 0; index < uncertain_paths.count(); index++)
-    directory_batch.add(os::batch_operation::stat(uncertain_paths[index],
-                                                  uncertain_statuses[index]));
+    directory_batch.add(os::BatchOperation::stat(uncertain_paths[index],
+                                                 uncertain_statuses[index]));
 
   let const directory_results = directory_batch.execute();
 
@@ -461,8 +461,8 @@ collect_globstar_paths(const Path        &dir,
   for (usize index = 0; index < uncertain_paths.count(); index++)
     if ((*entries)[uncertain_positions[index]].kind == Path::EntryKind::Unknown)
     {
-      lstat_batch.add(os::batch_operation::lstat(uncertain_paths[index],
-                                                 uncertain_statuses[index]));
+      lstat_batch.add(os::BatchOperation::lstat(uncertain_paths[index],
+                                                uncertain_statuses[index]));
     }
 
   let const lstat_results      = lstat_batch.execute();
@@ -486,8 +486,8 @@ collect_globstar_paths(const Path        &dir,
   stat_batch.reserve(uncertain_paths.count());
 
   for (usize index = 0; index < uncertain_paths.count(); index++)
-    stat_batch.add(os::batch_operation::stat(uncertain_paths[index],
-                                             uncertain_statuses[index]));
+    stat_batch.add(os::BatchOperation::stat(uncertain_paths[index],
+                                            uncertain_statuses[index]));
 
   let const stat_results = stat_batch.execute();
 
@@ -536,11 +536,11 @@ collect_globstar_paths(const Path        &dir,
 } /* namespace */
 
 fn
-EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
-    -> ArrayList<glob_field>
+EvalContext::expand_path_recurse(ArrayList<GlobField> fields) throws
+    -> ArrayList<GlobField>
 {
   let const scratch = scratch_allocator();
-  let       result  = ArrayList<glob_field>{scratch};
+  let       result  = ArrayList<GlobField>{scratch};
 
   let glob_indices = ArrayList<Maybe<usize>>{scratch};
 
@@ -569,7 +569,7 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     literal_batch.reserve(fields.count());
 
     for (usize index = 0; index < fields.count(); index++)
-      literal_batch.add(os::batch_operation::exists(literal_paths[index]));
+      literal_batch.add(os::BatchOperation::exists(literal_paths[index]));
 
     let const literal_results = literal_batch.execute();
 
@@ -670,14 +670,14 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
 
       if (!has_slash_after) {
         if (!prefix.is_empty() && base.is_directory()) {
-          let base_field = glob_field{scratch};
+          let base_field = GlobField{scratch};
 
           base_field.text.append(prefix);
           result.push(steal(base_field));
         }
 
         for (let const &relative : relatives) {
-          let match_field = glob_field{scratch};
+          let match_field = GlobField{scratch};
 
           match_field.text.append(prefix);
           match_field.text.append(relative.view());
@@ -688,10 +688,10 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
       }
 
       let const suffix  = text.substring(*slash_after + 1);
-      let       rebuilt = ArrayList<glob_field>{scratch};
+      let       rebuilt = ArrayList<GlobField>{scratch};
 
       for (let const &relative : relatives) {
-        let candidate = glob_field{scratch};
+        let candidate = GlobField{scratch};
 
         candidate.text.append(prefix);
         if (!relative.view().is_empty()) {
@@ -730,14 +730,14 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
       continue;
     }
 
-    let directory_component = glob_field{scratch};
+    let directory_component = GlobField{scratch};
 
     directory_component.text.append(StringView{text.data, *slash_after});
 
     for (usize k = 0; k < *slash_after; k++)
       directory_component.glob_active.push(field.glob_active[k]);
 
-    let removed_suffix = glob_field{scratch};
+    let removed_suffix = GlobField{scratch};
 
     removed_suffix.text.append(
         StringView{text.data + *slash_after, text.length - *slash_after});
@@ -1025,7 +1025,7 @@ EvalContext::sort_glob_matches(ArrayList<String> &matches) const throws
 }
 
 hot fn
-EvalContext::expand_path(glob_field            field,
+EvalContext::expand_path(GlobField             field,
                          const SourceLocation &location) throws
     -> ArrayList<String>
 {
@@ -1037,7 +1037,7 @@ EvalContext::expand_path(glob_field            field,
 
   let const has_literal_glob = field.has_literal_glob;
 
-  let input = ArrayList<glob_field>{scratch};
+  let input = ArrayList<GlobField>{scratch};
 
   input.push(steal(field));
 
@@ -1137,7 +1137,7 @@ EvalContext::expand_glob_lenient(StringView pattern) throws
   let const scratch = scratch_allocator();
   let       values  = ArrayList<String>{scratch};
 
-  let field = glob_field{scratch};
+  let field = GlobField{scratch};
 
   field.text.append(pattern);
   field.glob_active.reserve(pattern.length);
@@ -1158,7 +1158,7 @@ EvalContext::expand_glob_lenient(StringView pattern) throws
 
   /* at this point: field.glob_active holds an active flag for each byte of
      pattern, and pattern contains an active glob. */
-  let input = ArrayList<glob_field>{scratch};
+  let input = ArrayList<GlobField>{scratch};
 
   input.push(steal(field));
 

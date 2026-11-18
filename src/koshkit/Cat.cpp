@@ -374,7 +374,7 @@ Cat::execute(const ExecContext               &ec,
 
   if (!is_formatted && !should_highlight_output) {
     let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-    let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+    let chunks = ArrayList<SourceBatchReader::chunk>{cxt.scratch_allocator()};
     i32 status = input_status;
 
     loop {
@@ -405,7 +405,7 @@ Cat::execute(const ExecContext               &ec,
   if (is_formatted && !should_highlight_output) {
     let   output = String{cxt.scratch_allocator()};
     let   reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-    let   chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+    let   chunks = ArrayList<SourceBatchReader::chunk>{cxt.scratch_allocator()};
     let   state  = cat_format_state{};
     let   source_state = state;
     usize source_start = 0;

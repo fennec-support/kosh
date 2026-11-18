@@ -349,7 +349,7 @@ environment_names() throws -> ArrayList<String>
   return names;
 }
 
-subshell_bootstrap::subshell_bootstrap(subshell_bootstrap &&other) noexcept
+SubshellBootstrap::SubshellBootstrap(SubshellBootstrap &&other) noexcept
     : payload(steal(other.payload)), source_origin(steal(other.source_origin)),
       processes(steal(other.processes)), source_length(other.source_length),
       evaluation_mode(other.evaluation_mode),
@@ -362,11 +362,11 @@ subshell_bootstrap::subshell_bootstrap(subshell_bootstrap &&other) noexcept
   other.should_use_command_string_status = false;
 }
 
-subshell_bootstrap::~subshell_bootstrap() { close_owned_processes(); }
+SubshellBootstrap::~SubshellBootstrap() { close_owned_processes(); }
 
 fn
-subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
-    -> subshell_bootstrap &
+SubshellBootstrap::operator=(SubshellBootstrap &&other) noexcept
+    -> SubshellBootstrap &
 {
   if (this == &other) return *this;
 
@@ -460,7 +460,7 @@ fn
 ScopedEnvironment::set(StringView key, StringView value) throws -> void
 {
   m_saved.reserve(m_saved.count() + 1);
-  m_saved.push(SavedVariable{
+  m_saved.push(saved_variable{
       String{heap_allocator(), key},
       get_environment_variable(key)
   });
@@ -494,7 +494,7 @@ take_environment_variable(StringView key) throws -> Maybe<String>
 }
 
 fn
-inherited_subshell_state::apply_to(ScopedEnvironment &environment) const throws -> void
+InheritedSubshellState::apply_to(ScopedEnvironment &environment) const throws -> void
 {
   environment.set(internal::PREVIOUS_EXIT_STATUS,
                   String::from(previous_exit_status, heap_allocator()).view());
@@ -508,8 +508,8 @@ inherited_subshell_state::apply_to(ScopedEnvironment &environment) const throws 
 }
 
 fn
-inherited_subshell_state::take_from_environment() throws
-    -> Maybe<inherited_subshell_state>
+InheritedSubshellState::take_from_environment() throws
+    -> Maybe<InheritedSubshellState>
 {
   /* e.g. the four variables hold "2", "0", "1", and "3" for status, process
      id, parent process id, and depth. take_environment_variable() unsets each
@@ -547,7 +547,7 @@ inherited_subshell_state::take_from_environment() throws
   /* at this point: the four variables are unset, process_id is positive, and
      depth fits in usize. */
 
-  return inherited_subshell_state{
+  return InheritedSubshellState{
       .previous_exit_status    = status.value(),
       .shell_process_id        = process_id.value(),
       .shell_parent_process_id = parent_process_id.value(),
@@ -556,7 +556,7 @@ inherited_subshell_state::take_from_environment() throws
 }
 
 fn
-inherited_subshell_state::clear_environment() throws -> void
+InheritedSubshellState::clear_environment() throws -> void
 {
   unset_environment_variable(internal::PREVIOUS_EXIT_STATUS);
   unset_environment_variable(internal::SHELL_PROCESS_ID);
@@ -565,13 +565,13 @@ inherited_subshell_state::clear_environment() throws -> void
 }
 
 fn
-subshell_bootstrap::release_process_ownership() wontthrow -> void
+SubshellBootstrap::release_process_ownership() wontthrow -> void
 {
   is_process_owner = false;
 }
 
 fn
-subshell_bootstrap::close_owned_processes() wontthrow -> void
+SubshellBootstrap::close_owned_processes() wontthrow -> void
 {
   if (!is_process_owner) return;
 
@@ -1056,9 +1056,9 @@ compile_basic_regex(StringView       pattern,
 fn
 execute_regex(compiled_regex                &compiled,
               const regex_execution_options &options) throws
-    -> regex_execution_report
+    -> RegexExecutionReport
 {
-  let       report      = regex_execution_report{options.scratch};
+  let       report      = RegexExecutionReport{options.scratch};
   let const group_count = compiled.re.re_nsub + 1;
   let       matches     = ArrayList<regmatch_t>{options.scratch};
 
@@ -1292,7 +1292,7 @@ shift_crc32c(const crc32c_shift_table &table, u32 crc) wontthrow -> u32
 #define CRC32C_TARGETISA targetisa("sse4.2")
 #endif
 
-struct crc32c_x86_instructions
+struct Crc32cX86Instructions
 {
   using accumulator = u64;
 
@@ -1328,7 +1328,7 @@ is_x86_sse42_available() wontthrow -> bool
 #if K_ARCH_IS K_ARM64
 #define CRC32C_TARGETISA targetisa("+crc")
 
-struct crc32c_arm_instructions
+struct Crc32cArmInstructions
 {
   using accumulator = u32;
 
@@ -1471,12 +1471,12 @@ crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
   static let const has_sse42 = is_x86_sse42_available();
 
   if (has_sse42)
-    return crc32c_update_hardware<crc32c_x86_instructions>(crc, bytes, length);
+    return crc32c_update_hardware<Crc32cX86Instructions>(crc, bytes, length);
 #elif K_ARCH_IS K_ARM64
   static let const has_crc32c = is_aarch64_crc32c_available();
 
   if (has_crc32c)
-    return crc32c_update_hardware<crc32c_arm_instructions>(crc, bytes, length);
+    return crc32c_update_hardware<Crc32cArmInstructions>(crc, bytes, length);
 #endif
 
   return crc32c_update_software(crc, bytes, length);

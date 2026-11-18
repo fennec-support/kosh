@@ -266,7 +266,7 @@ balanced_scan_delimiter_end(StringView source, usize position)
 }
 
 fn
-match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
+match_heredoc_line(StringView line, const PendingHeredoc &heredoc) wontthrow
     -> heredoc_line_match
 {
   usize content_start = 0;
@@ -350,9 +350,9 @@ heredoc_word_joins_lines(StringView word) wontthrow -> bool
    exists. */
 fn
 skip_balanced_scan_heredoc_bodies(
-    StringView                        source,
-    usize                             position,
-    const ArrayList<pending_heredoc> &pending) wontthrow -> usize
+    StringView                       source,
+    usize                            position,
+    const ArrayList<PendingHeredoc> &pending) wontthrow -> usize
 {
   for (let const &heredoc : pending) {
     while (position < source.length) {
@@ -565,12 +565,12 @@ scan_balanced_shell_region(StringView          source,
 
   /* at this point: nesting_depth is at most MAX_SUBSTITUTION_NESTING_DEPTH.
      helper calls can add native stack frames within each nesting level. */
-  let       pending_heredocs    = ArrayList<pending_heredoc>{heap_allocator()};
-  let       case_pattern_depths = ArrayList<usize>{heap_allocator()};
-  usize     depth               = 1;
-  char      quote               = 0;
-  char      previous_byte       = 0;
-  bool      has_seen_case_keyword    = false;
+  let       pending_heredocs      = ArrayList<PendingHeredoc>{heap_allocator()};
+  let       case_pattern_depths   = ArrayList<usize>{heap_allocator()};
+  usize     depth                 = 1;
+  char      quote                 = 0;
+  char      previous_byte         = 0;
+  bool      has_seen_case_keyword = false;
   bool      is_case_pattern_expected = false;
   bool      is_command_position      = true;
   bool      is_ansi_c_quote          = false;
@@ -752,8 +752,8 @@ scan_balanced_shell_region(StringView          source,
 
         if (!delimiter.is_empty()) {
           pending_heredocs.push(
-              pending_heredoc{steal(delimiter), tail.should_strip_tabs,
-                              heredoc_word_joins_lines(delimiter_word)});
+              PendingHeredoc{steal(delimiter), tail.should_strip_tabs,
+                             heredoc_word_joins_lines(delimiter_word)});
         }
 
         previous_byte = source[position - 1];

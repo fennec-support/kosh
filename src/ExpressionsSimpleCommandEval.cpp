@@ -34,7 +34,7 @@ using namespace internal;
 
 static fn
 command_runs_program(const ArrayList<String>    &args,
-                     const Maybe<Builtin::Kind> *literal_builtin,
+                     const Maybe<builtin::Kind> *literal_builtin,
                      const EvalContext          &cxt) throws -> bool
 {
   if (args.is_empty()) return true;
@@ -50,7 +50,7 @@ command_runs_program(const ArrayList<String>    &args,
     return true;
   }
 
-  if (*builtin != Builtin::Kind::CommandBuiltin) return false;
+  if (*builtin != builtin::Kind::CommandBuiltin) return false;
 
   usize operand_index = 1;
 
@@ -71,7 +71,7 @@ command_runs_program(const ArrayList<String>    &args,
 
 hot fn
 SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
-    const throws -> const LiteralCommandLookup *
+    const throws -> const literal_command_lookup *
 {
   if (program_args.is_empty() || !m_literal_command_lookup.has_value() ||
       program_args[0].view() != *get_literal_command_name())
@@ -210,7 +210,7 @@ alias_expanded_source(const SimpleCommand &command,
 
 hot fn
 SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
-    throws -> status_result
+    throws -> StatusResult
 {
   ASSERT(m_args.count() > 0 || !m_redirections.is_empty() ||
          m_local_vars.count() > 0 || !m_array_args.is_empty());
@@ -279,7 +279,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
                    return_handling::Propagate);
 
     /* the list of the alias source already acted on a failure in its body. */
-    let result = status_result{cxt.execution_store().last_exit_status()};
+    let result = StatusResult{cxt.execution_store().last_exit_status()};
 
     result.set(status_flag::ErrResolved);
     result.set(status_flag::ExitCodeReported);
@@ -962,7 +962,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
   let const do_is_source_evaluating_name = [&]() throws -> bool {
     let const kind = cxt.find_enabled_builtin(program_args[0].view());
 
-    return kind == Builtin::Kind::Eval || kind == Builtin::Kind::Source;
+    return kind == builtin::Kind::Eval || kind == builtin::Kind::Source;
   };
 
   let const is_source_evaluating_builtin = has_prefix_assignments &&
@@ -987,8 +987,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       let const wrapper =
           cxt.find_enabled_builtin(program_args[word_index].view());
 
-      if (wrapper != Builtin::Kind::CommandBuiltin &&
-          wrapper != Builtin::Kind::BuiltinBuiltin)
+      if (wrapper != builtin::Kind::CommandBuiltin &&
+          wrapper != builtin::Kind::BuiltinBuiltin)
       {
         break;
       }
@@ -1005,10 +1005,10 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
     if (word_index + 1 >= program_args.count()) return false;
 
     let const kind = cxt.find_enabled_builtin(program_args[word_index].view());
-    let const is_declaration = kind == Builtin::Kind::Declare &&
+    let const is_declaration = kind == builtin::Kind::Declare &&
                                cxt.scope_store().local_scope_depth() == 0;
 
-    if (kind != Builtin::Kind::Export && kind != Builtin::Kind::Readonly &&
+    if (kind != builtin::Kind::Export && kind != builtin::Kind::Readonly &&
         !is_declaration)
     {
       return false;
@@ -1155,7 +1155,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
           let const is_export_command =
               command_word_function == nullptr && !program_args.is_empty() &&
               cxt.find_enabled_builtin(program_args[0].view()) ==
-                  Builtin::Kind::Export;
+                  builtin::Kind::Export;
           let const did_overlay_shell_value =
               command_word_function != nullptr ||
               is_source_evaluating_builtin || is_locale_name ||
@@ -1296,11 +1296,11 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       let const should_swap_state =
           definition_info != nullptr &&
           !(definition_info->defining_state ==
-            definition_state::from(cxt.runtime_state()));
+            DefinitionState::from(cxt.runtime_state()));
       let const definition_scope = DefinitionStateScope{
           cxt,
           should_swap_state ? definition_info->defining_state
-                            : definition_state::from(cxt.runtime_state()),
+                            : DefinitionState::from(cxt.runtime_state()),
           definition_state_exit::PropagateMutations, should_swap_state};
 
       if (cxt.should_run_debug_trap()) {
@@ -1523,7 +1523,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
   let const is_posix_regular_builtin =
       cxt.runtime_state().is_posix_mode() && ec.is_builtin() &&
-      !is_command_special_builtin && ec.builtin_kind() != Builtin::Kind::Local;
+      !is_command_special_builtin && ec.builtin_kind() != builtin::Kind::Local;
   i32 ret = 0;
 
   try {

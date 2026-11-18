@@ -64,7 +64,7 @@ print_progress(const ExecContext     &ec,
   if (is_terminal) output += CLEAR_PROGRESS_LINE;
   append_report_text(
       output, "goodcore: ",
-      colors::color_style{colors::color::BoldCyan, colors::color_variant::Soft},
+      colors::ColorStyle{colors::color::BoldCyan, colors::color_variant::Soft},
       should_color);
   append_report_text(output, message, colors::color::BoldWhite, should_color);
   if (!is_terminal) output += "\n";
@@ -756,22 +756,22 @@ GoodCore::execute(const ExecContext               &ec,
 
     cells.reserve(2);
     cells.push({
-        "Archive", colors::color_style{colors::color::BoldCyan,
-                                       colors::color_variant::Soft}
+        "Archive", colors::ColorStyle{colors::color::BoldCyan,
+                                      colors::color_variant::Soft}
     });
     cells.push({
-        output.view(), colors::color_style{colors::color::Green,
-                                           colors::color_variant::Soft}
+        output.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     table.add_row(cells);
     cells.clear();
     cells.push({
-        "Executable", colors::color_style{colors::color::BoldCyan,
-                                          colors::color_variant::Soft}
+        "Executable", colors::ColorStyle{colors::color::BoldCyan,
+                                         colors::color_variant::Soft}
     });
     cells.push({
-        binary->view(), colors::color_style{colors::color::Green,
-                                            colors::color_variant::Soft}
+        binary->view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     table.add_row(cells);
     cells.clear();
@@ -779,12 +779,12 @@ GoodCore::execute(const ExecContext               &ec,
     let const file_count = String::from(paths.count(), allocator);
 
     cells.push({
-        "Files", colors::color_style{colors::color::BoldCyan,
-                                     colors::color_variant::Soft}
+        "Files", colors::ColorStyle{colors::color::BoldCyan,
+                                    colors::color_variant::Soft}
     });
     cells.push({
-        file_count.view(), colors::color_style{colors::color::Green,
-                                               colors::color_variant::Soft}
+        file_count.view(),
+        colors::ColorStyle{colors::color::Green, colors::color_variant::Soft}
     });
     table.add_row(cells);
 
