@@ -144,7 +144,7 @@ public:
   hot mustuse fn
   value() wontthrow -> T &
   {
-    GUARANTEE(m_has_value, "access to an empty optional");
+    GUARANTEE(m_has_value, "value() on an empty optional");
 
     return reference();
   }
@@ -152,7 +152,7 @@ public:
   hot mustuse fn
   value() const wontthrow -> const T &
   {
-    GUARANTEE(m_has_value, "access to an empty optional");
+    GUARANTEE(m_has_value, "value() on an empty optional");
 
     return reference();
   }
@@ -184,7 +184,7 @@ public:
   mustuse fn
   take() throws -> T
   {
-    GUARANTEE(m_has_value, "take from an empty optional");
+    GUARANTEE(m_has_value, "take() from an empty optional");
 
     let taken_value = steal(reference());
 
@@ -280,7 +280,7 @@ public:
   hot mustuse fn
   value() wontthrow -> T *
   {
-    GUARANTEE(m_value != nullptr, "access to an empty pointer optional");
+    GUARANTEE(m_value != nullptr, "value() on an empty pointer optional");
 
     return m_value;
   }
@@ -288,7 +288,7 @@ public:
   hot mustuse fn
   value() const wontthrow -> T *
   {
-    GUARANTEE(m_value != nullptr, "access to an empty pointer optional");
+    GUARANTEE(m_value != nullptr, "value() on an empty pointer optional");
 
     return m_value;
   }

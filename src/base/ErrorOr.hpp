@@ -97,7 +97,7 @@ public:
   hot mustuse fn
   value() wontthrow -> T &
   {
-    GUARANTEE(!m_is_error, "value access to an error result");
+    GUARANTEE(!m_is_error, "value() on an error result");
 
     return value_reference();
   }
@@ -105,7 +105,7 @@ public:
   hot mustuse fn
   value() const wontthrow -> const T &
   {
-    GUARANTEE(!m_is_error, "value access to an error result");
+    GUARANTEE(!m_is_error, "value() on an error result");
 
     return value_reference();
   }
@@ -113,7 +113,7 @@ public:
   mustuse fn
   error() wontthrow -> Error &
   {
-    GUARANTEE(m_is_error, "error access to a successful result");
+    GUARANTEE(m_is_error, "error() on a successful result");
 
     return error_reference();
   }
@@ -121,7 +121,7 @@ public:
   mustuse fn
   error() const wontthrow -> const Error &
   {
-    GUARANTEE(m_is_error, "error access to a successful result");
+    GUARANTEE(m_is_error, "error() on a successful result");
 
     return error_reference();
   }
@@ -129,7 +129,7 @@ public:
   hot mustuse fn
   take() throws -> T
   {
-    GUARANTEE(!m_is_error, "take from an error result");
+    GUARANTEE(!m_is_error, "take() from an error result");
 
     return steal(value_reference());
   }

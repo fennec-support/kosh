@@ -107,7 +107,7 @@ public:
   fn
   erase(T *element) wontthrow -> void
   {
-    GUARANTEE(element != nullptr, "erase received a null hive element");
+    GUARANTEE(element != nullptr, "erase() received a null hive element");
 
     erase_at(index_of(element));
   }
@@ -115,7 +115,7 @@ public:
   fn
   erase_at(usize index) wontthrow -> void
   {
-    GUARANTEE(is_live(index), "erase received an inactive hive index");
+    GUARANTEE(is_live(index), "erase_at() received an inactive hive index");
 
     /* at this point: the slot at index holds a constructed element. */
     let *const element = reinterpret_cast<T *>(slot_storage(index));
@@ -177,14 +177,14 @@ public:
 
       if (address >= first && address - first < sizeof(block::slots)) {
         GUARANTEE((address - first) % sizeof(Slot) == 0,
-                  "hive element pointer is not at the start of a slot");
+                  "index_of() pointer is not at the start of a hive slot");
 
         return block_index * BLOCK_SLOT_COUNT +
                (address - first) / sizeof(Slot);
       }
     }
 
-    GUARANTEE(false, "hive element pointer belongs to another hive");
+    GUARANTEE(false, "index_of() pointer belongs to another hive");
   }
 
   mustuse pure fn

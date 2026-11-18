@@ -174,7 +174,7 @@ String::reserve(usize needed) throws -> void
 fn
 String::pop_back() wontthrow -> void
 {
-  GUARANTEE(m_length > 0, "pop_back on empty string");
+  GUARANTEE(m_length > 0, "pop_back() on an empty string");
   m_ascii_state = AsciiState::Unknown;
   m_length--;
   m_data[m_length] = '\0';

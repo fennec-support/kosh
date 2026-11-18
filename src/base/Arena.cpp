@@ -375,13 +375,13 @@ BumpArena::release(arena_mark saved) wontthrow -> void
 {
   GUARANTEE(saved.block_index <= m_current_index &&
                 saved.block_index <= m_blocks.count(),
-            "mark cannot refer to a block above the current one");
+            "release() mark refers to a block above the current one");
   GUARANTEE(saved.destructor_count <= m_destructor_count,
-            "mark cannot restore destructors that have already run");
+            "release() mark restores destructors that have already run");
   GUARANTEE(saved.block_index < m_blocks.count()
                 ? saved.used_in_block <= m_blocks[saved.block_index].used
                 : saved.used_in_block == 0,
-            "mark cannot restore bytes that have already been released");
+            "release() mark restores bytes that have already been released");
 
   run_destructors_down_to(saved.destructor_count);
   m_reset_generation++;

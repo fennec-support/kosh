@@ -142,7 +142,7 @@ public:
   hot mustuse fn
   operator[](usize i) const wontthrow -> char
   {
-    GUARANTEE(i < m_length, "string index is past the end");
+    GUARANTEE(i < m_length, "string index out of bounds");
 
     return m_data[i];
   }
@@ -318,7 +318,7 @@ public:
   fn
   truncate(usize kept_count) wontthrow -> void
   {
-    GUARANTEE(kept_count <= m_length, "truncate past the end of the string");
+    GUARANTEE(kept_count <= m_length, "truncate() past the end of the string");
     if (kept_count == m_length) return;
 
     m_ascii_state    = AsciiState::Unknown;

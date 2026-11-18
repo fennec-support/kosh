@@ -209,7 +209,7 @@ public:
   hot mustuse fn
   operator[](usize i) const wontthrow -> char
   {
-    GUARANTEE(i < length, "string-view index is past the end");
+    GUARANTEE(i < length, "string-view index out of bounds");
 
     return data[i];
   }

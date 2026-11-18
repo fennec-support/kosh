@@ -222,12 +222,117 @@ kosh_regex_reallocate(void *pointer, size_t length)
 
 namespace koshka {
 
-cold wontreturn fn
-report_catastrophic_guarantee_failure(const char *message,
-                                      usize       message_byte_count)
-    wontthrow -> void
+static fn
+should_color_catastrophic_failure() wontthrow -> bool
 {
-  os::exit_process_after_catastrophic_failure(message, message_byte_count, 1);
+  if (!os::is_stdin_a_tty() || !os::is_stderr_a_tty()) return false;
+
+#if K_PLATFORM_IS K_POSIX
+  let const no_color = getenv("NO_COLOR");
+  let const term     = getenv("TERM");
+
+  return (no_color == nullptr || no_color[0] == '\0') &&
+         (term == nullptr || strcmp(term, "dumb") != 0);
+#elif K_PLATFORM_IS K_WIN32
+  char environment_value[5];
+
+  if (GetEnvironmentVariableA("NO_COLOR", environment_value,
+                              sizeof(environment_value)) != 0)
+  {
+    return false;
+  }
+
+  if (GetEnvironmentVariableA("TERM", environment_value,
+                              sizeof(environment_value)) == 4 &&
+      memcmp(environment_value, "dumb", 4) == 0)
+  {
+    return false;
+  }
+
+  DWORD console_mode = 0;
+  if (GetConsoleMode(KOSH_STDERR, &console_mode) == FALSE) return false;
+
+  let const required_console_mode =
+      ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+  return (console_mode & required_console_mode) == required_console_mode ||
+         SetConsoleMode(KOSH_STDERR, console_mode | required_console_mode) !=
+             FALSE;
+#endif
+}
+
+static fn
+get_catastrophic_source_path(StringView file) wontthrow -> StringView
+{
+  usize source_position = 0;
+
+  for (usize position = 0; position + 4 <= file.length; position++) {
+    if ((position == 0 || file.data[position - 1] == '/' ||
+         file.data[position - 1] == '\\') &&
+        memcmp(file.data + position, "src", 3) == 0 &&
+        (file.data[position + 3] == '/' || file.data[position + 3] == '\\'))
+    {
+      source_position = position;
+    }
+  }
+
+  return {file.data + source_position, file.length - source_position};
+}
+
+cold wontreturn fn
+report_catastrophic_guarantee_failure(const char *file,
+                                      usize       file_byte_count,
+                                      const char *line,
+                                      usize       line_byte_count,
+                                      const char *reason,
+                                      usize       reason_byte_count) wontthrow -> void
+{
+  static constexpr StringView footer{".\nExiting after a catastrophic failure. "
+                                     "Please report this to a developer.\n"};
+  char                        buffer[4096];
+  let const                   body_capacity   = sizeof(buffer) - footer.length;
+  usize                       used_byte_count = 0;
+
+  let const do_append = [&](StringView text) wontthrow {
+    let const remaining_byte_count = body_capacity - used_byte_count;
+    let const copied_byte_count =
+        text.length < remaining_byte_count ? text.length : remaining_byte_count;
+
+    if (copied_byte_count != 0)
+      memcpy(buffer + used_byte_count, text.data, copied_byte_count);
+    used_byte_count += copied_byte_count;
+  };
+
+  do_append(should_color_catastrophic_failure()
+                ? "kosh: \x1b[1;91mfatal\x1b[0m: "
+                : "kosh: fatal: ");
+
+  let const source = get_catastrophic_source_path({file, file_byte_count});
+  let const has_source_prefix =
+      source.length >= 4 && memcmp(source.data, "src", 3) == 0 &&
+      (source.data[3] == '/' || source.data[3] == '\\');
+
+  if (!has_source_prefix) do_append("src/");
+  let const source_buffer_position = used_byte_count;
+  do_append(source);
+
+  for (usize position = source_buffer_position; position < used_byte_count;
+       position++)
+  {
+    if (buffer[position] == '\\') buffer[position] = '/';
+  }
+
+  do_append(":");
+  do_append({line, line_byte_count});
+  do_append(": ");
+
+  if (reason_byte_count != 0 && reason[reason_byte_count - 1] == '.')
+    reason_byte_count--;
+  do_append({reason, reason_byte_count});
+  memcpy(buffer + used_byte_count, footer.data, footer.length);
+  used_byte_count += footer.length;
+
+  os::exit_process_after_catastrophic_failure(buffer, used_byte_count, 1);
 }
 
 } /* namespace koshka */

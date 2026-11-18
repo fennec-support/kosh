@@ -143,31 +143,24 @@ debug_print_log(FILE       *stream,
 namespace koshka {
 
 cold wontreturn fn
-report_catastrophic_guarantee_failure(const char *message,
-                                      usize       message_byte_count)
+report_catastrophic_guarantee_failure(const char *file,
+                                      usize       file_byte_count,
+                                      const char *line,
+                                      usize       line_byte_count,
+                                      const char *reason,
+                                      usize       reason_byte_count)
     wontthrow -> void;
 
 } /* namespace koshka */
 
-#if !defined NDEBUG
-#define GUARANTEE(x, ...)                                                      \
-  do {                                                                         \
-    if (!(x)) rarely {                                                         \
-      TRACELN("'GUARANTEE(%s)' fail in %s().", #x, __func__);                  \
-      TRACELN("Details: %s", "" __VA_ARGS__);                                  \
-      TRAP();                                                                  \
-    }                                                                          \
-  } while (0)
-#else
 #define GUARANTEE(x, ...)                                                      \
   do {                                                                         \
     if (!(x)) rarely {                                                         \
       ::koshka::report_catastrophic_guarantee_failure(                         \
-          "fatal: Guarantee failed: " #x " at " __FILE__                       \
-          ":" KOSH_STRINGIFY(__LINE__) ". " __VA_ARGS__ "\n",                  \
-          sizeof("fatal: Guarantee failed: " #x " at " __FILE__                \
-                 ":" KOSH_STRINGIFY(__LINE__) ". " __VA_ARGS__ "\n") -         \
-              1);                                                              \
+          __FILE__, sizeof(__FILE__) - 1, KOSH_STRINGIFY(__LINE__),            \
+          sizeof(KOSH_STRINGIFY(__LINE__)) - 1,                                \
+          sizeof("" __VA_ARGS__) > 1 ? "" __VA_ARGS__ : #x,                    \
+          sizeof("" __VA_ARGS__) > 1 ? sizeof("" __VA_ARGS__) - 1              \
+                                     : sizeof(#x) - 1);                        \
     }                                                                          \
   } while (0)
-#endif

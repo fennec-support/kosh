@@ -72,7 +72,7 @@ public:
   hot fn
   set(usize index, bool is_set = true) wontthrow -> void
   {
-    GUARANTEE(index < m_length, "bit index is past the end");
+    GUARANTEE(index < m_length, "bit index out of bounds");
 
     let const mask = u64{1} << (index % BITS_PER_WORD);
     let      &word = m_words[index / BITS_PER_WORD];

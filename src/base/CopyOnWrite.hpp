@@ -133,7 +133,7 @@ public:
   fn
   read() const wontthrow -> const T &
   {
-    GUARANTEE(m_shared != nullptr, "read from an empty copy-on-write value");
+    GUARANTEE(m_shared != nullptr, "read() from an empty copy-on-write value");
 
     return m_shared->value;
   }
@@ -155,7 +155,7 @@ public:
   fn
   write() throws -> T &
   {
-    GUARANTEE(m_shared != nullptr, "write to an empty copy-on-write value");
+    GUARANTEE(m_shared != nullptr, "write() to an empty copy-on-write value");
     if (m_shared->reference_count > 1) {
       let *const copy = create(m_allocator, clone_value(m_shared->value));
 

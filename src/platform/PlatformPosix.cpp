@@ -3339,7 +3339,12 @@ exit_process_after_catastrophic_failure(const char *message,
     unused(write(KOSH_STDERR, message, written_byte_count));
   }
 
+#if !defined NDEBUG
+  unused(status);
+  t__debugtrap();
+#else
   exit_process_immediately(status);
+#endif
 }
 
 static fn

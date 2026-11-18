@@ -2614,7 +2614,12 @@ exit_process_after_catastrophic_failure(const char *message,
 
   unused(WriteFile(KOSH_STDERR, message, requested_byte_count,
                    &written_byte_count, nullptr));
+#if !defined NDEBUG
+  unused(status);
+  t__debugtrap();
+#else
   exit_process_immediately(status);
+#endif
 }
 
 } /* namespace os */

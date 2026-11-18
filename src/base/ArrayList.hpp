@@ -182,7 +182,7 @@ public:
   hot mustuse fn
   operator[](usize i) wontthrow -> T &
   {
-    GUARANTEE(i < m_length, "array index is past the end");
+    GUARANTEE(i < m_length, "array index out of bounds");
 
     return m_data[i];
   }
@@ -190,7 +190,7 @@ public:
   hot mustuse fn
   operator[](usize i) const wontthrow -> const T &
   {
-    GUARANTEE(i < m_length, "array index is past the end");
+    GUARANTEE(i < m_length, "array index out of bounds");
 
     return m_data[i];
   }
@@ -345,7 +345,7 @@ public:
   fn
   pop_back() wontthrow -> void
   {
-    GUARANTEE(m_length > 0, "pop_back on an empty list");
+    GUARANTEE(m_length > 0, "pop_back() on an empty list");
     m_length--;
     if constexpr (!is_trivially_destructible_v<T>) m_data[m_length].~T();
   }
@@ -353,7 +353,7 @@ public:
   fn
   truncate(usize kept_count) wontthrow -> void
   {
-    GUARANTEE(kept_count <= m_length, "truncate past the end of the list");
+    GUARANTEE(kept_count <= m_length, "truncate() past the end of the list");
     if constexpr (is_trivially_destructible_v<T>) {
       m_length = kept_count;
 
@@ -369,7 +369,7 @@ public:
   fn
   remove(usize index) throws -> void
   {
-    GUARANTEE(index < m_length, "remove past the end of the list");
+    GUARANTEE(index < m_length, "remove() index out of bounds");
     if constexpr (is_trivially_copyable_v<T>) {
       let const moved_count = m_length - index - 1;
 
@@ -602,7 +602,7 @@ private:
   fn
   insert_at(usize index, T value) throws -> void
   {
-    GUARANTEE(index <= m_length, "array insertion is past the end");
+    GUARANTEE(index <= m_length, "insert_at() index out of bounds");
     if (index == m_length) {
       push(steal(value));
 
@@ -1218,7 +1218,7 @@ public:
   hot mustuse fn
   operator[](usize i) const wontthrow -> const T &
   {
-    GUARANTEE(m_list != nullptr, "array index is past the end");
+    GUARANTEE(m_list != nullptr, "array index out of bounds");
 
     return (*m_list)[i];
   }

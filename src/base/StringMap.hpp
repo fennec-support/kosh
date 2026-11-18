@@ -402,7 +402,7 @@ private:
   probe(StringView key, u64 hash) const wontthrow -> probe_result
   {
     GUARANTEE(m_capacity != 0 && (m_capacity & (m_capacity - 1)) == 0,
-              "map probe requires a nonempty power-of-two slot array");
+              "probe() requires a nonempty power-of-two slot array");
 
     let const mask            = m_capacity - 1;
     let       index           = static_cast<usize>(hash) & mask;
@@ -410,7 +410,7 @@ private:
     let const wanted          = Slot::pack(Slot::Occupied, hash);
 
     GUARANTEE(m_count < m_capacity && m_tombstones < m_capacity - m_count,
-              "map probe requires an empty slot");
+              "probe() requires an empty slot");
 
     loop {
       let const &candidate = m_slots[index];
