@@ -8,7 +8,7 @@
  * platform sync behavior, and native batched I/O.
  */
 
-#if defined __linux__
+#if defined __linux__ && !defined __ANDROID__
 #include <linux/io_uring.h>
 #include <sys/mman.h>
 #elif defined __APPLE__
@@ -1760,7 +1760,7 @@ execute_native_batch(const batched_syscall  *operations,
   return execute_suspended_aio_batch(operations, operation_count, results);
 }
 
-#elif defined __linux__
+#elif defined __linux__ && !defined __ANDROID__
 
 static fn
 fill_file_status(const struct statx &info, file_status &status)
