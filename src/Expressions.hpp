@@ -1652,8 +1652,8 @@ protected:
 
   struct literal_command_lookup
   {
-    Maybe<builtin::Kind> builtin{};
-    bool                 is_special{false};
+    Maybe<::koshka::builtin::Kind> builtin{};
+    bool                           is_special{false};
   };
 
   mutable PublishedCommandText m_published_command_text{};

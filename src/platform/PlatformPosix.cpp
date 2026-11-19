@@ -3336,7 +3336,8 @@ exit_process_after_catastrophic_failure(const char *message,
     let const written_byte_count =
         message_byte_count < 4096 ? message_byte_count : usize{4096};
 
-    unused(write(KOSH_STDERR, message, written_byte_count));
+    let const write_result = write(KOSH_STDERR, message, written_byte_count);
+    unused(write_result);
   }
 
 #if !defined NDEBUG
