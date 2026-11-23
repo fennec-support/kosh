@@ -873,7 +873,9 @@ expand_obsolete_line_count(
 fn
 describe_file_type(StringView             path,
                    const os::file_status &status,
-                   Allocator              allocator) throws -> Maybe<String>;
+                   Allocator              allocator,
+                   bool                   should_include_details = false) throws
+    -> Maybe<String>;
 
 fn
 format_file_timestamp(i64       seconds,

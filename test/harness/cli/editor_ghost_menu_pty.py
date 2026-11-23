@@ -17,15 +17,14 @@
 # filter narrows and widens its menu, and again below the gathered token. A
 # -C reply the shell does not rank narrows to every row the token opens in
 # either case. complete -E serves only a line that holds nothing, runs once,
-# and keeps its own list after Tab inserts its common prefix, and -I serves
-# a command word with the caret at its start, inserting before the word, and
-# keeps the text after the caret inside a word. An argument candidate is
-# inserted before a word with the caret at its start and replaces a word with
-# the caret inside it. With the space-after option on, a spec completion takes
+# and keeps its own list after Tab inserts its common prefix. A fresh -I
+# completion at the start of a command inserts before it. Other explicit
+# completion matches text on both sides of the caret and replaces the whole
+# word. With the space-after option on, a spec completion takes
 # a space unless the spec has nospace, and a nosort reply keeps its order in
-# the menu. a sole completion keeps the menu open after its word, space, or
-# slash. a second Tab accepts a directory entry, and Ctrl-Z undoes a completion
-# with its space. It also covers word-wise ghost
+# the menu. Fresh Tab completes a sole path without a space and opens the
+# menu. Tab in the open menu still appends a space when configured, and
+# Ctrl-Z undoes the accepted file and its space. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, a Ctrl-R menu that flags a miss and cuts
 # a long entry with an ellipsis, and the inline synopsis rows for a command and
@@ -68,6 +67,7 @@ import os
 import pty
 import re
 import select
+import shlex
 import signal
 import shutil
 import struct
@@ -81,6 +81,7 @@ COLUMNS = 120
 ROWS = 40
 WAIT_SECONDS = 8.0
 MENU_HEADER = "selecting completions"
+FUZZY_PATH_HEADER = "fuzzy path search"
 MENU_HELP = ("selecting completions, enter to run, tab to accept, esc to close, "
              "ctrl-g to restore")
 MENU_FOOTER = "showing "
@@ -93,6 +94,9 @@ END = b"\x1b[F"
 UP = b"\x1b[A"
 DOWN = b"\x1b[B"
 CTRL_RIGHT = b"\x1b[1;5C"
+CTRL_LEFT = b"\x1b[1;5D"
+CTRL_ENTER_KITTY = b"\x1b[13;5u"
+CTRL_ENTER_XTERM = b"\x1b[27;5;13~"
 ALT_F = b"\x1bf"
 CTRL_A = b"\x01"
 CTRL_E = b"\x05"
@@ -103,6 +107,7 @@ CTRL_C = b"\x03"
 CTRL_D = b"\x04"
 ALT_BACKSPACE = b"\x1b\x7f"
 BACKSPACE = b"\x7f"
+DELETE = b"\x1b[3~"
 ESCAPE = b"\x1b"
 CSI_PATTERN = re.compile(rb"\x1b\[([0-9;<=>?]*)([ -/]*[@-~])")
 
@@ -114,6 +119,9 @@ class Screen:
         self.row = 0
         self.column = 0
         self.is_dim = False
+        self.is_bold = False
+        self.foreground = None
+        self.background = None
         self.pending = b""
         self.saved_screen = None
         self.saved_cursor = (0, 0)
@@ -127,11 +135,13 @@ class Screen:
     def put(self, text):
         cells = self.get_cells()
         while len(cells) < self.column:
-            cells.append((" ", False))
+            cells.append((" ", False, False, None, None))
+        cell = (text, self.is_dim, self.is_bold,
+                self.foreground, self.background)
         if self.column < len(cells):
-            cells[self.column] = (text, self.is_dim)
+            cells[self.column] = cell
         else:
-            cells.append((text, self.is_dim))
+            cells.append(cell)
         self.column += 1
 
     def apply_style(self, parameters):
@@ -141,8 +151,26 @@ class Screen:
             value = values[index]
             if value in (38, 48):
                 self.is_dim = False
-                index += 2 if index + 1 < len(values) and values[index + 1] == 5 else 4
+                end = index + (3 if values[index + 1:index + 2] == [5] else 5)
+                color = tuple(values[index + 1:end])
+                if value == 38:
+                    self.foreground = color
+                else:
+                    self.background = color
+                index = end
                 continue
+            if value == 1:
+                self.is_bold = True
+            elif value in (0, 22):
+                self.is_bold = False
+            if value in (0, 39):
+                self.foreground = None
+            elif 30 <= value <= 37 or 90 <= value <= 97:
+                self.foreground = (value,)
+            if value in (0, 49):
+                self.background = None
+            elif 40 <= value <= 47 or 100 <= value <= 107:
+                self.background = (value,)
             if value in (2, 90):
                 self.is_dim = True
             elif value in (0, 22, 39) or 30 <= value <= 37 or 91 <= value <= 97:
@@ -279,11 +307,12 @@ class Screen:
         self.pending = data[index:]
 
     def get_lines(self):
-        return ["".join(text for text, _ in cells).rstrip() for cells in self.rows]
+        return ["".join(cell[0] for cell in cells).rstrip()
+                for cells in self.rows]
 
     def get_prompt_row(self):
         for row in range(len(self.rows) - 1, -1, -1):
-            if any(text == "\u2022" for text, _ in self.rows[row]):
+            if any(cell[0] == "\u2022" for cell in self.rows[row]):
                 return row
         return -1
 
@@ -292,17 +321,17 @@ class Screen:
         if row < 0:
             return 0
         cells = self.rows[row]
-        return next(index for index, (text, _) in enumerate(cells)
-                    if text == "•") + 2
+        return next(index for index, cell in enumerate(cells)
+                    if cell[0] == "•") + 2
 
     def get_typed_and_ghost(self):
         row = self.get_prompt_row()
         if row < 0:
             return None
         cells = self.rows[row]
-        mark = next(index for index, (text, _) in enumerate(cells) if text == "\u2022")
-        typed = "".join(text for text, is_dim in cells[mark + 2:] if not is_dim)
-        ghost = "".join(text for text, is_dim in cells[mark + 2:] if is_dim)
+        mark = self.get_prompt_width()
+        typed = "".join(cell[0] for cell in cells[mark:] if not cell[1])
+        ghost = "".join(cell[0] for cell in cells[mark:] if cell[1])
         return typed.rstrip(), ghost.rstrip()
 
     def get_menu(self):
@@ -310,21 +339,40 @@ class Screen:
         if row < 0:
             return None
         lines = self.get_lines()[row + 1:]
-        if not lines or MENU_HEADER not in lines[0]:
+        if not lines:
             return None
+        header = next((title for title in (MENU_HEADER, FUZZY_PATH_HEADER)
+                       if lines[0].strip().startswith(title)), None)
+        if header is None:
+            return None
+        expected_help = MENU_HELP.replace(MENU_HEADER, header, 1)
         help_text = lines[0].strip()
         first_entry = 1
-        while (first_entry < len(lines) and help_text != MENU_HELP
-               and MENU_HELP.startswith(
+        while (first_entry < len(lines) and help_text != expected_help
+               and expected_help.startswith(
                    help_text + " " + lines[first_entry].strip())):
             help_text += " " + lines[first_entry].strip()
             first_entry += 1
         entries = []
         total = None
-        for line in lines[first_entry:]:
+        entry_column = None
+        for offset, line in enumerate(lines[first_entry:], row + 1 + first_entry):
+            cells = self.rows[offset]
             text = line.strip()
+            start = len(line) - len(line.lstrip())
+            if text and not text.startswith(MENU_FOOTER):
+                if entry_column is None:
+                    entry_column = start
+                elif start > entry_column:
+                    continue
+            detail = re.search(r" {2,}\S", line[start:])
+            if detail and (cells[start + detail.end() - 1][1]
+                           or text.startswith(("preview/", "dense/"))):
+                text = line[start:start + detail.start()].rstrip()
             if text.startswith(MENU_FOOTER):
-                total = int(text.split(" of ")[1])
+                match = re.match(r"showing \d+-\d+ of (\d+)(?= |$)", text)
+                if match:
+                    total = int(match[1])
             elif text and text != "loading...":
                 entries.append(text)
         return entries, total
@@ -423,12 +471,34 @@ class Session:
         os.close(self.fd)
 
 
+def did_exit_cleanly(session):
+    deadline = time.monotonic() + WAIT_SECONDS
+    while time.monotonic() < deadline and session.pump(0.02):
+        pass
+    while time.monotonic() < deadline:
+        finished, status = os.waitpid(session.pid, os.WNOHANG)
+        if finished:
+            session.is_closed = True
+            os.close(session.fd)
+            return (status == 0
+                    and not re.search(
+                        rb"(?:ERROR|SUMMARY): .*Sanitizer|runtime error:",
+                        session.raw))
+        time.sleep(0.02)
+    return False
+
+
 def get_state(screen):
     return screen.get_typed_and_ghost()
 
 
 def is_line(typed, ghost=""):
     return lambda screen: get_state(screen) == (typed, ghost)
+
+
+def has_caret_at(screen, offset):
+    return (screen.row == screen.get_prompt_row()
+            and screen.column == screen.get_prompt_width() + offset)
 
 
 def is_menu(names, total_filter=None):
@@ -709,11 +779,6 @@ def run_cached_filter_checks(session, report, directory):
     clear_line(session)
     session.send(b"complete -I -W zzslot\r")
     session.wait_until(is_line(""))
-    session.send(b"zzsxx" + LEFT + LEFT + b"\t")
-    report.record("initial-slot-keeps-the-word-after-the-caret", session,
-                  lambda screen: get_state(screen) is not None
-                  and get_state(screen)[0].rstrip() == "zzslotxx")
-    clear_line(session)
     session.send(b"zzs\t")
     report.record("initial-slot-completes-the-word-at-its-end", session,
                   lambda screen: get_state(screen) is not None
@@ -723,13 +788,13 @@ def run_cached_filter_checks(session, report, directory):
     session.wait_until(is_line(""))
     session.send(b"complete -W zzarg zzone\r")
     session.wait_until(is_line(""))
-    session.send(b"zzone xx" + LEFT + LEFT + b"\t")
-    report.record("argument-at-word-start-keeps-the-word", session,
-                  lambda screen: get_state(screen) is not None
-                  and get_state(screen)[0].rstrip() == "zzone zzargxx")
+    session.send(b"zzone zza" + LEFT * 3 + b"\t")
+    report.record("argument-at-word-start-matches-and-replaces-the-word",
+                  session, lambda screen: get_state(screen) is not None
+                  and get_state(screen)[0].rstrip() == "zzone zzarg")
     clear_line(session)
-    session.send(b"zzone zxx" + LEFT + LEFT + b"\t")
-    report.record("argument-inside-word-replaces-the-word", session,
+    session.send(b"zzone zza" + LEFT * 2 + b"\t")
+    report.record("argument-inside-word-matches-and-replaces-the-word", session,
                   lambda screen: get_state(screen) is not None
                   and get_state(screen)[0].rstrip() == "zzone zzarg")
     clear_line(session)
@@ -845,33 +910,39 @@ def run_sole_completion_checks(session, report):
             session.send(ESCAPE)
             session.wait_until(is_menu_closed)
         clear_line(session)
+
+
+def run_path_spacing_checks(session, report):
     session.send(
         b"koshconf set completion.add_space_after_completed_word on\r")
     session.wait_until(is_line(""))
-    for name, keys, spaced in (
-            ("sole-file-keeps-the-menu-after-the-space", b"cat sub/al\t",
-             "cat sub/alpha-beta.txt "),
-            ("sole-directory-keeps-the-menu-after-the-space", b"ls zzloc\t",
-             "ls zzlocal/ ")):
+    for name, keys, completed in (
+            ("fresh-tab-completes-a-file-without-space", b"cat sub/al\t",
+             "cat sub/alpha-beta.txt"),
+            ("fresh-tab-completes-a-directory-without-space", b"ls zzloc\t",
+             "ls zzlocal/")):
         session.send(keys)
         report.record(name, session,
-                      lambda screen, spaced=spaced: screen.get_menu() is not None
-                      and get_state(screen)[0] == spaced.rstrip())
+                      lambda screen: is_typed_with_menu(completed)(screen)
+                      and has_caret_at(screen, len(completed)))
         session.send(ESCAPE)
         session.wait_until(is_menu_closed)
         session.send(b"Q")
         report.record(name + "-and-escape-closes-it", session,
-                      is_typed_without_menu(spaced + "Q"))
+                      is_typed_without_menu(completed + "Q"))
         clear_line(session)
-    session.send(b"cat sub/al\t")
-    session.wait_until(lambda screen: screen.get_menu() is not None)
+    session.send(b"cat menu/menu-\t")
+    opened = session.wait_until(is_typed_with_menu("cat menu/menu-"))
+    session.send(b"\t")
+    completed = "cat menu/menu-apple"
+    report.record("menu-tab-still-appends-a-space-to-a-file", session,
+                  lambda screen: opened and is_typed_with_menu(completed)(screen)
+                  and has_caret_at(screen, len(completed) + 1))
     session.send(ESCAPE)
     session.wait_until(is_menu_closed)
-    session.send(CTRL_Z)
-    session.wait_until(is_line("cat sub/al"))
-    session.send(b"Q")
-    report.record("completion-and-space-undo-in-one-step", session,
-                  is_typed_without_menu("cat sub/alQ"))
+    session.send(CTRL_Z + b"Q")
+    report.record("menu-completion-and-space-undo-in-one-step", session,
+                  is_typed_without_menu("cat menu/menu-Q"))
     clear_line(session)
     session.send(
         b"koshconf set completion.add_space_after_completed_word off\r")
@@ -961,11 +1032,473 @@ def run_next_word_menu_checks(session, report, directory):
     clear_line(session)
 
 
+def record_default_completion_space(session, report):
+    session.send(b"complete -W zzword zzdefault\r")
+    session.wait_until(is_line(""))
+    session.send(b"zzdefault z\t")
+    completed = "zzdefault zzword"
+    report.record("tab-appends-a-space-by-default", session,
+                  lambda screen: is_typed_with_menu(completed)(screen)
+                  and has_caret_at(screen, len(completed) + 1))
+    clear_line(session)
+    session.send(b"complete -r zzdefault\r")
+    session.wait_until(is_line(""))
+
+
+def run_completion_key_checks(session, report, directory):
+    session.send(
+        b"koshconf set completion.add_space_after_completed_word off; "
+        b"complete -W 'alpha beta' zzkey; "
+        b"complete -o nospace -W 'alpha beta' zzkeytight\r")
+    session.wait_until(is_line(""))
+
+    def at_caret(typed, offset):
+        return lambda screen: (get_state(screen) is not None
+                               and get_state(screen)[0] == typed
+                               and has_caret_at(screen, offset))
+
+    def has_choices(typed):
+        return has_typed_menu(typed, ["alpha", "beta"])
+
+    def accept_beta(command):
+        session.send(command.encode() + b" \t")
+        if not session.wait_until(has_choices(command)):
+            return False
+        session.send(DOWN + CTRL_RIGHT)
+        return True
+
+    with_space = at_caret("zzkey beta", len("zzkey beta "))
+    accepted = accept_beta("zzkey")
+    report.record("ctrl-right-accepts-bash-row-with-space", session,
+                  lambda screen: accepted and has_choices("zzkey beta")(screen)
+                  and with_space(screen))
+    session.send(CTRL_RIGHT)
+    report.record("ctrl-right-accepts-a-second-bash-word", session,
+                  at_caret("zzkey beta alpha", len("zzkey beta alpha ")))
+    session.send(CTRL_LEFT)
+    report.record("ctrl-left-erases-bash-word-and-space", session,
+                  lambda screen: has_choices("zzkey beta")(screen)
+                  and with_space(screen))
+    session.send(CTRL_LEFT)
+    report.record("ctrl-left-erases-the-earlier-bash-word-and-space", session,
+                  lambda screen: has_choices("zzkey")(screen)
+                  and at_caret("zzkey", len("zzkey "))(screen))
+    clear_line(session)
+
+    session.send(b"zzkey beta \t")
+    opened = session.wait_until(has_choices("zzkey beta"))
+    session.send(CTRL_LEFT)
+    report.record("ctrl-left-only-moves-over-a-typed-word", session,
+                  lambda screen: opened and screen.get_menu() is not None
+                  and at_caret("zzkey beta", len("zzkey "))(screen))
+    clear_line(session)
+
+    accepted = accept_beta("zzkey") and session.wait_until(with_space)
+    session.send(BACKSPACE)
+    report.record("backspace-only-erases-the-bash-completion-space", session,
+                  lambda screen: accepted and at_caret(
+                      "zzkey beta", len("zzkey beta"))(screen))
+    clear_line(session)
+
+    accepted = accept_beta("zzkey") and session.wait_until(with_space)
+    session.send(LEFT * len("beta ") + DELETE)
+    report.record("delete-only-erases-one-bash-completion-character", session,
+                  lambda screen: accepted and at_caret(
+                      "zzkey eta", len("zzkey "))(screen))
+    clear_line(session)
+
+    accepted = accept_beta("zzkeytight")
+    report.record("ctrl-right-honors-bash-nospace", session,
+                  lambda screen: accepted and at_caret(
+                      "zzkeytight beta", len("zzkeytight beta"))(screen))
+    clear_line(session)
+
+    session.send(b"complete -I -W zzslot\r")
+    session.wait_until(is_line(""))
+    session.send(b"zzslo tail" + LEFT * len("lo tail") + b"\t")
+    report.record("initial-slot-replaces-the-whole-word", session,
+                  at_caret("zzslot tail", len("zzslot")))
+    clear_line(session)
+    session.send(b"complete -r -I; complete -r zzkey zzkeytight\r")
+    session.wait_until(is_line(""))
+
+    session.send(b"koshconf set mood bash\r")
+    session.wait_until(is_line(""))
+    session.send(b"complete -I -W zzinsert\r")
+    session.wait_until(is_line(""))
+    session.send(b"ls" + HOME + b"\t")
+    report.record("bash-initial-slot-fresh-tab-inserts-at-word-start", session,
+                  at_caret("zzinsertls", len("zzinsert")))
+    clear_line(session)
+    session.send(b"complete -I -W 'zzinsertA zzinsertB'\r")
+    session.wait_until(is_line(""))
+    session.send(b"ls" + HOME + b"\t")
+    opened = session.wait_until(
+        lambda screen: has_typed_menu(
+            "zzinsertls", ["zzinsertA", "zzinsertB"])(screen)
+        and at_caret("zzinsertls", len("zzinsert"))(screen))
+    session.send(DOWN + b"\t")
+    report.record("bash-initial-slot-fresh-menu-replaces-insertion-and-word",
+                  session, lambda screen: opened
+                  and at_caret("zzinsertB", len("zzinsertB"))(screen))
+    clear_line(session)
+    session.send(b"complete -r -I\r")
+    session.wait_until(is_line(""))
+    session.send(b"zzswapA() { :; }; zzswapMedium() { :; }; "
+                 b"zzswapLongestName() { :; }; zzswing() { :; }\r")
+    session.wait_until(is_line(""))
+    tail = " --flag 'two words'"
+    stem = "zzswap"
+    choices = ["zzswapA", "zzswapLongestName", "zzswapMedium"]
+    draft = stem + tail
+    offset = len("zzsw")
+    session.send(draft.encode() + LEFT * (len(draft) - offset) + b"\t")
+    report.record("command-tab-queries-the-whole-token-without-growing-it",
+                  session, lambda screen: has_typed_menu(draft, choices)(screen)
+                  and at_caret(draft, offset)(screen))
+    for attempt, index in enumerate((2, 0, 1), 1):
+        ready = session.wait_until(
+            lambda screen: is_menu_in_order(choices)(screen)
+            and at_caret(draft, offset)(screen))
+        session.send(DOWN * index + b"\t")
+        candidate = choices[index]
+        report.record("bash-command-reselection-replaces-word-%d" % attempt,
+                      session, lambda screen: ready
+                      and is_typed_with_menu(candidate + tail)(screen)
+                      and at_caret(candidate + tail, len(candidate))(screen))
+        if attempt < len(choices):
+            session.send(BACKSPACE * (len(candidate) - len(stem))
+                         + LEFT * (len(stem) - offset))
+    clear_line(session)
+
+    session.send(b"complete -I -W 'zzslotA zzslotLong zzslotMedium zzslip'\r")
+    session.wait_until(is_line(""))
+    stem = "zzslot"
+    draft = stem + tail
+    choices = ["zzslotA", "zzslotLong", "zzslotMedium"]
+    session.send(draft.encode() + LEFT * (len(draft) - 4) + b"\t" + HOME)
+    for attempt, (index, accept) in enumerate(((1, b"\t"), (2, CTRL_RIGHT)), 1):
+        ready = session.wait_until(
+            lambda screen: is_menu_in_order(choices)(screen)
+            and at_caret(draft, 0)(screen))
+        session.send(DOWN * index + accept)
+        candidate = choices[index]
+        caret = len(candidate) + (accept == CTRL_RIGHT)
+        report.record("bash-initial-slot-reselection-replaces-word-%d" % attempt,
+                      session, lambda screen: ready
+                      and is_typed_with_menu(candidate + tail)(screen)
+                      and at_caret(candidate + tail, caret)(screen))
+        if accept == b"\t":
+            session.send(BACKSPACE * (len(candidate) - len(stem)) + HOME)
+    clear_line(session)
+
+    session.send(b"complete -r -I; "
+                 b"unset -f zzswapA zzswapMedium zzswapLongestName zzswing; "
+                 b"koshconf set mood kosh\r")
+    session.wait_until(is_line(""))
+
+    session.send(b": > zz-glob-a.txt; : > zz-glob-b.txt; : > zz-glob-c.log\r")
+    session.wait_until(is_line(""))
+    original = b"cat zz-glob-*.txt"
+    expanded = "cat zz-glob-a.txt zz-glob-b.txt"
+    for position, motion in (("end", b""), ("middle", LEFT * len(".txt"))):
+        session.send(original + motion + b"\t")
+        report.record("explicit-glob-expands-from-token-" + position, session,
+                      at_caret(expanded, len(expanded)))
+        clear_line(session)
+
+    session.send(b"koshconf set completion.add_space_after_completed_word on; "
+                 b"zzaccept() { printf 'ACCEPTED:%s\\n' \"$*\"; }; "
+                 b"complete -W 'alpha beta' zzaccept\r")
+    session.wait_until(is_line(""))
+    session.send(b"zzaccept \t")
+    opened = session.wait_until(has_typed_menu("zzaccept", ["alpha", "beta"]))
+    prompt_row = session.screen.get_prompt_row()
+    prompt = session.screen.get_lines()[prompt_row][
+        :session.screen.get_prompt_width()]
+    mark = len(session.raw)
+
+    def is_same_draft(screen, typed, caret):
+        return (screen.get_prompt_row() == prompt_row
+                and screen.get_lines()[prompt_row].startswith(prompt)
+                and get_state(screen)[0] == typed
+                and has_caret_at(screen, caret)
+                and b"\x1b]133;A" not in session.raw[mark:]
+                and b"\x1b]133;C" not in session.raw[mark:])
+
+    session.send(DOWN + CTRL_ENTER_KITTY)
+    report.record("kitty-ctrl-enter-keeps-the-prompt-and-next-menu", session,
+                  lambda screen: opened
+                  and has_typed_menu("zzaccept beta", ["alpha", "beta"])(screen)
+                  and is_same_draft(screen, "zzaccept beta", len("zzaccept beta ")))
+    session.send(CTRL_ENTER_XTERM)
+    report.record("xterm-ctrl-enter-accepts-the-next-word-without-running", session,
+                  lambda screen: is_typed_with_menu("zzaccept beta alpha")(screen)
+                  and is_same_draft(screen, "zzaccept beta alpha",
+                                    len("zzaccept beta alpha ")))
+    session.send(b"kept")
+    report.record("ctrl-enter-leaves-the-draft-editable", session,
+                  lambda screen: has_typed_menu("zzaccept beta alpha kept",
+                                                [HISTORY_NO_MATCH])(screen)
+                  and is_same_draft(screen, "zzaccept beta alpha kept",
+                                    len("zzaccept beta alpha kept")))
+    run_command(session, report, "plain-enter-submits-the-edited-draft", b"",
+                "ACCEPTED:beta alpha kept", 1)
+    session.send(b"complete -r zzaccept; unset -f zzaccept\r")
+    session.wait_until(is_line(""))
+
+    run_sibling_completion_checks(session, report, directory)
+    session.send(
+        b"koshconf set completion.add_space_after_completed_word off\r")
+    session.wait_until(is_line(""))
+
+    run_fuzzy_path_checks(session, report, directory)
+    run_streaming_fuzzy_checks(session, report, directory)
+
+
+def run_sibling_completion_checks(session, report, directory):
+    parent = "./siblings/"
+    os.mkdir(os.path.join(directory, parent))
+    for name in ("Aa.cpp", "Bc.cpp", "Bd.cpp"):
+        with open(os.path.join(directory, parent, name), "w") as handle:
+            handle.write("SIBLING-COMMAND-RAN\n")
+
+    initial = "cat " + parent + "B"
+    session.send(initial.encode() + b"\t")
+    opened = session.wait_until(is_typed_with_menu(initial))
+    screen = session.screen
+    row = screen.get_prompt_row()
+    prompt = screen.get_lines()[row][:screen.get_prompt_width()]
+    mark = len(session.raw)
+    draft = "cat "
+
+    def has_highlighted_sibling(name):
+        typed = draft + parent
+
+        def do_check(screen):
+            return (opened and screen.get_menu() is not None
+                    and screen.get_prompt_row() == row
+                    and screen.get_lines()[row].startswith(prompt)
+                    and get_state(screen)[0] == typed
+                    and has_caret_at(screen, len(typed))
+                    and any(name in line and "\xa0" in line
+                            for line in screen.get_lines()[row + 1:])
+                    and b"\x1b]133;A" not in session.raw[mark:]
+                    and b"\x1b]133;C" not in session.raw[mark:]
+                    and b"SIBLING-COMMAND-RAN" not in session.raw[mark:])
+        return do_check
+
+    session.send(CTRL_ENTER_KITTY)
+    draft += parent + "Bc.cpp "
+    report.record("ctrl-enter-seeds-the-parent-and-highlights-the-accepted-file",
+                  session, has_highlighted_sibling("Bc.cpp"))
+    session.send(DOWN + CTRL_ENTER_XTERM)
+    draft += parent + "Bd.cpp "
+    report.record("ctrl-enter-repeats-with-a-different-sibling-without-running",
+                  session, has_highlighted_sibling("Bd.cpp"))
+    clear_line(session)
+
+    parent = "./nav/"
+    os.mkdir(os.path.join(directory, parent))
+    for child in ("aa", "sub"):
+        os.mkdir(os.path.join(directory, parent, child))
+        for entry in ("alpha", "beta"):
+            open(os.path.join(directory, parent, child, entry), "w").close()
+    typed = "cat " + parent
+    escaped = typed + r"s\ub/"
+    session.send(escaped.encode() + b"\t")
+    descended = session.wait_until(is_typed_with_menu(escaped))
+    session.send(CTRL_LEFT)
+    report.record("ctrl-left-highlights-the-directory-it-just-exited", session,
+                  lambda screen: descended
+                  and is_typed_with_menu(typed)(screen)
+                  and any(parent + "sub/" in line and "\xa0" in line for line in
+                          screen.get_lines()[screen.get_prompt_row() + 1:]))
+    clear_line(session)
+
+
+def run_fuzzy_path_checks(session, report, directory):
+    folder = "fz/i"
+    os.makedirs(os.path.join(directory, folder, "n"))
+    for file in (folder + "/data-done.txt", folder + "/data-dusk.txt",
+                 folder + "/n/data-draft.txt",
+                 "fz/data-drop.txt", "data-draw.txt"):
+        open(os.path.join(directory, file), "w").close()
+    os.symlink("..", os.path.join(directory, folder, "escape"))
+    os.symlink(".", os.path.join(directory, folder, "loop"))
+
+    prefix = "cat ./" + folder + "/"
+    root = prefix[len("cat "):]
+    draft = prefix + "dadq"
+    miss = [HISTORY_NO_MATCH]
+
+    def has_fuzzy_menu(typed, names):
+        def do_check(screen):
+            menu = screen.get_menu()
+            return (menu is not None
+                    and get_state(screen)[0] == typed
+                    and sorted(re.split(r"\s{2,}", row, maxsplit=1)[0]
+                               .removeprefix(root) for row in menu[0])
+                    == sorted(names)
+                    and FUZZY_PATH_HEADER in
+                    screen.get_lines()[screen.get_prompt_row() + 1])
+        return do_check
+
+    session.send(draft.encode() + b"\t")
+    report.record("first-path-tab-advertises-fuzzy-search", session,
+                  has_typed_menu(draft, ["no matches. tab to fuzzy search"]))
+    mark = len(session.raw)
+    session.send(b"\t")
+    report.record("second-path-tab-seeds-fuzzy-search", session,
+                  has_fuzzy_menu(draft, miss))
+    session.send(BACKSPACE)
+    report.record("fuzzy-path-backspace-finds-descendants-without-escaping",
+                  session, has_fuzzy_menu(prefix + "dad",
+                                         ["data-done.txt", "data-dusk.txt",
+                                          "n/data-draft.txt"]))
+    query = root + "dad"
+    first = root + "data-done.txt"
+    second = root + "data-dusk.txt"
+    choices = ["data-done.txt", "data-dusk.txt", "n/data-draft.txt"]
+    session.send(CTRL_ENTER_KITTY)
+    chained = "cat " + first + " " + query
+    report.record("fuzzy-ctrl-enter-pastes-and-retains-the-query", session,
+                  lambda screen: has_fuzzy_menu(chained, choices)(screen)
+                  and has_caret_at(screen, len(chained)))
+    session.send(DOWN + CTRL_ENTER_XTERM)
+    chained = "cat " + first + " " + second + " " + query
+    report.record("fuzzy-ctrl-enter-pastes-a-second-result", session,
+                  lambda screen: has_fuzzy_menu(chained, choices)(screen)
+                  and has_caret_at(screen, len(chained)))
+    prefix = "cat " + first + " " + second + " " + root
+    session.send(b"r")
+    report.record("fuzzy-path-typing-narrows-the-menu", session,
+                  has_fuzzy_menu(prefix + "dadr", ["n/data-draft.txt"]))
+    session.send(b"\t")
+    accepted = prefix + "n/data-draft.txt"
+    report.record("fuzzy-path-tab-accepts-the-scoped-match", session,
+                  lambda screen: is_line(accepted)(screen)
+                  and has_caret_at(screen, len(accepted)))
+    session.send(ESCAPE)
+    report.record("fuzzy-path-escape-keeps-the-draft-without-running", session,
+                  lambda screen: is_typed_without_menu(accepted)(screen)
+                  and b"\x1b]133;A" not in session.raw[mark:]
+                  and b"\x1b]133;C" not in session.raw[mark:])
+    clear_line(session)
+
+    draft = "cat " + root + "dadq"
+    session.send(draft.encode() + b"\t")
+    session.wait_until(has_typed_menu(draft, ["no matches. tab to fuzzy search"]))
+    session.send(b"\t")
+    session.wait_until(has_fuzzy_menu(draft, miss))
+    session.send(BACKSPACE * len("dadq") + b"'dadr")
+    report.record("fuzzy-path-quote-at-root-refreshes-the-query", session,
+                  has_fuzzy_menu("cat " + root + "'dadr", ["'n/data-draft.txt'"]))
+    quoted = root + "'dadr"
+    session.send(CTRL_ENTER_KITTY)
+
+    def has_retained_quoted_query(screen):
+        state = get_state(screen)
+        if state is None or not state[0].endswith(" " + quoted):
+            return False
+        typed = state[0]
+        try:
+            words = shlex.split(typed[:-(len(quoted) + 1)])
+        except ValueError:
+            return False
+        return (words == ["cat", root + "n/data-draft.txt"]
+                and has_caret_at(screen, len(typed))
+                and screen.get_menu() is not None
+                and FUZZY_PATH_HEADER in
+                screen.get_lines()[screen.get_prompt_row() + 1])
+
+    report.record("fuzzy-ctrl-enter-closes-only-the-accepted-quote", session,
+                  has_retained_quoted_query)
+    clear_line(session)
+
+
+def run_streaming_fuzzy_checks(session, report, directory):
+    tree = os.path.join(directory, "tree")
+    branch = os.path.join(tree, "wide")
+    os.makedirs(branch)
+    for index in range(8192):
+        name = ("needle-%04d.txt" if index % 96 == 0
+                else "ordinary-%04d.txt") % index
+        open(os.path.join(branch, name), "w").close()
+    open(os.path.join(branch, "needle-special.txt"), "w").close()
+    open(os.path.join(directory, "needle-special.txt"), "w").close()
+    os.symlink("..", os.path.join(tree, "outside"))
+
+    draft = "cat ./tree/ndle"
+
+    def fuzzy_rows(screen):
+        rows = screen.get_lines()[screen.get_prompt_row() + 1:]
+        if not rows or FUZZY_PATH_HEADER not in rows[0]:
+            return []
+        return [line.strip() for line in rows if line.strip()]
+
+    def is_loading(screen):
+        return fuzzy_rows(screen)[-1:] == ["loading..."]
+
+    def start_search():
+        session.send(draft.encode() + b"\t")
+        session.wait_until(has_typed_menu(draft, ["no matches. tab to fuzzy search"]))
+        session.send(b"\t")
+
+    start_search()
+    report.record("fuzzy-path-streams-matches-above-the-loading-footer", session,
+                  lambda screen: is_loading(screen)
+                  and any("needle-" in row for row in fuzzy_rows(screen)))
+    session.send(b"s")
+    report.record("fuzzy-path-stream-keeps-edits-and-finishes-in-scope", session,
+                  lambda screen: get_state(screen)[0] == draft + "s"
+                  and not is_loading(screen)
+                  and [row.split()[0] for row in fuzzy_rows(screen)
+                       if row.startswith("./")]
+                  == ["./tree/wide/needle-special.txt"])
+    clear_line(session)
+
+    start_search()
+    loading = session.wait_until(is_loading)
+    mark = len(session.raw)
+    session.send(ESCAPE)
+    report.record("fuzzy-path-escape-stops-a-loading-search", session,
+                  lambda screen: loading and is_typed_without_menu(draft)(screen)
+                  and b"\x1b]133;C" not in session.raw[mark:])
+    clear_line(session)
+
+    start_search()
+    def selected_path(screen):
+        for row in screen.get_lines()[screen.get_prompt_row() + 1:]:
+            found = re.search(r"\xa0(\./tree/wide/needle-[^\s]+\.txt)", row)
+            if found:
+                return found[1]
+        return None
+
+    ready = session.wait_until(lambda screen: not is_loading(screen)
+                               and selected_path(screen) is not None)
+    ordered = ["./tree/wide/needle-%04d.txt" % index
+               for index in range(0, 8192, 96)]
+    ordered.append("./tree/wide/needle-special.txt")
+    selected = selected_path(session.screen)
+    expected = (ordered[(ordered.index(selected) + 20) % len(ordered)]
+                if selected in ordered else None)
+    session.send(DOWN * 20)
+    report.record("fuzzy-path-scrolls-in-final-order", session,
+                  lambda screen: ready and expected is not None
+                  and selected_path(screen) == expected)
+    clear_line(session)
+
+
 def run_checks(binary, directory, command_directory, report):
     session = Session(binary, directory, command_directory)
     try:
         if not report.record("startup-prompt", session, is_line("")):
             return
+        record_default_completion_space(session, report)
+        session.send(
+            b"koshconf set completion.add_space_after_completed_word off\r")
+        session.wait_until(is_line(""))
 
         session.send(b"cat sub/al")
         report.record("ghost-without-tab", session,
@@ -1134,7 +1667,9 @@ def run_checks(binary, directory, command_directory, report):
         run_cached_filter_checks(session, report, directory)
         run_compopt_checks(session, report)
         run_sole_completion_checks(session, report)
+        run_path_spacing_checks(session, report)
         run_next_word_menu_checks(session, report, directory)
+        run_completion_key_checks(session, report, directory)
 
         run_command(session, report, "history-seed-alpha",
                     b"echo hist-alpha", "hist-alpha", 1)
@@ -1723,8 +2258,554 @@ def run_control_name_checks(binary, directory, command_directory, report):
         session.close()
 
 
+def run_history_preview_checks(binary, directory, report):
+    commands = (
+        b"echo hist-view-single",
+        b"echo 'hist-view-two\nhist-view-two-tail'",
+        b"echo 'hist-view-exact\nhist-view-exact-middle\nhist-view-exact-end'",
+        b"printf '%s\\n' 'hist-view-long-one\n\nhist-view-long-three\n"
+        b"hist-view-hidden-four'",
+        b"echo hist-width-" + b"y" * 130,
+    )
+    with open(os.path.join(directory, "history"), "wb") as history:
+        for command in commands:
+            history.write(command.replace(b"\\", b"\\\\").replace(b"\n", b"\\n")
+                          + b"\n")
+
+    def shows_rows(screen, rows):
+        prompt_row = screen.get_prompt_row()
+        lines = screen.get_lines()[prompt_row + 1:]
+        return (prompt_row >= 0 and bool(lines) and HISTORY_HEADER in lines[0]
+                and [line.strip() for line in lines[1:len(rows) + 1]] == rows
+                and not any(line.strip() for line in lines[len(rows) + 1:])
+                and has_caret_at(screen, len("hist-view")))
+
+    session = Session(binary, directory, directory, rows=8)
+    try:
+        session.wait_until(is_line(""))
+        session.send(b"hist-width" + CTRL_R)
+        report.record("history-preview-still-clips-width", session,
+                      lambda screen: has_search_row(
+                          screen, lambda row: row.startswith("echo hist-width-y")
+                          and row.endswith("yyy...")))
+        session.send(ESCAPE)
+        session.wait_until(is_line("hist-width"))
+        clear_line(session)
+
+        session.send(b"hist-view" + CTRL_R)
+        first = ["printf '%s\\n' 'hist-view-long-one", "",
+                 "hist-view-long-three...", "showing 1-1 of 4"]
+        report.record("history-preview-keeps-blank-line-and-marks-overflow",
+                      session, lambda screen: shows_rows(screen, first))
+        session.send(DOWN)
+        report.record("history-preview-scrolls-by-entry", session,
+                      lambda screen: shows_rows(screen, [
+                          "echo 'hist-view-exact", "hist-view-exact-middle",
+                          "hist-view-exact-end'", "echo 'hist-view-two",
+                          "hist-view-two-tail'", "showing 2-3 of 4"])
+                      and "\xa0" in screen.get_lines()[screen.get_prompt_row() + 4])
+        session.send(UP)
+        session.wait_until(lambda screen: shows_rows(screen, first))
+        session.send(b"\r")
+        report.record("history-preview-accepts-the-complete-command", session,
+                      lambda screen: any(line.strip() == "hist-view-hidden-four'"
+                                         for line in screen.get_lines())
+                      and not any(HISTORY_HEADER in line
+                                  for line in screen.get_lines())
+                      and screen.count_lines("hist-view-hidden-four") == 0)
+        session.send(b"\r")
+        session.wait_until(lambda screen: any(
+            "enter again to run it" in line for line in screen.get_lines()))
+        session.send(b"\r")
+        report.record("history-preview-runs-the-full-accepted-command", session,
+                      lambda screen: screen.count_lines("hist-view-hidden-four") == 1)
+        session.wait_until(is_line(""))
+        session.wait_for_raw_mode()
+        session.send(b"printf 'history-preview-done\\n'; exit\r")
+        saw_marker = session.wait_until(
+            lambda screen: "history-preview-done" in screen.get_lines())
+        if not (did_exit_cleanly(session) and saw_marker):
+            report.is_ok = False
+            sys.stderr.write("history preview session did not exit cleanly\n")
+    finally:
+        session.close()
+
+
+def run_path_preview_checks(binary, directory, report):
+    command_directory = os.path.join(directory, "bin")
+    preview_directory = os.path.join(directory, "preview")
+    child_directory = os.path.join(preview_directory, "pv-dir")
+    os.mkdir(command_directory)
+    os.makedirs(os.path.join(child_directory, "sub"))
+    for name in (".hidden", "Kid.txt", "apple", "z-two"):
+        open(os.path.join(child_directory, name), "w").close()
+    with open(os.path.join(preview_directory, "pv-image.bin"), "wb") as handle:
+        handle.write(bytes.fromhex(
+            "89504e470d0a1a0a 0000000d 49484452 00000280 000001e0 0802000000 00000000"))
+    with open(os.path.join(preview_directory, "pv-space image.bin"), "wb") as handle:
+        handle.write(b"\x7fELF\x02\x01\x01" + bytes(9) + b"\x02\0\x3e\0" + bytes(44))
+    os.mkfifo(os.path.join(preview_directory, "pv-pipe"))
+    fixed_time = int(time.time()) - 2 * 86400 - 1800
+    for name, mode in (("pv-dir", 0o750), ("pv-image.bin", 0o640),
+                       ("pv-space image.bin", 0o640), ("pv-pipe", 0o600)):
+        path = os.path.join(preview_directory, name)
+        os.chmod(path, mode)
+        os.utime(path, (fixed_time, fixed_time))
+    modified = ", modified " + time.strftime("%Y-%m-%d %H:%M", time.gmtime(fixed_time))
+    modified += " (2d ago)"
+    directory_stats = "drwxr-x---" + modified
+    directory_rows = ("sub/", ".hidden", "Kid.txt", "apple", "z-two")
+
+    dense = os.path.join(directory, "dense")
+    os.mkdir(dense)
+    for index in range(26):
+        path = os.path.join(dense, "item-%02d" % index)
+        os.mkdir(path)
+        if index == 3:
+            for name in ("...", "<empty>"):
+                open(os.path.join(path, name), "w").close()
+        if index < 2:
+            for child in range(15 + index):
+                open(os.path.join(path, "entry-%02d" % child), "w").close()
+        if index < 4:
+            os.chmod(path, 0o750)
+            os.utime(path, (fixed_time, fixed_time))
+
+    for index in range(6):
+        path = os.path.join(dense, "short-%02d" % index)
+        os.mkdir(path)
+        if index < 2:
+            for child in range(5 + index):
+                open(os.path.join(path, "entry-%02d" % child), "w").close()
+            os.chmod(path, 0o750)
+            os.utime(path, (fixed_time, fixed_time))
+
+    token = "cat preview/pv-"
+    open_menu = token.encode() + b"\t"
+
+    def get_preview_rows(screen, prefix="preview/"):
+        lines = screen.get_lines()[screen.get_prompt_row() + 1:]
+        rows = []
+        detail_column = None
+        for line in lines:
+            match = re.fullmatch(
+                r"\s*(" + re.escape(prefix) + r".*?)\s* {2,}(\S.*)", line)
+            if match:
+                detail_column = match.start(2)
+                rows.append(match.groups())
+            elif (detail_column is not None and line[:detail_column].isspace()
+                  and line[detail_column:].strip()):
+                rows.append(("", line[detail_column:]))
+            elif (detail_column is not None
+                  and line[:detail_column].lstrip().startswith(MENU_FOOTER)
+                  and line[detail_column - 1:detail_column] == " "
+                  and line[detail_column:].strip()):
+                rows.append(("", line[detail_column:]))
+        return rows
+
+    def has_directory_preview(screen):
+        rows = get_preview_rows(screen)
+        return (tuple(right for _, right in rows)
+                == directory_rows + (directory_stats,)
+                and "pv-dir/" in rows[0][0])
+
+    def has_preview_style(screen, text, is_bold, is_gray=False):
+        for row, line in enumerate(screen.get_lines()):
+            if row > screen.get_prompt_row() and line.endswith("  " + text):
+                start = len(line) - len(text)
+                cells = screen.rows[row][start:len(line)]
+                return all(cell[1:3] == (is_gray, is_bold) for cell in cells)
+        return False
+
+    def has_file_preview(screen, name, description, mode=None):
+        rows = get_preview_rows(screen)
+        stats = mode + modified if mode is not None else None
+        expected = [description] if stats is None else [description, stats]
+        return ([right for _, right in rows] == expected
+                and name in rows[0][0]
+                and has_preview_style(screen, description, True)
+                and (stats is None
+                     or has_preview_style(screen, stats, False, True)))
+
+    def finish(session):
+        if session.screen.get_menu() is not None:
+            session.send(ESCAPE)
+            session.wait_until(is_menu_closed)
+        session.send(CTRL_C)
+        session.wait_until(is_line(""))
+        session.send(b"printf 'preview-done\\n'; exit\r")
+        saw_marker = session.wait_until(
+            lambda screen: "preview-done" in screen.get_lines())
+        deadline = time.monotonic() + WAIT_SECONDS
+        while time.monotonic() < deadline and session.pump(0.02):
+            pass
+        if (not saw_marker or time.monotonic() >= deadline
+                or re.search(rb"(?:ERROR|SUMMARY): .*Sanitizer|runtime error:",
+                             session.raw)):
+            report.is_ok = False
+            sys.stderr.write("preview session did not exit cleanly\n"
+                             + repr(bytes(session.raw[-4096:])) + "\n")
+
+    session = Session(binary, directory, command_directory, columns=144,
+                      extra_environment={"TZ": "UTC0"})
+    try:
+        session.wait_until(is_line(""))
+        session.send(b"koshconf set completion.add_space_after_completed_word on\r")
+        session.wait_until(is_line(""))
+        session.send(open_menu)
+        report.record("preview-directory-beside-selection", session,
+                      has_directory_preview)
+        directory_color = b"\x1b[38;5;110msub/"
+        report.record("preview-uses-menu-directory-color", session,
+                      lambda screen: directory_color in session.raw)
+        report.record("preview-stats-are-gray", session,
+                      lambda screen: b"\x1b[90m" + directory_stats.encode()
+                      in session.raw)
+
+        files = (
+            ("preview-file-follows-selection", "pv-image.bin",
+             "PNG image, 640x480, 8-bit/channel", "-rw-r-----"),
+            ("preview-fifo-without-opening", "pv-pipe", "fifo", "prw-------"),
+            ("preview-uses-the-unquoted-path", "pv-space image.bin",
+             "ELF executable, 64-bit, x86-64, little-endian", "-rw-r-----"),
+        )
+        observed = set()
+
+        def observe_selection(screen):
+            state = get_state(screen)
+            if state is None or state[0] != token:
+                return False
+            for check, name, description, mode in files:
+                is_selected = any(name in line and "\xa0" in line
+                                  for line in screen.get_lines()[screen.get_prompt_row() + 1:])
+                if (check not in observed and is_selected
+                        and has_file_preview(screen, "pv-dir/", description,
+                                             mode)):
+                    observed.add(check)
+                    return True
+            return False
+
+        for _ in files:
+            session.send(DOWN)
+            session.wait_until(observe_selection)
+        for check, _, _, _ in files:
+            report.record(check, session, lambda screen: check in observed)
+
+        session.send(ESCAPE)
+        report.record("preview-clears-on-close", session,
+                      lambda screen: is_menu_closed(screen)
+                      and not get_preview_rows(screen))
+        session.send(CTRL_C)
+        session.wait_until(is_line(""))
+        session.send(open_menu)
+        session.wait_until(has_directory_preview)
+        session.send(b"i")
+        narrowed = session.wait_until(lambda screen: has_file_preview(
+            screen, "pv-image.bin", "PNG image, 640x480, 8-bit/channel"))
+        session.send(BACKSPACE)
+        def has_restored_preview(screen):
+            state = get_state(screen)
+            menu = screen.get_menu()
+            if state != (token, "dir/") or menu is None:
+                return False
+            return has_directory_preview(screen)
+
+        widened = session.wait_until(has_restored_preview)
+        session.send(RIGHT)
+        descended = session.wait_until(
+            has_typed_menu(token + "dir/", ["preview/pv-dir/Kid.txt",
+                                           "preview/pv-dir/sub/",
+                                           "preview/pv-dir/apple",
+                                           "preview/pv-dir/z-two"]))
+        session.send(CTRL_LEFT)
+        report.record("directory-navigation-right-and-left", session,
+                      lambda screen: descended and has_typed_menu(
+                          "cat preview/", ["preview/pv-dir/", "preview/pv-image.bin",
+                                           "preview/pv-pipe",
+                                           "preview/'pv-space image.bin'"])(screen)
+                      and has_directory_preview(screen))
+        session.send(CTRL_RIGHT)
+        report.record("directory-navigation-ctrl-right", session,
+                      has_typed_menu("cat preview/pv-dir/", [
+                          "preview/pv-dir/Kid.txt", "preview/pv-dir/sub/",
+                          "preview/pv-dir/apple", "preview/pv-dir/z-two"]))
+        session.send(CTRL_LEFT)
+        session.wait_until(has_directory_preview)
+        for key, offset in ((LEFT, -1), (HOME, -len("cat preview/")),
+                            (END, 0)):
+            session.send(key)
+            moved = session.wait_until(
+                lambda screen: screen.get_menu() is not None
+                and get_state(screen)[0] == "cat preview/"
+                and screen.column == screen.get_prompt_width()
+                + len("cat preview/") + offset)
+            if not moved:
+                break
+        report.record("cursor-motion-keeps-path-menu-open", session,
+                      lambda screen: moved and has_directory_preview(screen))
+        report.record("preview-survives-narrow-and-widen", session,
+                      lambda screen: narrowed and widened)
+
+        def has_preview_entry(screen, line):
+            return is_typed_with_menu(line)(screen) and has_directory_preview(screen)
+
+        clear_line(session)
+        session.send(open_menu)
+        session.wait_until(has_directory_preview)
+        command_end = len("cat")
+        session.send(LEFT * (len(token) - command_end))
+        at_command = session.wait_until(
+            lambda screen: has_typed_menu(token, ["cat"])(screen)
+            and has_caret_at(screen, command_end))
+        session.send(RIGHT)
+        report.record("right-on-unchanged-command-refreshes-argument-menu",
+                      session,
+                      lambda screen: at_command
+                      and has_preview_entry(screen, token)
+                      and has_caret_at(screen, command_end + 1))
+        session.send(LEFT)
+        at_command = session.wait_until(
+            lambda screen: has_typed_menu(token, ["cat"])(screen)
+            and has_caret_at(screen, command_end))
+        session.send(CTRL_RIGHT)
+        report.record("ctrl-right-on-command-moves-by-word", session,
+                      lambda screen: at_command
+                      and has_preview_entry(screen, token)
+                      and has_caret_at(screen, len("cat preview")))
+
+        session.send(LEFT * len(" preview"))
+        at_command = session.wait_until(
+            lambda screen: has_typed_menu(token, ["cat"])(screen)
+            and has_caret_at(screen, command_end))
+        # Send both keys together so Ctrl-Right serves the pending argument menu.
+        session.send(b" " + CTRL_RIGHT)
+        entered_directory = "cat bin/ preview/pv-"
+        report.record("ctrl-right-gathers-pending-directory-menu", session,
+                      lambda screen: at_command
+                      and is_typed_with_menu(entered_directory)(screen)
+                      and has_caret_at(screen, len("cat bin/")))
+
+        clear_line(session)
+        missing = "cat zzmissing"
+        missing_line = missing + " preview/pv-"
+        session.send(missing_line.encode() + b"\t")
+        session.wait_until(has_directory_preview)
+        session.send(LEFT * (len(missing_line) - len(missing)))
+        at_missing = session.wait_until(
+            lambda screen: has_typed_menu(
+                missing_line, [HISTORY_NO_MATCH])(screen)
+            and has_caret_at(screen, len(missing)))
+        session.send(CTRL_RIGHT)
+        report.record("ctrl-right-with-no-candidates-moves-by-word", session,
+                      lambda screen: at_missing
+                      and has_preview_entry(screen, missing_line)
+                      and has_caret_at(screen, len(missing + " preview")))
+
+        file_line = "cat preview/pv-image.bin"
+        for name, key in (("right", RIGHT), ("ctrl-right", CTRL_RIGHT)):
+            clear_line(session)
+            session.send(open_menu)
+            session.wait_until(has_directory_preview)
+            session.send(b"i")
+            at_file = session.wait_until(
+                lambda screen: has_file_preview(
+                    screen, "pv-image.bin", "PNG image, 640x480, 8-bit/channel"))
+            session.send(key)
+            report.record(name + "-accepts-a-changed-file-candidate", session,
+                          lambda screen: at_file
+                          and is_typed_with_menu(file_line)(screen)
+                          and has_caret_at(screen, len(file_line)))
+
+        def is_candidate_selected(screen, index):
+            row = screen.get_prompt_row() + 2 + index
+            lines = screen.get_lines()
+            return 0 <= row < len(lines) and "\xa0" in lines[row]
+
+        def get_first_two_candidates(screen):
+            # The first rows can arrive before a long menu finishes drawing.
+            entries, _ = screen.get_menu()
+            return [entry.split("  ", 1)[0].rstrip() for entry in entries[:2]]
+
+        for name, path in (("dot-slash", "./"), ("root", "/"),
+                           ("quoted-root", '"/"')):
+            clear_line(session)
+            line = "cat " + path
+            session.send(line.encode() + b"\t")
+            opened = session.wait_until(
+                lambda screen: is_typed_with_menu(line)(screen)
+                and len(screen.get_menu()[0]) > 1
+                and is_candidate_selected(screen, 0)
+                and has_caret_at(screen, len(line)))
+            session.send(DOWN)
+            selected_second = session.wait_until(
+                lambda screen: is_typed_with_menu(line)(screen)
+                and is_candidate_selected(screen, 1)
+                and len(screen.get_menu()[0]) > 1
+                and has_caret_at(screen, len(line)))
+            candidates_before = (get_first_two_candidates(session.screen)
+                                 if selected_second else None)
+            # Moving back to the first row proves Ctrl-Left kept the second.
+            session.send(CTRL_LEFT + UP)
+            processed = session.wait_until(
+                lambda screen: is_candidate_selected(screen, 0)
+                or is_menu_closed(screen))
+            session.send(DOWN)
+            report.record("ctrl-left-keeps-menu-at-" + name, session,
+                          lambda screen: opened and selected_second and processed
+                          and is_candidate_selected(screen, 1)
+                          and is_typed_with_menu(line)(screen)
+                          and get_first_two_candidates(screen) == candidates_before
+                          and has_caret_at(screen, len(line)))
+
+        def has_dense_preview(screen, selected, body):
+            rows = get_preview_rows(screen, "dense/")
+            return (tuple(text for _, text in rows) == body + (directory_stats,)
+                    and is_candidate_selected(screen, selected))
+
+        clear_line(session)
+        session.send(b"cat dense/item-\t")
+        entries = tuple("entry-%02d" % index for index in range(15))
+        report.record("preview-shows-exactly-fifteen-entries", session,
+                      lambda screen: has_dense_preview(
+                          screen, 0, entries))
+        report.record("primary-menu-caps-at-sixteen-candidates", session,
+                      lambda screen: screen.get_menu() is not None
+                      and len(screen.get_menu()[0]) == 16
+                      and screen.get_menu()[1] == 26)
+        session.send(DOWN)
+        overflow = "previewing 15 out of 16"
+
+        def has_aligned_overflow_footer(screen):
+            menu = screen.get_menu()
+            if menu is None or len(menu[0]) != 16 or menu[1] != 26:
+                return False
+            lines = screen.get_lines()[screen.get_prompt_row() + 1:]
+            last = next((index for index, line in enumerate(lines)
+                         if line.lstrip().startswith("dense/item-15/ ")), -1)
+            return (0 <= last < len(lines) - 1
+                    and re.fullmatch(r"\s*showing 1-16 of 26 +"
+                                     + re.escape(directory_stats),
+                                     lines[last + 1]) is not None)
+
+        report.record("preview-shows-gray-count-on-directory-overflow", session,
+                      lambda screen: has_dense_preview(
+                          screen, 1, entries + (overflow,))
+                      and has_preview_style(screen, overflow, False, True)
+                      and has_aligned_overflow_footer(screen))
+        session.send(DOWN)
+        report.record("preview-shows-bold-gray-empty-marker", session,
+                      lambda screen: has_dense_preview(
+                          screen, 2, ("<empty>",))
+                      and has_preview_style(screen, "<empty>", True, True))
+        session.send(DOWN)
+        report.record("preview-keeps-literal-marker-filenames-plain", session,
+                      lambda screen: (has_dense_preview(
+                          screen, 3, ("...", "<empty>"))
+                          or has_dense_preview(
+                              screen, 3, ("<empty>", "...")))
+                      and all(has_preview_style(screen, marker, False)
+                              for marker in ("...", "<empty>")))
+        clear_line(session)
+        session.send(b"cat dense/short-\t")
+        report.record("preview-shows-all-five-entries-without-summary", session,
+                      lambda screen: has_dense_preview(screen, 0, entries[:5]))
+        session.send(DOWN)
+        report.record("preview-keeps-six-entries-independent-of-primary-height",
+                      session, lambda screen: has_dense_preview(
+                          screen, 1, entries[:6]))
+        clear_line(session)
+        session.send(b"cat dense/item-\t")
+        session.wait_until(lambda screen: has_dense_preview(screen, 0, entries))
+        session.send(b"01")
+        report.record("preview-shows-fifteen-entries-for-a-sole-directory",
+                      session, lambda screen: has_typed_menu(
+                          "cat dense/item-01", ["dense/item-01/"])(screen)
+                      and has_dense_preview(screen, 0, entries + (overflow,))
+                      and has_preview_style(screen, overflow, False, True))
+        finish(session)
+    finally:
+        session.close()
+
+    session = Session(binary, directory, command_directory, columns=144, rows=5)
+    try:
+        session.wait_until(is_line(""))
+        session.send(open_menu + b"d")
+        report.record("preview-counts-viewport-overflow", session,
+                      lambda screen: has_caret_at(screen, len("cat preview/pv-d"))
+                      and get_state(screen)[0] == "cat preview/pv-d"
+                      and tuple(text for _, text in get_preview_rows(screen))
+                      == directory_rows[:2] + ("previewing 2 out of 5",))
+        session.send(ESCAPE)
+        session.wait_until(lambda screen: not get_preview_rows(screen))
+        finish(session)
+    finally:
+        session.close()
+
+    session = Session(binary, directory, command_directory, columns=40)
+    try:
+        session.wait_until(is_line(""))
+        session.send(open_menu)
+        report.record("preview-yields-on-narrow-terminal", session,
+                      lambda screen: any(MENU_HEADER in line
+                                         for line in screen.get_lines())
+                      and all(any(name in line for line in screen.get_lines())
+                              for name in ("pv-dir/", "pv-image.bin", "pv-pipe",
+                                           "pv-space image.bin"))
+                      and not get_preview_rows(screen))
+        finish(session)
+    finally:
+        session.close()
+
+    links = os.path.join(directory, "links")
+    os.mkdir(links)
+    for name, target in (("regular", "../preview/pv-image.bin"),
+                         ("missing", "missing-target"),
+                         ("directory", "../preview/pv-dir"),
+                         ("pipe", "../preview/pv-pipe")):
+        os.symlink(target, os.path.join(links, name))
+        with open(os.path.join(links, name + "-peer"), "w"):
+            pass
+
+    session = Session(binary, directory, command_directory, columns=144,
+                      extra_environment={"TZ": "UTC0"})
+    try:
+        session.wait_until(is_line(""))
+        for name, target, details in (
+                ("regular", "../preview/pv-image.bin",
+                 ("PNG image, 640x480, 8-bit/channel", "-rw-r-----" + modified)),
+                ("missing", "missing-target", ("dangling target",)),
+                ("directory", "../preview/pv-dir", directory_rows + (directory_stats,)),
+                ("pipe", "../preview/pv-pipe", ("fifo", "prw-------" + modified))):
+            session.send(("cat links/" + name + "\t").encode())
+            expected = ("symbolic link -> " + target,) + details
+            def has_link_preview(screen):
+                rows = screen.get_lines()[screen.get_prompt_row() + 1:]
+                for index, row in enumerate(rows):
+                    column = row.find("symbolic link -> ")
+                    if column >= 0 and "\xa0links/" + name in row:
+                        detail_rows = [row[column:]]
+                        for line in rows[index + 1:index + len(expected)]:
+                            detail_rows.append(re.sub(r"^\s*links/\S+\s+", "",
+                                                      line).strip())
+                        return tuple(detail_rows) == expected
+                return False
+
+            report.record("preview-symbolic-link-" + name, session,
+                          has_link_preview)
+            clear_line(session)
+        finish(session)
+    finally:
+        session.close()
+
+
 def main():
-    if sys.platform != "linux":
+    is_path_preview_only = os.environ.get("KOSH_TEST_PATH_PREVIEW_ONLY") == "1"
+    is_history_preview_only = os.environ.get("KOSH_TEST_HISTORY_PREVIEW_ONLY") == "1"
+    is_completion_keys_only = os.environ.get(
+        "KOSH_TEST_COMPLETION_KEYS_ONLY") == "1"
+    if sys.platform != "linux" and not (is_path_preview_only
+                                        or is_completion_keys_only
+                                        or is_history_preview_only):
         print("editor ghost and menu PTY probes: skipped (requires Linux)")
         return 0
     binary = os.environ.get("BIN")
@@ -1732,6 +2813,44 @@ def main():
         print("BIN is required", file=sys.stderr)
         return 2
     binary = os.path.abspath(binary)
+
+    if is_history_preview_only:
+        report = Report()
+        with tempfile.TemporaryDirectory(prefix="kosh-history-pty-") as directory:
+            run_history_preview_checks(binary, directory, report)
+        return 0 if report.is_ok else 1
+
+    if is_path_preview_only:
+        report = Report()
+        with tempfile.TemporaryDirectory(prefix="kosh-preview-pty-") as directory:
+            run_path_preview_checks(binary, directory, report)
+        return 0 if report.is_ok else 1
+
+    if is_completion_keys_only:
+        report = Report()
+        with tempfile.TemporaryDirectory(prefix="kosh-completion-pty-") as directory:
+            os.mkdir(os.path.join(directory, "sub"))
+            os.mkdir(os.path.join(directory, "zzlocal"))
+            os.mkdir(os.path.join(directory, "menu"))
+            for name in ("sub/alpha-beta.txt", "zzlocal/inner.txt",
+                         "menu/menu-apple", "menu/menu-banana"):
+                open(os.path.join(directory, name), "w").close()
+            session = Session(binary, directory, directory)
+            try:
+                if session.wait_until(is_line("")):
+                    record_default_completion_space(session, report)
+                    run_path_spacing_checks(session, report)
+                    run_completion_key_checks(session, report, directory)
+                    session.send(b"printf 'completion-keys-done\\n'; exit\r")
+                saw_marker = session.wait_until(
+                    lambda screen: "completion-keys-done" in screen.get_lines())
+                if not (did_exit_cleanly(session) and saw_marker):
+                    sys.stderr.write("completion key session did not exit cleanly\n"
+                                     + repr(bytes(session.raw[-4096:])) + "\n")
+                    return 1
+            finally:
+                session.close()
+        return 0 if report.is_ok else 1
 
     directory = tempfile.mkdtemp(prefix="kosh-editor-pty-")
     report = Report()
@@ -1790,6 +2909,10 @@ def main():
             open(os.path.join(control_directory, name), "w").close()
         run_control_name_checks(binary, directory,
                                 os.path.join(directory, "bin"), report)
+        with tempfile.TemporaryDirectory(prefix="kosh-history-pty-") as history:
+            run_history_preview_checks(binary, history, report)
+        with tempfile.TemporaryDirectory(prefix="kosh-preview-pty-") as preview:
+            run_path_preview_checks(binary, preview, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1

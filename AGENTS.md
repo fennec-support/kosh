@@ -227,6 +227,10 @@ terminal restoration, and legacy key conversion. The interactive loop enters
 raw mode only after job reports, PROMPT_COMMAND, prompt expansion, and the
 prompt itself have run.
 
+Kosh maps Toiletline assertions and allocation failures to GUARANTEE in every
+build mode. The editor registers its emergency exit hook before initialization
+can enter raw mode, including when Calc or Slurp starts the editor.
+
 ## Data and process behavior
 
 A forked child marks inherited jobs so wait cannot reach them. An asynchronous
@@ -279,10 +283,11 @@ diagnostic, then traps in debug or exits the current process with status 1 in
 release. The literal reason replaces the condition text when it is nonempty.
 The diagnostic ends with "Exiting after a catastrophic failure." and colors
 only "fatal" in bold bright red when stdin and stderr are terminals, NO_COLOR
-is empty or unset, and TERM is not dumb. Failure handling does not allocate,
-unwind C++ objects, or run shell EXIT traps. The owning interactive process
-restores its terminal before the diagnostic attempt. The diagnostic uses one
-best-effort write of at most 4096 bytes, and a blocking stderr can delay exit.
+is empty or unset, TERM is not dumb, and a Windows console already has virtual
+terminal output enabled. Failure handling does not allocate, unwind C++
+objects, or run shell EXIT traps. The owning interactive process restores its
+terminal before the diagnostic attempt. The diagnostic uses one best-effort
+write of at most 4096 bytes, and a blocking stderr can delay exit.
 Container and allocator precondition guarantees are always enabled in every
 build mode.
 make pgo-profile runs scripts/pgo.sh, which trains an instrumented release build,

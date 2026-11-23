@@ -1731,6 +1731,22 @@ format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
   return out;
 }
 
+pure fn
+file_type_name(const os::file_status &status) wontthrow -> StringView
+{
+  switch (os::file_type_letter(status.mode)) {
+  case 'd': return "directory";
+  case 'l': return "symbolic link";
+  case 'c': return "character special file";
+  case 'b': return "block special file";
+  case 'p': return "fifo";
+  case 's': return "socket";
+  default:  break;
+  }
+
+  return status.size == 0 ? "regular empty file" : "regular file";
+}
+
 #if !defined KOSH_NO_KOSHKIT
 
 fn
@@ -1785,22 +1801,6 @@ filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64
                                 static_cast<u64>(numerator),
                                 static_cast<u64>(divisor))
       .quotient;
-}
-
-pure fn
-file_type_name(const os::file_status &status) wontthrow -> StringView
-{
-  switch (os::file_type_letter(status.mode)) {
-  case 'd': return "directory";
-  case 'l': return "symbolic link";
-  case 'c': return "character special file";
-  case 'b': return "block special file";
-  case 'p': return "fifo";
-  case 's': return "socket";
-  default:  break;
-  }
-
-  return status.size == 0 ? "regular empty file" : "regular file";
 }
 
 fn

@@ -239,9 +239,6 @@ struct slurp_session
   Maybe<os::file_status>  opened;
   bool                    is_stdin{false};
   String                  staged_output{heap_allocator()};
-  ArrayList<String>       path_candidates{heap_allocator()};
-  ArrayList<const char *> path_pointers{heap_allocator()};
-  String                  path_prefix{heap_allocator()};
   bool                    has_crlf;
   bool                    has_final_newline;
   bool                    is_single_newline;
@@ -254,7 +251,6 @@ struct slurp_session
 slurp_session        *ACTIVE_SESSION        = nullptr;
 Maybe<slurp_session> *PENDING_SESSION       = nullptr;
 bool                 *SHOULD_ACCEPT_CURRENT = nullptr;
-EvalContext          *ACTIVE_CONTEXT        = nullptr;
 
 /* describes the kind of file, its line endings, and its size in byte_count,
    or a new file when byte_count is empty. */
@@ -483,38 +479,6 @@ open_file(const char  *path,
   }
 }
 
-fn
-complete_path(const char *text, tl_completion *out) -> int
-{
-  *out                     = {};
-  out->is_space_suppressed = true;
-  out->token_end           = toiletline::get_utf8_length(text, strlen(text));
-
-  try {
-    let  scratch    = completion::ScopedCompletionScratch{};
-    let &session    = *ACTIVE_SESSION;
-    let  candidates = completion::complete_filesystem_paths_by_prefix(
-        StringView{text, strlen(text)}, *ACTIVE_CONTEXT,
-        os::read_current_directory());
-    session.path_candidates.clear();
-    session.path_pointers.clear();
-
-    for (let const &candidate : candidates)
-      session.path_candidates.push(candidate.clone_to(heap_allocator()));
-    session.path_prefix = completion::compute_longest_common_prefix(
-        session.path_candidates, false);
-
-    for (let const &candidate : session.path_candidates)
-      session.path_pointers.push(candidate.c_str());
-    out->candidates            = session.path_pointers.begin();
-    out->count                 = session.path_pointers.count();
-    out->longest_common_prefix = session.path_prefix.c_str();
-
-    return out->count != 0;
-  } catch (const Error &) {
-    return 0;
-  }
-}
 
 } /* namespace */
 
@@ -581,10 +545,8 @@ edit_file(EvalContext                 &cxt,
   ACTIVE_SESSION        = &session;
   PENDING_SESSION       = &pending;
   SHOULD_ACCEPT_CURRENT = &should_accept_current;
-  ACTIVE_CONTEXT        = &cxt;
   toiletline::set_save_callback(save_buffer);
   toiletline::set_open_file_callback(open_file);
-  toiletline::set_path_complete_callback(complete_path);
   toiletline::set_editor_title(title.c_str());
   toiletline::set_status(session.status.c_str());
   toiletline::set_full_screen(true);
@@ -621,11 +583,9 @@ edit_file(EvalContext                 &cxt,
     }
     toiletline::set_save_callback(nullptr);
     toiletline::set_open_file_callback(nullptr);
-    toiletline::set_path_complete_callback(nullptr);
     ACTIVE_SESSION        = nullptr;
     PENDING_SESSION       = nullptr;
     SHOULD_ACCEPT_CURRENT = nullptr;
-    ACTIVE_CONTEXT        = nullptr;
     toiletline::set_saved_text(nullptr);
     toiletline::set_full_screen(false);
     toiletline::set_line_max(0);
@@ -670,7 +630,7 @@ edit_file(EvalContext                 &cxt,
                                                                  : start_line);
   toiletline::set_saved_text(session.saved_text.c_str());
 
-  let result = toiletline::get_input(String{heap_allocator()});
+  let result = toiletline::get_input(String{heap_allocator()}, &cxt);
 
   if (result.code == TL_PRESSED_INTERRUPT) return 130;
   if (result.code == TL_PRESSED_OPEN_FILE) return TL_PRESSED_OPEN_FILE;

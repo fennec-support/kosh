@@ -575,22 +575,364 @@ match_magic_rules(const ArrayList<FileMagicRule> &rules,
   return {};
 }
 
+/* Callers validate the enclosing header before reading a field. */
+static pure fn
+read_header_field(StringView bytes,
+                  usize      offset,
+                  usize      width,
+                  bool       is_little_endian = true) wontthrow -> u32
+{
+  u32 value = 0;
+
+  for (usize i = 0; i < width; ++i) {
+    let const index = is_little_endian ? width - 1 - i : i;
+    value           = (value << 8) | static_cast<u8>(bytes[offset + index]);
+  }
+
+  return value;
+}
+
+static fn
+append_detail_label(String &text, StringView label) throws -> void
+{
+  if (label.is_empty()) return;
+
+  text.append(", ");
+  text.append(label);
+}
+
+static fn
+append_detail_number(String &text, u32 value) throws -> void
+{
+  text.append(String::from(static_cast<u64>(value), text.allocator()).view());
+}
+
+static fn
+append_detail_dimensions(String &text, u32 width, u32 height) throws
+    -> void
+{
+  if (width == 0 || height == 0) return;
+
+  text.append(", ");
+  append_detail_number(text, width);
+  text.push('x');
+  append_detail_number(text, height);
+}
+
+static fn
+append_png_details(String &text, StringView bytes) throws -> void
+{
+  if (bytes.length < 33 || read_header_field(bytes, 8, 4, false) != 13 ||
+      bytes.substring_of_length(12, 4) != "IHDR")
+  {
+    return;
+  }
+
+  append_detail_dimensions(text, read_header_field(bytes, 16, 4, false),
+                           read_header_field(bytes, 20, 4, false));
+  text.append(", ");
+  append_detail_number(text, static_cast<u8>(bytes[24]));
+  text.append("-bit/channel");
+}
+
+static fn
+append_gif_details(String &text, StringView bytes) throws -> void
+{
+  if (bytes.length < 13) return;
+
+  append_detail_dimensions(text, read_header_field(bytes, 6, 2),
+                           read_header_field(bytes, 8, 2));
+  append_detail_label(text, bytes.substring_of_length(3, 3));
+}
+
+static fn
+append_jpeg_details(String &text, StringView bytes) throws -> void
+{
+  usize offset = 2;
+
+  while (offset + 4 <= bytes.length && static_cast<u8>(bytes[offset]) == 255) {
+    let const marker = static_cast<u8>(bytes[offset + 1]);
+    if (marker == 255) {
+      ++offset;
+      continue;
+    }
+    if (marker == 0 || marker == 0xd9 || marker == 0xda) break;
+    let const size = read_header_field(bytes, offset + 2, 2, false);
+    if (size < 2 || size > bytes.length - offset - 2) break;
+    if (size >= 8 && marker >= 0xc0 && marker <= 0xcf && marker != 0xc4 &&
+        marker != 0xc8 && marker != 0xcc)
+    {
+      append_detail_dimensions(text,
+                               read_header_field(bytes, offset + 7, 2, false),
+                               read_header_field(bytes, offset + 5, 2, false));
+      if (marker == 0xc2) append_detail_label(text, "progressive");
+      break;
+    }
+    offset += 2 + size;
+  }
+}
+
+static fn
+append_webp_details(String &text, StringView bytes) throws -> void
+{
+  if (bytes.length < 25) return;
+
+  let const chunk = bytes.substring_of_length(12, 4);
+  let const size  = read_header_field(bytes, 16, 4);
+
+  if (chunk == "VP8X" && size == 10 && bytes.length >= 30) {
+    append_detail_dimensions(text, 1 + read_header_field(bytes, 24, 3),
+                             1 + read_header_field(bytes, 27, 3));
+    if ((bytes[20] & 2) != 0) append_detail_label(text, "animated");
+    if ((bytes[20] & 16) != 0) append_detail_label(text, "alpha");
+  } else if (chunk == "VP8L" && size >= 5 && static_cast<u8>(bytes[20]) == 0x2f)
+  {
+    let const dimensions = read_header_field(bytes, 21, 4);
+    append_detail_dimensions(text, 1 + (dimensions & 0x3fff),
+                             1 + ((dimensions >> 14) & 0x3fff));
+    append_detail_label(text, "lossless");
+  } else if (chunk == "VP8 " && size >= 10 && bytes.length >= 30 &&
+             bytes.substring_of_length(23, 3) == "\x9d\x01\x2a")
+  {
+    append_detail_dimensions(text, read_header_field(bytes, 26, 2) & 0x3fff,
+                             read_header_field(bytes, 28, 2) & 0x3fff);
+  }
+}
+
+static fn
+append_bmp_details(String &text, StringView bytes) throws -> void
+{
+  if (bytes.length < 26) return;
+
+  let const header_size = read_header_field(bytes, 14, 4);
+
+  if (header_size == 12) {
+    append_detail_dimensions(text, read_header_field(bytes, 18, 2),
+                             read_header_field(bytes, 20, 2));
+  } else if (header_size >= 40) {
+    let const width  = read_header_field(bytes, 18, 4);
+    let const height = read_header_field(bytes, 22, 4);
+    if ((width & 0x80000000u) == 0)
+      append_detail_dimensions(text, width,
+                               height & 0x80000000u ? 0u - height : height);
+  }
+}
+
+static fn
+append_elf_details(String &text, StringView bytes) throws -> void
+{
+  if (bytes.length < 20 || (bytes[4] != 1 && bytes[4] != 2) ||
+      (bytes[5] != 1 && bytes[5] != 2))
+  {
+    return;
+  }
+
+  let const is_little = bytes[5] == 1;
+  let const type      = read_header_field(bytes, 16, 2, is_little);
+
+  if (type == 1) text = String{text.allocator(), "ELF relocatable object"};
+  if (type == 3) text = String{text.allocator(), "ELF shared object / PIE"};
+  if (type == 4) text = String{text.allocator(), "ELF core dump"};
+  append_detail_label(text, bytes[4] == 2 ? "64-bit" : "32-bit");
+  switch (read_header_field(bytes, 18, 2, is_little)) {
+  case 3:   append_detail_label(text, "x86"); break;
+  case 20:
+  case 21:  append_detail_label(text, "PowerPC"); break;
+  case 40:  append_detail_label(text, "ARM"); break;
+  case 62:  append_detail_label(text, "x86-64"); break;
+  case 183: append_detail_label(text, "ARM64"); break;
+  case 243: append_detail_label(text, "RISC-V"); break;
+  case 258: append_detail_label(text, "LoongArch"); break;
+  default:  break;
+  }
+  append_detail_label(text, is_little ? "little-endian" : "big-endian");
+}
+
+static fn
+append_mach_o_details(String &text, StringView bytes) throws -> void
+{
+  if (bytes.length < 16) return;
+
+  let const first     = static_cast<u8>(bytes[0]);
+  let const is_little = first == 0xce || first == 0xcf;
+  let const is_wide   = first == 0xcf || static_cast<u8>(bytes[3]) == 0xcf;
+  let const cpu       = read_header_field(bytes, 4, 4, is_little);
+  let const type      = read_header_field(bytes, 12, 4, is_little);
+
+  if (type == 1) text = String{text.allocator(), "Mach-O object"};
+  if (type == 6) text = String{text.allocator(), "Mach-O dynamic library"};
+  if (type == 8) text = String{text.allocator(), "Mach-O bundle"};
+  append_detail_label(text, is_wide ? "64-bit" : "32-bit");
+  switch (cpu & 0xffffffu) {
+  case 7:  append_detail_label(text, is_wide ? "x86-64" : "x86"); break;
+  case 12: append_detail_label(text, is_wide ? "ARM64" : "ARM"); break;
+  case 18: append_detail_label(text, "PowerPC"); break;
+  default: break;
+  }
+}
+
+static fn
+append_pe_details(String &text, StringView bytes) throws -> void
+{
+  let const offset = read_header_field(bytes, 0x3c, 4);
+
+  if (bytes.length - offset >= 24) {
+    if ((read_header_field(bytes, offset + 22, 2) & 0x2000) != 0)
+      text = String{text.allocator(), "PE DLL"};
+    if (bytes.length - offset >= 26 &&
+        read_header_field(bytes, offset + 20, 2) >= 2)
+    {
+      let const magic = read_header_field(bytes, offset + 24, 2);
+      if (magic == 0x10b || magic == 0x20b)
+        append_detail_label(text, magic == 0x20b ? "64-bit" : "32-bit");
+    }
+    switch (read_header_field(bytes, offset + 4, 2)) {
+    case 0x14c:  append_detail_label(text, "x86"); break;
+    case 0x1c0:
+    case 0x1c4:  append_detail_label(text, "ARM"); break;
+    case 0x8664: append_detail_label(text, "x86-64"); break;
+    case 0xaa64: append_detail_label(text, "ARM64"); break;
+    default:     break;
+    }
+  }
+}
+
+static fn
+append_wave_details(String &text, StringView bytes) throws -> void
+{
+  usize offset = 12;
+
+  while (offset + 8 <= bytes.length) {
+    let const size = read_header_field(bytes, offset + 4, 4);
+    if (size > bytes.length - offset - 8) break;
+    if (size >= 16 && bytes.substring_of_length(offset, 4) == "fmt ") {
+      text.append(", ");
+      append_detail_number(text, read_header_field(bytes, offset + 12, 4));
+      text.append(" Hz, ");
+      append_detail_number(text, read_header_field(bytes, offset + 10, 2));
+      text.append(" ch");
+      break;
+    }
+    offset += 8 + size + (size & 1);
+  }
+}
+
+static fn
+append_script_details(String &text, StringView bytes) throws -> void
+{
+  let const start  = bytes.substring_of_length(2, 128);
+  usize     offset = 0;
+
+  while (offset < start.length &&
+         (start[offset] == ' ' || start[offset] == '\t'))
+  {
+    ++offset;
+  }
+  usize end = offset;
+  while (end < start.length && static_cast<u8>(start[end]) > 32 &&
+         static_cast<u8>(start[end]) < 127)
+  {
+    ++end;
+  }
+  append_detail_label(text, start.substring_of_length(offset, end - offset));
+}
+
+static fn
+append_java_details(String &text, StringView bytes) throws -> void
+{
+  if (bytes.length < 8) return;
+
+  text.append(", version ");
+  append_detail_number(text, read_header_field(bytes, 6, 2, false));
+  text.push('.');
+  append_detail_number(text, read_header_field(bytes, 4, 2, false));
+}
+
+static fn
+append_pdf_details(String &text, StringView bytes) throws -> void
+{
+  if (bytes.length < 8 || bytes[5] < '0' || bytes[5] > '9' || bytes[6] != '.' ||
+      bytes[7] < '0' || bytes[7] > '9')
+  {
+    return;
+  }
+
+  append_detail_label(text, bytes.substring_of_length(5, 3));
+}
+
+static fn
+append_sqlite_details(String &text, StringView bytes) throws -> void
+{
+  if (bytes.length < 100) return;
+
+  let const page_byte_count = read_header_field(bytes, 16, 2, false);
+  let const page_count      = read_header_field(bytes, 28, 4, false);
+
+  if (page_byte_count == 1 || (page_byte_count >= 512 &&
+                               (page_byte_count & (page_byte_count - 1)) == 0))
+  {
+    text.append(", ");
+    append_detail_number(text, page_byte_count == 1 ? 65536 : page_byte_count);
+    text.append(" B/page");
+    if (page_count > 0 && read_header_field(bytes, 24, 4, false) ==
+                              read_header_field(bytes, 92, 4, false))
+    {
+      text.append(", ");
+      append_detail_number(text, page_count);
+      text.append(page_count == 1 ? " page" : " pages");
+    }
+  }
+}
+
+static fn
+append_flac_details(String &text, StringView bytes) throws -> void
+{
+  if (bytes.length < 42 || (bytes[4] & 127) != 0 ||
+      read_header_field(bytes, 5, 3, false) != 34)
+  {
+    return;
+  }
+
+  let const format      = read_header_field(bytes, 18, 4, false);
+  let const sample_rate = format >> 12;
+
+  if (sample_rate > 0) {
+    text.append(", ");
+    append_detail_number(text, sample_rate);
+    text.append(" Hz, ");
+    append_detail_number(text, 1 + ((format >> 9) & 7));
+    text.append(" ch, ");
+    append_detail_number(text, 1 + ((format >> 4) & 31));
+    text.append("-bit");
+  }
+}
+
+using file_detail_parser = void (*)(String &, StringView);
+
+struct file_content_kind
+{
+  StringView         description;
+  file_detail_parser append_details{nullptr};
+};
+
 struct builtin_file_signature
 {
-  usize      offset;
-  StringView bytes;
-  StringView description;
+  usize             offset;
+  StringView        bytes;
+  file_content_kind kind;
 };
 
 template <usize byte_count>
 consteval fn
 make_builtin_file_signature(usize offset,
                             const char (&bytes)[byte_count],
-                            StringView description) -> builtin_file_signature
+                            StringView         description,
+                            file_detail_parser append_details = nullptr)
+    -> builtin_file_signature
 {
   return {
-      offset, StringView{bytes, byte_count - 1},
-       description
+      offset, StringView{bytes,       byte_count - 1},
+       {description, append_details}
   };
 }
 
@@ -619,12 +961,12 @@ matches_builtin_file_signature(StringView                    bytes,
 }
 
 static pure fn
-file_content_description(StringView bytes) wontthrow -> StringView
+classify_file_content(StringView bytes) wontthrow -> file_content_kind
 {
   /* time:   O(bytes.length) for the control-byte scan at the end. the other
              checks compare a constant number of bytes each. memory: none, since
              every result is a static string. */
-  if (bytes.is_empty()) return "empty";
+  if (bytes.is_empty()) return {"empty"};
 
   if (bytes.length >= 0x40 && bytes.starts_with("MZ")) {
     let const pe_offset =
@@ -636,7 +978,7 @@ file_content_description(StringView bytes) wontthrow -> StringView
     if (pe_offset <= bytes.length && 4 <= bytes.length - pe_offset &&
         bytes.substring_of_length(pe_offset, 4) == StringView{"PE\0\0", 4})
     {
-      return "PE executable";
+      return {"PE executable", append_pe_details};
     }
   }
 
@@ -646,24 +988,25 @@ file_content_description(StringView bytes) wontthrow -> StringView
     let const major_version = static_cast<u16>(static_cast<u8>(bytes[6]) << 8) |
                               static_cast<u8>(bytes[7]);
 
-    return major_version >= 45 ? StringView{"Java class"}
-                               : StringView{"Mach-O universal binary"};
+    return major_version >= 45
+               ? file_content_kind{"Java class", append_java_details}
+               : file_content_kind{"Mach-O universal binary"};
   }
 
   if (bytes.length >= 12 && bytes.substring_of_length(0, 4) == "RIFF") {
     let const kind = bytes.substring_of_length(8, 4);
 
-    if (kind == "WAVE") return "WAVE audio";
-    if (kind == "AVI ") return "AVI video";
-    if (kind == "WEBP") return "WebP image";
-    if (kind == "ACON") return "Windows animated cursor";
+    if (kind == "WAVE") return {"WAVE audio", append_wave_details};
+    if (kind == "AVI ") return {"AVI video"};
+    if (kind == "WEBP") return {"WebP image", append_webp_details};
+    if (kind == "ACON") return {"Windows animated cursor"};
   }
 
   if (bytes.length >= 12 && bytes.substring_of_length(0, 4) == "FORM") {
     let const kind = bytes.substring_of_length(8, 4);
 
     if (kind == "AIFF" || kind == "AIFC") {
-      return "AIFF audio";
+      return {"AIFF audio"};
     }
   }
 
@@ -673,14 +1016,14 @@ file_content_description(StringView bytes) wontthrow -> StringView
     static constexpr StaticStringSet DJVU_FORMS{DJVU_FORM_KEYS};
 
     if (DJVU_FORMS.contains(bytes.substring_of_length(12, 4)))
-      return "DjVu document";
+      return {"DjVu document"};
   }
 
   if (bytes.length >= 12 && bytes.substring_of_length(4, 4) == "ftyp") {
     let const brand = bytes.substring_of_length(8, 4);
 
     if (brand == "avif" || brand == "avis") {
-      return "AVIF image";
+      return {"AVIF image"};
     }
 
     static constexpr PackedStringKey HEIF_BRAND_KEYS[] = {
@@ -688,7 +1031,7 @@ file_content_description(StringView bytes) wontthrow -> StringView
         SSK("hevx"), SSK("mif1"), SSK("msf1")};
     static constexpr StaticStringSet HEIF_BRANDS{HEIF_BRAND_KEYS};
 
-    if (HEIF_BRANDS.contains(brand)) return "HEIF image";
+    if (HEIF_BRANDS.contains(brand)) return {"HEIF image"};
   }
 
   if (bytes.length >= 4 &&
@@ -696,22 +1039,25 @@ file_content_description(StringView bytes) wontthrow -> StringView
   {
     let const header = bytes.substring_of_length(4, 256 - 4);
 
-    if (header.find_substring("matroska").has_value()) return "Matroska video";
-    if (header.find_substring("webm").has_value()) return "WebM video";
+    if (header.find_substring("matroska").has_value())
+      return {"Matroska video"};
+    if (header.find_substring("webm").has_value()) return {"WebM video"};
   }
 
   if (bytes.length > 376 && bytes[0] == 'G' && bytes[188] == 'G' &&
       bytes[376] == 'G')
   {
-    return "MPEG transport stream";
+    return {"MPEG transport stream"};
   }
 
   constexpr builtin_file_signature SIGNATURES[] = {
-      make_builtin_file_signature(0, "\x89PNG\r\n\x1a\n", "PNG image"),
-      make_builtin_file_signature(0, "\xff\xd8\xff", "JPEG image"),
-      make_builtin_file_signature(0, "GIF87a", "GIF image"),
-      make_builtin_file_signature(0, "GIF89a", "GIF image"),
-      make_builtin_file_signature(0, "BM", "BMP image"),
+      make_builtin_file_signature(0, "\x89PNG\r\n\x1a\n", "PNG image",
+                                  append_png_details),
+      make_builtin_file_signature(0, "\xff\xd8\xff", "JPEG image",
+                                  append_jpeg_details),
+      make_builtin_file_signature(0, "GIF87a", "GIF image", append_gif_details),
+      make_builtin_file_signature(0, "GIF89a", "GIF image", append_gif_details),
+      make_builtin_file_signature(0, "BM", "BMP image", append_bmp_details),
       make_builtin_file_signature(0, "II\x2a\0", "TIFF image"),
       make_builtin_file_signature(0, "MM\0\x2a", "TIFF image"),
       make_builtin_file_signature(0, "II\x2b\0", "BigTIFF image"),
@@ -742,15 +1088,20 @@ file_content_description(StringView bytes) wontthrow -> StringView
       make_builtin_file_signature(0,
                                   "\x7f"
                                   "ELF",
-                                  "ELF executable"),
+                                  "ELF executable", append_elf_details),
       make_builtin_file_signature(0, "#!AMR-WB\n", "AMR-WB audio"),
       make_builtin_file_signature(0, "#!AMR\n", "AMR audio"),
-      make_builtin_file_signature(0, "#!", "script text executable"),
+      make_builtin_file_signature(0, "#!", "script text executable",
+                                  append_script_details),
       make_builtin_file_signature(0, "MZ", "DOS executable"),
-      make_builtin_file_signature(0, "\xfe\xed\xfa\xce", "Mach-O executable"),
-      make_builtin_file_signature(0, "\xce\xfa\xed\xfe", "Mach-O executable"),
-      make_builtin_file_signature(0, "\xfe\xed\xfa\xcf", "Mach-O executable"),
-      make_builtin_file_signature(0, "\xcf\xfa\xed\xfe", "Mach-O executable"),
+      make_builtin_file_signature(0, "\xfe\xed\xfa\xce", "Mach-O executable",
+                                  append_mach_o_details),
+      make_builtin_file_signature(0, "\xce\xfa\xed\xfe", "Mach-O executable",
+                                  append_mach_o_details),
+      make_builtin_file_signature(0, "\xfe\xed\xfa\xcf", "Mach-O executable",
+                                  append_mach_o_details),
+      make_builtin_file_signature(0, "\xcf\xfa\xed\xfe", "Mach-O executable",
+                                  append_mach_o_details),
       make_builtin_file_signature(0, "\xbe\xba\xfe\xca",
                                   "Mach-O universal binary"),
       make_builtin_file_signature(0, "\xca\xfe\xba\xbf",
@@ -806,13 +1157,15 @@ file_content_description(StringView bytes) wontthrow -> StringView
           0, "7kSt\xa0\x31\x83\xd3\x8c\xb2\x28\xb0\xd3zPQ", "ZPAQ archive"),
       make_builtin_file_signature(0, "\xff\x06\0\0sNaPpY",
                                   "Snappy framed data"),
-      make_builtin_file_signature(0, "%PDF-", "PDF document"),
+      make_builtin_file_signature(0, "%PDF-", "PDF document",
+                                  append_pdf_details),
       make_builtin_file_signature(0, "%!PS", "PostScript document"),
       make_builtin_file_signature(0, "{\\rtf", "RTF document"),
       make_builtin_file_signature(0, "<!DOCTYPE html", "HTML document"),
       make_builtin_file_signature(0, "<html", "HTML document"),
       make_builtin_file_signature(0, "<?xml", "XML document"),
-      make_builtin_file_signature(0, "SQLite format 3\0", "SQLite database"),
+      make_builtin_file_signature(0, "SQLite format 3\0", "SQLite database",
+                                  append_sqlite_details),
       make_builtin_file_signature(0, "\x37\x7f\x06\x82",
                                   "SQLite write-ahead log"),
       make_builtin_file_signature(0, "\x37\x7f\x06\x83",
@@ -843,7 +1196,7 @@ file_content_description(StringView bytes) wontthrow -> StringView
       make_builtin_file_signature(0, "\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1",
                                   "OLE compound document"),
       make_builtin_file_signature(0, "ITSF", "Compiled HTML help"),
-      make_builtin_file_signature(0, "fLaC", "FLAC audio"),
+      make_builtin_file_signature(0, "fLaC", "FLAC audio", append_flac_details),
       make_builtin_file_signature(0, "OggS", "Ogg data"),
       make_builtin_file_signature(0, "ID3", "MP3 audio"),
       make_builtin_file_signature(0, "MThd\0\0\0\x06", "MIDI audio"),
@@ -874,7 +1227,7 @@ file_content_description(StringView bytes) wontthrow -> StringView
 
   for (let const &signature : SIGNATURES) {
     if (matches_builtin_file_signature(bytes, signature)) {
-      return signature.description;
+      return signature.kind;
     }
   }
 
@@ -894,21 +1247,21 @@ file_content_description(StringView bytes) wontthrow -> StringView
     }
   }
 
-  return is_text ? StringView{"text"} : StringView{"data"};
+  return {is_text ? StringView{"text"} : StringView{"data"}};
 }
 
 constexpr usize FILE_CONTENT_SAMPLE_BYTE_COUNT  = 8192;
 constexpr usize FILE_CONTENT_SAMPLE_BATCH_COUNT = 32;
-
 fn
 describe_file_type(StringView             path,
                    const os::file_status &status,
-                   Allocator              allocator) throws -> Maybe<String>
+                   Allocator              allocator,
+                   bool should_include_details) throws -> Maybe<String>
 {
   /* memory: the returned String comes from allocator, and the caller owns it.
-     time:   for a regular file, one os::open_file_descriptor(), one
-             os::read_fd() of at most 8192 bytes, and one os::close_fd(). other
-             file types make no system calls. */
+     time:   for a regular file, one nonblocking open, one descriptor stat,
+             one read of at most 8192 bytes, and one close. other file types
+             make no system calls. */
   switch (os::file_type_letter(status.mode)) {
   case 'd': return String{allocator, "directory"};
   case 'l': return String{allocator, "symbolic link"};
@@ -920,10 +1273,18 @@ describe_file_type(StringView             path,
   }
 
   let const descriptor =
-      os::open_file_descriptor(path, os::file_open_mode::Read);
+      os::open_file_descriptor(path, os::file_open_mode::ReadNonblocking);
 
   if (!descriptor.has_value()) return None;
   defer { os::close_fd(*descriptor); };
+
+  os::file_status opened_status{};
+
+  if (!os::stat_descriptor(*descriptor, opened_status) ||
+      os::file_type_letter(opened_status.mode) != '-')
+  {
+    return None;
+  }
 
   char      buffer[FILE_CONTENT_SAMPLE_BYTE_COUNT];
   let const read_byte_count = os::read_fd(*descriptor, buffer, sizeof(buffer));
@@ -933,8 +1294,15 @@ describe_file_type(StringView             path,
   /* at this point: buffer holds *read_byte_count bytes read from the
      descriptor, which closes on return. */
 
-  return String{allocator,
-                file_content_description(StringView{buffer, *read_byte_count})};
+  let const bytes       = StringView{buffer, *read_byte_count};
+  let const kind        = classify_file_content(bytes);
+  let       description = String{allocator, kind.description};
+
+  if (should_include_details && kind.append_details != nullptr) {
+    kind.append_details(description, bytes);
+  }
+
+  return description;
 }
 
 struct file_content_probe
@@ -1072,8 +1440,9 @@ File::execute(const ExecContext               &ec,
         if (result.error_number == 0) {
           default_samples[operand_position] =
               String{allocator,
-                     file_content_description(StringView{
-                         probes[index].bytes, result.transferred_byte_count})};
+                     classify_file_content(StringView{
+                         probes[index].bytes, result.transferred_byte_count})
+                         .description};
         } else {
           os::set_last_system_error(result.error_number);
           default_samples[operand_position] = os::last_system_error_message();
@@ -1290,7 +1659,7 @@ File::execute(const ExecContext               &ec,
               sample.substring_of_length(0, FILE_CONTENT_SAMPLE_BYTE_COUNT);
 
           custom_sample_descriptions[operand_position] =
-              String{allocator, file_content_description(fallback_sample)};
+              String{allocator, classify_file_content(fallback_sample).description};
         } else {
           custom_sample_descriptions[operand_position] =
               String{allocator, "data"};

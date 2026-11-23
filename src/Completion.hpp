@@ -22,6 +22,7 @@
 #include "base/String.hpp"
 #include "base/StringMap.hpp"
 #include "base/StringView.hpp"
+#include "platform/Platform.hpp"
 
 namespace koshka {
 
@@ -69,6 +70,13 @@ enum class completion_mode : u8
   Listing,
 };
 
+enum class completion_origin : u8
+{
+  Other,
+  EditorTab,
+  EditorMenu,
+};
+
 enum class command_match_mode : u8
 {
   Prefix,
@@ -82,8 +90,8 @@ enum class completion_filesystem_mode : u8
 };
 
 /* complete() resets completion-arena storage from the previous gather.
-   callers consume or copy arena-backed candidates, descriptions, and prefix
-   text before the next call. */
+   callers consume or copy arena-backed candidates, descriptions, preview
+   paths, and prefix text before the next call. */
 struct completion_result
 {
   ArrayList<String> candidates;
@@ -97,6 +105,11 @@ struct completion_result
   bool              is_command_position;
   bool              is_tier_ranked{false};
   bool              is_space_suppressed{false};
+  StringMap<Path>   preview_paths{heap_allocator()};
+  bool              is_spec_completion{false};
+  bool              is_initial_insert{false};
+  bool              can_search_paths{false};
+  bool              is_path_completion{false};
 };
 
 fn
@@ -108,7 +121,86 @@ complete(StringView                   line,
          bool            should_complete_external_arguments_in_posix = false,
          completion_mode mode = completion_mode::Ghost,
          const ArrayList<StringView> *extra_variable_names =
-             nullptr) throws -> completion_result;
+             nullptr,
+         bool should_collect_preview_paths = false,
+         completion_origin origin = completion_origin::Other) throws
+    -> completion_result;
+
+fn
+editor_path_search_start(StringView   token,
+                         EvalContext &context,
+                         const Path  &base_directory) throws -> usize;
+
+struct editor_path_entry
+{
+  usize basename_start;
+  u32   parent_id;
+  u16   basename_length;
+  u8    tier;
+  bool  is_directory : 1;
+  bool  needs_quoting : 1;
+};
+
+struct editor_path_rank_block
+{
+  u32 first_row;
+  u32 first_id;
+};
+
+struct editor_path_search
+{
+  ArrayList<u32>                directories{heap_allocator()};
+  ArrayList<editor_path_entry>  entries{heap_allocator()};
+  ArrayList<u32>                matches{heap_allocator()};
+  ArrayList<editor_path_rank_block> rank_blocks{heap_allocator()};
+  String                       basenames{heap_allocator()};
+  String                       root{heap_allocator()};
+  String                       directory{heap_allocator()};
+  String                       query{heap_allocator()};
+  String                       relative{heap_allocator()};
+  String                       candidate{heap_allocator()};
+  String                       comparison{heap_allocator()};
+  ArrayList<u32>                ancestry{heap_allocator()};
+  os::DirectoryCursor          children;
+  usize                        raw_directory_length{0};
+  usize                        directory_length{0};
+  usize                        scanned_count{0};
+  usize                        heap_first{0};
+  usize                        heap_count{0};
+  u32                          directory_id{0};
+  u8                           best_tier{2};
+  bool                         is_sorting{false};
+  bool                         is_raw{false};
+};
+
+fn
+editor_path_row_id(const editor_path_search &search, usize row) wontthrow
+    -> u32;
+fn
+editor_path_row_of(const editor_path_search &search, u32 id, usize previous_row)
+    wontthrow -> usize;
+fn
+editor_path_row_name(editor_path_search &search, usize row) throws
+    -> const char *;
+
+fn
+search_editor_path(StringView          token,
+                   EvalContext        &context,
+                   const Path         &base_directory,
+                   usize              &query_start,
+                   editor_path_search &search) throws -> bool;
+
+fn
+search_raw_editor_paths(StringView token, usize root_length,
+                        EvalContext &context, const Path &base_directory,
+                        editor_path_search &search) throws -> bool;
+
+fn
+complete_editor_path_siblings(StringView       token,
+                              EvalContext     &context,
+                              const Path      &base_directory,
+                              StringMap<Path> &preview_paths) throws
+    -> ArrayList<String>;
 
 fn
 complete_command_names(StringView                   token,
@@ -133,12 +225,6 @@ complete_filesystem_names_by_prefix(
     const Path                &base_directory,
     completion_filesystem_mode mode =
         completion_filesystem_mode::Files) throws -> ArrayList<String>;
-
-fn
-complete_filesystem_paths_by_prefix(StringView   token,
-                                    EvalContext &context,
-                                    const Path  &base_directory) throws
-    -> ArrayList<String>;
 
 fn
 compute_longest_common_prefix(const ArrayList<String> &candidates,

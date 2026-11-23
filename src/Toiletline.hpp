@@ -116,8 +116,6 @@ set_save_callback(int (*callback)(const char *text, const char **out_message))
 
 fn
 set_open_file_callback(tl_open_file_fn callback) -> void;
-fn
-set_path_complete_callback(tl_path_complete_fn callback) -> void;
 
 /* keeps text as the saved file contents that quit keys compare the buffer
    against, or forgets them when text is null. text must outlive its use. */
@@ -320,12 +318,14 @@ struct input_result
 };
 
 fn
-get_input(const String &prompt) -> input_result;
+get_input(const String &prompt, koshka::EvalContext *file_picker_context = nullptr)
+    -> input_result;
 fn
 get_input(const String                &prompt,
           const String                &right_prompt,
           const koshka::Maybe<String> &transient_prompt,
-          const koshka::Maybe<String> &transient_right_prompt) -> input_result;
+          const koshka::Maybe<String> &transient_right_prompt,
+          koshka::EvalContext         *file_picker_context) -> input_result;
 
 fn
 set_input(const String &input) -> void;
@@ -335,9 +335,6 @@ enter_raw_mode() -> void;
 
 fn
 exit_raw_mode() -> void;
-
-fn
-restore_terminal_for_exit() wontthrow -> void;
 
 fn
 emit_newlines(StringView buffer) -> void;

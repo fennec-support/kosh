@@ -149,7 +149,8 @@ internal::find_token_bounds(StringView line, usize cursor) wontthrow
     i++;
   }
 
-  usize end = cursor;
+  /* The scan may already have crossed the caret inside a quote or escape. */
+  usize end = i;
 
   while (end < line.length) {
     let const c = line[end];

@@ -554,7 +554,6 @@ scan_balanced_shell_region(StringView          source,
                            shell_quoting_rules rules) throws
     -> Maybe<usize>
 {
-  /* Recursive quote scans also stop before exhausting the native stack. */
   if (nesting_depth > MAX_SUBSTITUTION_NESTING_DEPTH ||
       os::is_stack_nearly_exhausted())
   {

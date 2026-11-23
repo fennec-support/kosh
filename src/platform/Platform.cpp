@@ -255,9 +255,7 @@ should_color_catastrophic_failure() wontthrow -> bool
   let const required_console_mode =
       ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
 
-  return (console_mode & required_console_mode) == required_console_mode ||
-         SetConsoleMode(KOSH_STDERR, console_mode | required_console_mode) !=
-             FALSE;
+  return (console_mode & required_console_mode) == required_console_mode;
 #endif
 }
 
@@ -287,6 +285,10 @@ report_catastrophic_guarantee_failure(const char *file,
                                       const char *reason,
                                       usize       reason_byte_count) wontthrow -> void
 {
+#if K_PLATFORM_IS K_WIN32
+  os::run_fatal_exit_hook();
+#endif
+
   static constexpr StringView footer{".\nExiting after a catastrophic failure. "
                                      "Please report this to a developer.\n"};
   char                        buffer[4096];

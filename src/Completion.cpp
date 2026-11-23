@@ -59,7 +59,9 @@ static constexpr usize MATCH_TIER_COUNT = 3;
 static pure fn
 candidate_match(StringView token,
                 StringView candidate,
-                bool       is_case_sensitive) wontthrow -> Maybe<match_tier>
+                bool       is_case_sensitive,
+                bool       should_match_any_subsequence = false) wontthrow
+    -> Maybe<match_tier>
 {
   if (candidate.starts_with(token)) return match_tier::exact_prefix;
 
@@ -68,13 +70,11 @@ candidate_match(StringView token,
   if (utils::smart_case_prefix_matches(candidate, token, is_case_sensitive))
     return match_tier::prefix;
 
-  let const is_token_too_loose_for_subsequence =
-      token.length < 2 || !lexer::is_variable_name(token[0]);
+  if (!should_match_any_subsequence &&
+      (token.length < 2 || !lexer::is_variable_name(token[0])))
+    return None;
 
-  if (is_token_too_loose_for_subsequence) return None;
-
-  /* at this point: token has at least two bytes, token[0] passes
-     lexer::is_variable_name(), and candidate is at least as long as token. */
+  /* The token is nonempty and the candidate is at least as long. */
   usize matched_count = 0;
 
   if (is_case_sensitive) {
@@ -697,7 +697,7 @@ open_filesystem_listing(const utils::DecodedShellWord &decoded_word,
                         utils::directory_validation    validation) throws
     -> Maybe<filesystem_listing>
 {
-  let const parts     = split_path_token(decoded_word.text.view());
+  let const parts = split_path_token(decoded_word.text.view());
   let       directory = resolve_listing_directory(
       parts.directory_part, base_directory, context, decoded_word.leading);
   let const entries = utils::read_directory_cached(
@@ -911,6 +911,22 @@ resolve_symlink_entry_kinds(const filesystem_listing &listing,
   return kinds;
 }
 
+static fn
+record_preview_path(StringMap<Path> &paths,
+                    StringView       candidate,
+                    const Path      &directory,
+                    StringView       name) throws -> void
+{
+  if (candidate.is_empty() || name.is_empty() || paths.find(candidate)) {
+    return;
+  }
+
+  let path = directory.clone_to(paths.allocator());
+
+  path.append(name);
+  paths.insert(candidate, steal(path));
+}
+
 /* memory: the matches and the positions and kinds lists go to
            completion_allocator(), which complete() resets on its next call.
    time:   O(log E) lower bound over E directory entries, then one
@@ -930,7 +946,8 @@ collect_filesystem_matches(
     path_text_mode                 text_mode,
     filesystem_entry_filter        filter,
     directory_suffix_mode          suffix_mode,
-    utils::directory_validation    validation) throws -> void
+    utils::directory_validation    validation,
+    StringMap<Path>               *preview_paths = nullptr) throws -> void
 {
   let const is_inside_quote = text_mode != path_text_mode::ShellSyntax;
   let const listing = open_filesystem_listing(decoded_word, base_directory,
@@ -996,6 +1013,9 @@ collect_filesystem_matches(
               text_mode);
 
           collector.add(candidate.view(), match.tier);
+          if (preview_paths != nullptr)
+            record_preview_path(*preview_paths, candidate.view(),
+                                listing->directory, name);
         }
       };
 
@@ -1013,6 +1033,9 @@ collect_filesystem_matches(
           decoded_word, suffix_mode, text_mode);
 
       collector.add(candidate.view(), match_tier::exact_prefix);
+      if (preview_paths != nullptr)
+        record_preview_path(*preview_paths, candidate.view(),
+                            listing->directory, dot_name);
     }
   }
 
@@ -1073,7 +1096,8 @@ complete_filesystem_with(
     filesystem_entry_filter        filter      = filesystem_entry_filter::All,
     directory_suffix_mode          suffix_mode = directory_suffix_mode::Marked,
     utils::directory_validation    validation =
-        utils::directory_validation::Cached) throws -> Collector
+        utils::directory_validation::Cached,
+    StringMap<Path> *preview_paths = nullptr) throws -> Collector
 {
   let decoded_storage = utils::DecodedShellWord{completion_allocator()};
 
@@ -1087,7 +1111,7 @@ complete_filesystem_with(
 
   collect_filesystem_matches(token, *decoded, base_directory, context,
                              collector, text_mode, filter, suffix_mode,
-                             validation);
+                             validation, preview_paths);
 
   return collector;
 }
@@ -1099,14 +1123,556 @@ complete_filesystem(StringView                     token,
                     const utils::DecodedShellWord *decoded = nullptr,
                     path_text_mode text_mode = path_text_mode::ShellSyntax,
                     filesystem_entry_filter filter =
-                        filesystem_entry_filter::All) throws
+                        filesystem_entry_filter::All,
+                    StringMap<Path> *preview_paths = nullptr) throws
     -> ArrayList<String>
 {
   let collector = complete_filesystem_with<CommandListCollector>(
       token, base_directory, context, CommandListCollector{}, decoded,
-      text_mode, filter, directory_suffix_mode::Marked);
+      text_mode, filter, directory_suffix_mode::Marked,
+      utils::directory_validation::Cached, preview_paths);
 
   return collector.take();
+}
+
+static pure fn
+trim_editor_path_root(StringView directory) wontthrow -> StringView
+{
+  let const minimum = os::path_root_length(directory);
+  let end = directory.length;
+  while (end > minimum && os::is_directory_separator(directory[end - 1]))
+    --end;
+
+  return directory.substring_of_length(0, end);
+}
+
+fn
+editor_path_search_start(StringView   token,
+                         EvalContext &context,
+                         const Path  &base_directory) throws -> usize
+{
+  let const scratch = ScopedCompletionScratch{};
+  let const decoded = utils::decode_shell_word(
+      token, completion_allocator(), utils::shell_word_source_mapping::Record);
+  let const text = decoded.text.view();
+  let const root_length = os::path_root_length(text);
+  usize prefix_end = 0;
+
+  /* Stop at the first unavailable component or symlink, including an
+     intermediate component. */
+  for (usize end = 1; end <= text.length; ++end) {
+    if (!os::is_directory_separator(text[end - 1])) continue;
+    if (end < root_length) continue;
+
+    let const directory_part = text.substring_of_length(0, end);
+    let const directory = resolve_listing_directory(
+        directory_part, base_directory, context, decoded.leading);
+    let const path = Path{trim_editor_path_root(directory.view()),
+                          completion_allocator()};
+    if (!path.is_directory() || path.is_symbolic_link()) break;
+    prefix_end = decoded.raw_positions[end];
+  }
+
+  return prefix_end;
+}
+
+fn
+complete_editor_path_siblings(StringView       token,
+                              EvalContext     &context,
+                              const Path      &base_directory,
+                              StringMap<Path> &preview_paths) throws
+    -> ArrayList<String>
+{
+  COMPLETION_ARENA.reset();
+  return complete_filesystem(token, base_directory, context, nullptr,
+                             path_text_mode::ShellSyntax,
+                             filesystem_entry_filter::All, &preview_paths);
+}
+
+static constexpr usize EDITOR_PATH_SLICE_WORK_COUNT = 4096;
+static constexpr u64   EDITOR_PATH_SLICE_NANOS      = 1750000;
+
+static constexpr usize EDITOR_PATH_RANK_BLOCK_SIZE = 256;
+
+static pure fn
+editor_path_basename(const editor_path_search &search, u32 id) wontthrow
+    -> StringView
+{
+  let const &entry = search.entries[id];
+  return search.basenames.view().substring_of_length(entry.basename_start,
+                                                     entry.basename_length);
+}
+
+static fn
+append_editor_relative_path(editor_path_search &search, u32 id,
+                            String &out, char separator = os::DIRECTORY_SEPARATOR)
+    throws -> void
+{
+  search.ancestry.clear();
+  for (; id != 0; id = search.entries[id].parent_id) {
+    search.ancestry.push(id);
+  }
+  for (usize count = search.ancestry.count(); count > 0; --count) {
+    if (!out.is_empty() && !os::is_directory_separator(out.back())) {
+      out.push(separator);
+    }
+    out.append(editor_path_basename(search, search.ancestry[count - 1]));
+  }
+}
+
+fn
+editor_path_row_id(const editor_path_search &search, usize row) wontthrow
+    -> u32
+{
+  if (row >= search.matches.count()) return 0;
+  if (!search.is_sorting) return search.matches[row];
+
+  usize low = 0;
+  usize high = search.rank_blocks.count();
+  while (high - low > 1) {
+    let const middle = low + (high - low) / 2;
+    if (search.rank_blocks[middle].first_row <= row)
+      low = middle;
+    else
+      high = middle;
+  }
+  let const block = search.rank_blocks[low];
+  let remaining = row - block.first_row;
+  let const block_end =
+      (static_cast<usize>(block.first_id) / EDITOR_PATH_RANK_BLOCK_SIZE + 1) *
+      EDITOR_PATH_RANK_BLOCK_SIZE;
+  for (usize id = block.first_id;
+       id < search.entries.count() && id < block_end; ++id)
+  {
+    let const tier = search.entries[id].tier;
+    if (search.is_raw ? tier == MATCH_TIER_COUNT : tier != search.best_tier)
+      continue;
+    if (remaining == 0) return static_cast<u32>(id);
+    --remaining;
+  }
+  return 0;
+}
+
+fn
+editor_path_row_of(const editor_path_search &search, u32 id, usize previous_row)
+    wontthrow -> usize
+{
+  if (id == 0) return 0;
+  if (editor_path_row_id(search, previous_row) == id) return previous_row;
+  if (!search.is_sorting) {
+    for (usize row = 0; row < search.matches.count(); ++row) {
+      if (search.matches[row] == id) return row;
+    }
+  }
+  return 0;
+}
+
+static fn
+write_editor_path_name(editor_path_search &search, u32 id, String &out,
+                       StringView token, const utils::DecodedShellWord &decoded,
+                       StringView directory_part, StringView raw_directory)
+    throws -> void
+{
+  let const &entry = search.entries[id];
+  out.clear();
+  let const has_closing_quote = decoded.last_quote_character != 0 &&
+                               !token.is_empty() &&
+                               token[token.length - 1] == decoded.last_quote_character;
+  if (search.is_raw || (!entry.needs_quoting && decoded.quote_character == 0 &&
+                        !has_closing_quote))
+  {
+    out.append(raw_directory);
+    append_editor_relative_path(search, id, out);
+  } else {
+    let const mark = COMPLETION_ARENA.mark();
+    defer { COMPLETION_ARENA.release(mark); };
+    search.relative.clear();
+    append_editor_relative_path(search, id, search.relative);
+    let const candidate = build_filesystem_candidate(
+        directory_part, raw_directory, search.relative.view(),
+        entry.is_directory, token, decoded, directory_suffix_mode::Bare,
+        path_text_mode::ShellSyntax);
+    out.append(candidate.view());
+  }
+  if (decoded.quote_character != 0) out.push(decoded.quote_character);
+  if (entry.is_directory) out.push(directory_part[directory_part.length - 1]);
+}
+
+fn
+editor_path_row_name(editor_path_search &search, usize row) throws
+    -> const char *
+{
+  let const id = editor_path_row_id(search, row);
+  if (id == 0) return "";
+
+  let const scratch = ScopedCompletionScratch{};
+  let const token = search.query.view();
+  let const decoded = search.is_raw
+                           ? utils::DecodedShellWord{completion_allocator()}
+                           : utils::decode_shell_word(token, completion_allocator());
+  let const raw_directory = token.substring_of_length(0, search.raw_directory_length);
+  let const directory = search.is_raw
+      ? (raw_directory.is_empty() ? StringView{"./"} : raw_directory)
+      : decoded.text.view().substring_of_length(0, search.directory_length);
+  write_editor_path_name(search, id, search.candidate, token, decoded,
+                         directory, raw_directory);
+  return search.candidate.c_str();
+}
+
+/* The heap and the sorted suffix share matches. Rank checkpoints and entry
+   tiers preserve the discovery order until the final heap slice finishes. */
+static fn
+order_editor_paths(editor_path_search &search, usize &work_count,
+                   u64 start_nanos, StringView token,
+                   const utils::DecodedShellWord &decoded,
+                   StringView directory_part, StringView raw_directory)
+    throws -> bool
+{
+  if (search.matches.count() < 2 || search.rank_blocks.is_empty()) return false;
+  if (!search.is_sorting) {
+    search.is_sorting = true;
+    search.heap_count = search.matches.count();
+    search.heap_first = search.heap_count / 2;
+  }
+
+  struct directory_comparison
+  {
+    u32 left_parent;
+    u32 right_parent;
+    u32 left_branch;
+    u32 right_branch;
+  };
+  constexpr usize DIRECTORY_COMPARISON_COUNT = 256;
+  directory_comparison directory_comparisons[DIRECTORY_COMPARISON_COUNT]{};
+
+  let const do_less = [&](u32 left, u32 right) throws -> bool {
+    let const &first = search.entries[left];
+    let const &second = search.entries[right];
+    if (search.is_raw && first.tier != second.tier) return first.tier < second.tier;
+    if (search.is_raw || (!first.needs_quoting && !second.needs_quoting &&
+                          decoded.last_quote_character == 0))
+    {
+      if (left == right) return false;
+
+      let a_id = left;
+      let b_id = right;
+      let const separator =
+          static_cast<u8>(directory_part[directory_part.length - 1]);
+      let const native_separator = static_cast<u8>(os::DIRECTORY_SEPARATOR);
+      if (first.parent_id != second.parent_id) {
+        let const slot = (static_cast<usize>(first.parent_id) * 31 +
+                          second.parent_id) % DIRECTORY_COMPARISON_COUNT;
+        let &comparison = directory_comparisons[slot];
+        if (comparison.left_parent != first.parent_id ||
+            comparison.right_parent != second.parent_id)
+        {
+          comparison = {first.parent_id, second.parent_id, 0, 0};
+          let a_parent = first.parent_id;
+          let b_parent = second.parent_id;
+          while (a_parent != b_parent) {
+            if (a_parent > b_parent) {
+              comparison.left_branch = a_parent;
+              a_parent = search.entries[a_parent].parent_id;
+            } else {
+              comparison.right_branch = b_parent;
+              b_parent = search.entries[b_parent].parent_id;
+            }
+          }
+        }
+        if (comparison.left_branch != 0) a_id = comparison.left_branch;
+        if (comparison.right_branch != 0) b_id = comparison.right_branch;
+        if (a_id == b_id) {
+          return a_id == left ? separator <= native_separator
+                              : native_separator < separator;
+        }
+      }
+
+      let const a = editor_path_basename(search, a_id);
+      let const b = editor_path_basename(search, b_id);
+      let const common = a.length < b.length ? a.length : b.length;
+      let const cmp = memcmp(a.data, b.data, common);
+      if (cmp != 0) return cmp < 0;
+      if (a.length < b.length) {
+        let const a_separator = a_id == left ? separator : native_separator;
+        return !search.entries[a_id].is_directory ||
+               a_separator < static_cast<u8>(b[common]);
+      }
+      let const b_separator = b_id == right ? separator : native_separator;
+      return search.entries[b_id].is_directory &&
+             static_cast<u8>(a[common]) < b_separator;
+    }
+    write_editor_path_name(search, left, search.candidate, token, decoded,
+                           directory_part, raw_directory);
+    write_editor_path_name(search, right, search.comparison, token, decoded,
+                           directory_part, raw_directory);
+    return search.candidate < search.comparison;
+  };
+  let const do_sink = [&](usize position) {
+    let const id = search.matches[position];
+    while (position < search.heap_count / 2) {
+      usize child = 2 * position + 1;
+      if (child + 1 < search.heap_count &&
+          do_less(search.matches[child], search.matches[child + 1]))
+      {
+        ++child;
+      }
+      if (!do_less(id, search.matches[child])) break;
+      search.matches[position] = search.matches[child];
+      position = child;
+    }
+    search.matches[position] = id;
+  };
+
+  while (search.heap_count != 0 && work_count < EDITOR_PATH_SLICE_WORK_COUNT) {
+    if ((work_count & 31) == 0 &&
+        os::monotonic_nanos() - start_nanos >= EDITOR_PATH_SLICE_NANOS)
+    {
+      break;
+    }
+    ++work_count;
+    if (search.heap_first != 0) {
+      do_sink(--search.heap_first);
+      continue;
+    }
+    let const id = search.matches[0];
+    --search.heap_count;
+    search.matches[0] = search.matches[search.heap_count];
+    search.matches[search.heap_count] = id;
+    if (search.heap_count != 0) do_sink(0);
+  }
+  if (search.heap_count != 0) return true;
+
+  search.is_sorting = false;
+  search.rank_blocks.clear();
+  return false;
+}
+
+static fn
+clear_editor_path_matches(editor_path_search &search) wontthrow -> void
+{
+  search.matches.clear();
+  search.rank_blocks.clear();
+  search.is_sorting = false;
+  search.heap_first = 0;
+  search.heap_count = 0;
+}
+
+static fn
+scan_editor_paths(editor_path_search &search,
+                  StringView         query,
+                  usize             &work_count) throws -> u64
+{
+  let const arena = completion_allocator();
+  let const is_case_sensitive = os::IS_FILESYSTEM_CASE_SENSITIVE &&
+                                utils::token_has_uppercase(query);
+  let const should_match_path = os::has_directory_separator(query);
+  let const start_nanos = os::monotonic_nanos();
+
+  /* Take input between slices. Match old entries before reading new ones so
+     a query change never restarts filesystem traversal. */
+  while (work_count < EDITOR_PATH_SLICE_WORK_COUNT) {
+    if (work_count != 0 && (work_count & 31) == 0 &&
+        os::monotonic_nanos() - start_nanos >= EDITOR_PATH_SLICE_NANOS)
+    {
+      break;
+    }
+    work_count++;
+    if (search.scanned_count < search.entries.count()) {
+      let const id = static_cast<u32>(search.scanned_count++);
+      let &entry = search.entries[id];
+      let candidate = editor_path_basename(search, id);
+      if ((should_match_path || (search.is_raw && !query.is_empty())) &&
+          entry.parent_id != 0)
+      {
+        search.relative.clear();
+        append_editor_relative_path(search, id, search.relative,
+                                    search.is_raw ? '/' : os::DIRECTORY_SEPARATOR);
+        if (!search.is_raw || should_match_path) candidate = search.relative.view();
+      }
+      let tier = candidate_match(query, candidate, is_case_sensitive, search.is_raw);
+      if (search.is_raw && !query.is_empty() && entry.parent_id != 0 &&
+          !should_match_path)
+      {
+        let const path_tier = candidate_match(query, search.relative.view(),
+                                               is_case_sensitive, true);
+        if (path_tier.has_value() && (!tier.has_value() || *path_tier < *tier))
+          tier = path_tier;
+      }
+      entry.tier = tier.has_value() ? static_cast<u8>(*tier)
+                                   : static_cast<u8>(MATCH_TIER_COUNT);
+      if (search.is_raw) {
+        if (!tier.has_value()) continue;
+      } else {
+        if (entry.tier > search.best_tier) continue;
+        if (entry.tier < search.best_tier) {
+          search.best_tier = entry.tier;
+          clear_editor_path_matches(search);
+        }
+      }
+      if (search.rank_blocks.is_empty() ||
+          search.rank_blocks.back().first_id / EDITOR_PATH_RANK_BLOCK_SIZE !=
+              id / EDITOR_PATH_RANK_BLOCK_SIZE)
+      {
+        search.rank_blocks.push({static_cast<u32>(search.matches.count()), id});
+      }
+      search.matches.push(id);
+      continue;
+    }
+    if (let child = search.children.next(arena); child.has_value()) {
+      let const name = child->name.view();
+      let is_directory = child->kind == Path::EntryKind::Directory;
+      if (child->kind == Path::EntryKind::Unknown) {
+        let const original_length = search.directory.length();
+        if (!search.directory.is_empty() &&
+            !os::is_directory_separator(search.directory.back()))
+        {
+          search.directory.push(os::DIRECTORY_SEPARATOR);
+        }
+        search.directory.append(name);
+        os::file_status status{};
+        is_directory = os::stat_path(search.directory.view(), status) &&
+                       os::file_type_letter(status.mode) == 'd';
+        search.directory.truncate(original_length);
+      }
+      let const id = static_cast<u32>(search.entries.count());
+      bool needs_quoting = !search.is_raw &&
+                           (search.entries[search.directory_id].needs_quoting ||
+                            path_candidate_needs_quoting(name));
+#if K_PLATFORM_IS K_WIN32
+      needs_quoting = needs_quoting || search.directory_id != 0;
+#endif
+      search.entries.push({search.basenames.length(), search.directory_id,
+                           static_cast<u16>(name.length), MATCH_TIER_COUNT,
+                           is_directory, needs_quoting});
+      search.basenames.append(name);
+      if (is_directory) search.directories.push(id);
+      continue;
+    }
+    if (search.directories.is_empty()) break;
+
+    search.directory_id = search.directories.back();
+    search.directories.pop_back();
+    search.directory.clear();
+    search.directory.append(search.root.view());
+    append_editor_relative_path(search, search.directory_id, search.directory);
+    search.children.open(Path{search.directory.view(), arena});
+  }
+
+  return start_nanos;
+}
+
+static fn
+start_editor_path_search(editor_path_search &search, const Path &directory,
+                         usize raw_length, usize decoded_length) throws -> void
+{
+  search.root.append(trim_editor_path_root(directory.view()));
+  search.raw_directory_length = raw_length;
+  search.directory_length = decoded_length;
+  search.entries.push({0, 0, 0, MATCH_TIER_COUNT, true, false});
+  search.scanned_count = 1;
+  search.directories.push(0);
+}
+
+static fn
+advance_editor_path_search(editor_path_search &search, StringView token,
+                           StringView text, const utils::DecodedShellWord &decoded,
+                           StringView directory_part, StringView raw_directory)
+    throws -> bool
+{
+  if (search.query.view() != token) {
+    search.query.clear();
+    search.query.append(token);
+    search.scanned_count = 1;
+    search.best_tier = static_cast<u8>(match_tier::subsequence);
+    clear_editor_path_matches(search);
+  }
+
+  usize work_count = 0;
+  let const start_nanos = scan_editor_paths(
+      search, text.substring(search.directory_length), work_count);
+
+  if (search.scanned_count < search.entries.count() ||
+      !search.directories.is_empty() || search.children.is_open())
+  {
+    return true;
+  }
+
+  return order_editor_paths(search, work_count, start_nanos, token, decoded,
+                            directory_part, raw_directory);
+}
+
+fn
+search_raw_editor_paths(StringView token, usize root_length,
+                        EvalContext &context, const Path &base_directory,
+                        editor_path_search &search) throws -> bool
+{
+  let const scratch = ScopedCompletionScratch{};
+  let const decoded = utils::DecodedShellWord{completion_allocator()};
+  let const part = token.substring_of_length(0, root_length);
+  if (search.entries.is_empty() || search.raw_directory_length != root_length ||
+      !search.query.view().starts_with(part))
+  {
+    search = editor_path_search{};
+    search.is_raw = true;
+    let const directory = resolve_listing_directory(part, base_directory,
+                                                     context, decoded.leading);
+    start_editor_path_search(search, directory, root_length, root_length);
+  }
+
+  let matching_token = token;
+  let normalized = String{completion_allocator()};
+  if constexpr (os::IS_BACKSLASH_A_SEPARATOR) {
+    normalized.append(part);
+    for (usize i = root_length; i < token.length; ++i)
+      normalized.push(os::is_directory_separator(token[i]) ? '/' : token[i]);
+    matching_token = normalized.view();
+  }
+  let const spelling = part.is_empty() ? StringView{"./"} : part;
+  return advance_editor_path_search(search, token, matching_token, decoded,
+                                    spelling, part);
+}
+
+fn
+search_editor_path(StringView          token,
+                   EvalContext        &context,
+                   const Path         &base_directory,
+                   usize              &query_start,
+                   editor_path_search &search) throws -> bool
+{
+  let const scratch = ScopedCompletionScratch{};
+  let const arena = completion_allocator();
+  let const should_start = query_start == 0;
+  if (should_start) {
+    search = editor_path_search{};
+    query_start = editor_path_search_start(token, context, base_directory);
+  }
+  if (query_start == 0) return false;
+
+  let const raw_directory = token.substring_of_length(0, query_start);
+  let const decoded = utils::decode_shell_word(token, arena);
+  let const text    = decoded.text.view();
+  if (should_start) {
+    search.directory_length = utils::decode_shell_word(raw_directory, arena)
+                                  .text.length();
+  }
+  if (text.length < search.directory_length || search.directory_length == 0 ||
+      !os::is_directory_separator(text[search.directory_length - 1]))
+  {
+    clear_editor_path_matches(search);
+    search.query.clear();
+    return false;
+  }
+
+  let const directory_part =
+      text.substring_of_length(0, search.directory_length);
+  if (should_start) {
+    let directory = resolve_listing_directory(
+        directory_part, base_directory, context, decoded.leading);
+    start_editor_path_search(search, directory, query_start, search.directory_length);
+  }
+
+  return advance_editor_path_search(search, token, text, decoded, directory_part,
+                                    raw_directory);
 }
 
 fn
@@ -1122,20 +1688,6 @@ complete_filesystem_names_by_prefix(
   let       collector = complete_filesystem_with<PrefixListCollector>(
       token, base_directory, context, PrefixListCollector{}, nullptr,
       path_text_mode::Raw, filter, directory_suffix_mode::Bare);
-
-  return collector.take();
-}
-
-fn
-complete_filesystem_paths_by_prefix(StringView   token,
-                                    EvalContext &context,
-                                    const Path  &base_directory) throws
-    -> ArrayList<String>
-{
-  let collector = complete_filesystem_with<PrefixListCollector>(
-      token, base_directory, context, PrefixListCollector{}, nullptr,
-      path_text_mode::Raw, filesystem_entry_filter::All,
-      directory_suffix_mode::Marked);
 
   return collector.take();
 }
@@ -1176,11 +1728,14 @@ collect_directory_change_operand(
     EvalContext                   &context,
     const utils::DecodedShellWord &decoded,
     Collector                      collector,
-    utils::directory_validation    cdpath_validation) throws -> Collector
+    utils::directory_validation    cdpath_validation,
+    StringMap<Path>               *preview_paths = nullptr) throws -> Collector
 {
   collector = complete_filesystem_with<Collector>(
       token, base_directory, context, steal(collector), &decoded,
-      path_text_mode::ShellSyntax, filesystem_entry_filter::DirectoriesOnly);
+      path_text_mode::ShellSyntax, filesystem_entry_filter::DirectoriesOnly,
+      directory_suffix_mode::Marked, utils::directory_validation::Cached,
+      preview_paths);
 
   let const operand = decoded.text.view();
 
@@ -1194,7 +1749,7 @@ collect_directory_change_operand(
     collector = complete_filesystem_with<Collector>(
         token, directory, context, steal(collector), &decoded,
         path_text_mode::ShellSyntax, filesystem_entry_filter::DirectoriesOnly,
-        directory_suffix_mode::Marked, cdpath_validation);
+        directory_suffix_mode::Marked, cdpath_validation, preview_paths);
   });
 
   return collector;
@@ -1239,7 +1794,8 @@ complete_glob(StringView                     token,
               const Path                    &base_directory,
               EvalContext                   &context,
               const utils::DecodedShellWord &decoded_word,
-              filesystem_entry_filter        filter) throws
+              filesystem_entry_filter        filter,
+              StringMap<Path>               *preview_paths = nullptr) throws
     -> ArrayList<String>
 {
   let       candidates = ArrayList<String>{completion_allocator()};
@@ -1316,6 +1872,9 @@ complete_glob(StringView                     token,
         eligible_entry->is_directory, token, decoded_word,
         directory_suffix_mode::Marked, path_text_mode::ShellSyntax);
 
+    if (preview_paths != nullptr)
+      record_preview_path(*preview_paths, candidate.view(), listing->directory,
+                          name);
     candidates.push(steal(candidate));
   }
 
@@ -1595,10 +2154,14 @@ complete(StringView                   line,
          const ArrayList<StringView> *extra_command_names,
          bool            should_complete_external_arguments_in_posix,
          completion_mode mode,
-         const ArrayList<StringView> *extra_variable_names) throws
+         const ArrayList<StringView> *extra_variable_names,
+         bool                         should_collect_preview_paths,
+         completion_origin            origin) throws
     -> completion_result
 {
   let const is_for_listing = mode == completion_mode::Listing;
+  let const should_match_whole_token =
+      is_for_listing && origin != completion_origin::Other;
 
   COMPLETION_ARENA.reset();
 
@@ -1635,52 +2198,80 @@ complete(StringView                   line,
   let       replacement_token_end = bounds.end;
   let token = line.substring_of_length(token_start, token_end - token_start);
   let is_command = is_in_command_position(line, token_start);
+  let const is_posix_completion =
+      context.runtime_state().get_mood() == mimic_mood::Posix;
+  let const is_builtin_only =
+      is_command && is_after_builtin_prefix(line, token_start);
+  let descriptions      = StringMap<String>{arena};
+  let from_initial_word = Maybe<ArrayList<String>>{None};
+  u32 spec_option_mask  = 0;
 
-  let const token_prefix =
-      line.substring_of_length(token_start, cursor - token_start);
-  let decoded_prefix =
-      utils::decode_shell_word(token_prefix, completion_allocator());
+  /* Only a fresh Tab at the start of a command word may insert from -I
+     before that word. In a menu it answers the word at the caret as usual. */
+  let const should_try_initial_insert =
+      origin == completion_origin::EditorTab && is_command &&
+      cursor == token_start && cursor < token_end && !is_posix_completion &&
+      !is_builtin_only;
 
-  if (decoded_prefix.quote_character != 0) {
-    token_end = cursor;
-    token     = line.substring_of_length(token_start, token_end - token_start);
-    replacement_token_end = cursor;
-
-    let const quote_start =
-        token_start + decoded_prefix.open_quote_content_start - 1;
-    let const quote_end = quoted_run_end(line, quote_start);
-
-    if (quote_end >= cursor && quote_end < line.length &&
-        line[quote_end] == decoded_prefix.quote_character)
-    {
-      replacement_token_end = quote_end;
+  bool is_initial_insert = false;
+  if (should_try_initial_insert) {
+    from_initial_word = complete_from_initial_word_spec(
+        line.substring_of_length(0, cursor), {}, cursor, is_line_empty,
+        context, descriptions, mode, spec_option_mask);
+    if (from_initial_word.has_value()) {
+      is_initial_insert      = true;
+      token                 = token.substring_of_length(0, 0);
+      token_end             = cursor;
+    } else {
+      spec_option_mask = 0;
     }
-  } else if (cursor < token_end) {
-    token_end = cursor;
-    token     = token_prefix;
   }
 
-  /* at this point: token_end is at most cursor, and token_end is cursor
-     when decoded_prefix has an open quote. */
+  let decoded_token = utils::DecodedShellWord{arena};
+  if (!should_match_whole_token) {
+    let const token_prefix =
+        line.substring_of_length(token_start, cursor - token_start);
+
+    decoded_token = utils::decode_shell_word(token_prefix, arena);
+    token_end     = cursor;
+    token         = token_prefix;
+    if (decoded_token.quote_character != 0) {
+      replacement_token_end = cursor;
+
+      let const quote_start =
+          token_start + decoded_token.open_quote_content_start - 1;
+      let const quote_end = quoted_run_end(line, quote_start);
+
+      if (quote_end >= cursor && quote_end < line.length &&
+          line[quote_end] == decoded_token.quote_character)
+      {
+        replacement_token_end = quote_end;
+      }
+    }
+  }
   let const line_end = replacement_token_end;
 
-  if (cursor == token_start) replacement_token_end = cursor;
+  if (!should_match_whole_token && !is_command && cursor == token_start)
+    replacement_token_end = cursor;
 
   let const is_option_value_word =
       !is_command && token.length >= 2 && token[0] == '-';
 
   if (is_option_value_word || lexer::word_looks_like_assignment(token)) {
-    if (let const equals = token.find_character('='); equals.has_value()) {
-      token_start = token_start + *equals + 1;
+    if (let const equals = token.find_character('=');
+        equals.has_value() && token_start + *equals < cursor)
+    {
+      token_start += *equals + 1;
       token = line.substring_of_length(token_start, token_end - token_start);
       is_command = false;
+      if (!should_match_whole_token)
+        decoded_token = utils::decode_shell_word(token, arena);
     }
   }
 
-  let const decoded_token =
-      token.data == token_prefix.data && token.length == token_prefix.length
-          ? steal(decoded_prefix)
-          : utils::decode_shell_word(token, completion_allocator());
+  if (should_match_whole_token)
+    decoded_token = utils::decode_shell_word(token, arena);
+
   let const is_quote_closed_after_token =
       line_end < line.length && decoded_token.quote_character != 0 &&
       line[line_end] == decoded_token.quote_character;
@@ -1705,15 +2296,14 @@ complete(StringView                   line,
 
   let const has_path_separator =
       os::has_directory_separator(decoded_token.text.view());
-  let const is_builtin_only =
-      is_command && is_after_builtin_prefix(line, token_start);
 
   LOG(Debug, "complete line '%.*s' cursor %zu token '%.*s' command %d",
       static_cast<int>(line.length), line.data, cursor,
       static_cast<int>(stage_token.length), stage_token.data,
       is_command ? 1 : 0);
 
-  let const is_inline_glob = is_glob_token && cursor == token_end;
+  let const is_inline_glob =
+      is_glob_token && (should_match_whole_token || cursor == token_end);
 
   let const command_word =
       is_command ? StringView{}
@@ -1728,7 +2318,10 @@ complete(StringView                   line,
       is_command ? Maybe<StringView>{} : file_extension_hint(command_word);
 
   let   candidates                             = ArrayList<String>{arena};
-  let   descriptions                           = StringMap<String>{arena};
+  let   preview_paths                          = StringMap<Path>{arena};
+  let   *paths = is_for_listing && should_collect_preview_paths
+                     ? &preview_paths
+                     : nullptr;
   let   ghost_prefix                           = String{arena};
   usize ghost_candidate_count                  = 0;
   usize source_candidate_scan_count            = 0;
@@ -1738,31 +2331,44 @@ complete(StringView                   line,
   let   should_ignore_common_prefix_case       = false;
   let   is_tier_ranked                         = false;
   let   is_spec_candidates                     = false;
-  u32   spec_option_mask                       = 0;
+  let   is_path_completion                     = false;
 
   let const do_has_spec_option = [&](completion_option option) -> bool {
     return (spec_option_mask & completion_option_bit(option)) != 0;
   };
 
-  let const is_posix_completion =
-      context.runtime_state().get_mood() == mimic_mood::Posix;
-
   if (token_is_variable(open_quote_content_token) && is_leading_variable_active)
   {
+    let const variable_token =
+        should_match_whole_token && open_quote_content_token.starts_with("${") &&
+                open_quote_content_token[open_quote_content_token.length - 1] == '}'
+            ? open_quote_content_token.substring_of_length(
+                  0, open_quote_content_token.length - 1)
+            : open_quote_content_token;
+
     candidates = complete_variable(
-        open_quote_content_token, context, extra_variable_names,
+        variable_token, context, extra_variable_names,
         whole_line.substring_of_length(0, completion_offset + token_start));
     if (has_open_quote) {
       token_start += decoded_token.open_quote_content_start;
+    } else if (should_match_whole_token && token.length >= 3 &&
+               token[0] == '"' && token[1] == '$' &&
+               token[token.length - 1] == '"' &&
+               decoded_token.last_quote_content_start == 1)
+    {
+      token_start++;
+      replacement_token_end--;
     }
   } else if (token_is_tilde_user_prefix(stage_token) &&
              is_leading_tilde_active && !is_posix_completion)
   {
     candidates = complete_tilde_user(stage_token);
+    is_path_completion = true;
   } else if (is_inline_glob) {
     candidates = complete_glob(token, base_directory, context, decoded_token,
                                filesystem_filter);
     if (!candidates.is_empty()) {
+      is_path_completion = candidates.count() == 1;
       let joined = String{arena};
 
       for (usize i = 0; i < candidates.count(); i++) {
@@ -1790,9 +2396,7 @@ complete(StringView                   line,
       should_rebuild_shell_syntax_candidates = true;
     }
   } else if (is_command && !has_path_separator) {
-    let from_initial_word = Maybe<ArrayList<String>>{None};
-
-    if (!is_posix_completion && !is_builtin_only &&
+    if (!should_try_initial_insert && !is_posix_completion && !is_builtin_only &&
         (!stage_token.is_empty() || is_for_listing))
     {
       from_initial_word = complete_from_initial_word_spec(
@@ -1803,8 +2407,10 @@ complete(StringView                   line,
     if (from_initial_word.has_value()) {
       candidates                             = steal(*from_initial_word);
       is_spec_candidates                     = true;
-      replacement_token_end                  = cursor;
       should_rebuild_shell_syntax_candidates = true;
+      if (origin == completion_origin::Other && cursor == token_start) {
+        replacement_token_end = cursor;
+      }
     } else if (!stage_token.is_empty() || is_for_listing) {
       if (is_for_listing) {
         should_ignore_common_prefix_case =
@@ -1835,7 +2441,8 @@ complete(StringView                   line,
     }
   } else if (is_glob_token) {
     candidates = complete_glob(token, base_directory, context, decoded_token,
-                               filesystem_filter);
+                               filesystem_filter, paths);
+    is_path_completion = true;
   } else {
     Maybe<ArrayList<String>> from_stage = None;
 
@@ -1904,12 +2511,14 @@ complete(StringView                   line,
           is_directory_change_command
               ? collect_directory_change_operand(
                     token, base_directory, context, decoded_token,
-                    CommandListCollector{}, utils::directory_validation::Cached)
+                    CommandListCollector{}, utils::directory_validation::Cached,
+                    paths)
                     .take()
               : complete_filesystem(token, base_directory, context,
                                     &decoded_token, file_name_text_mode,
-                                    filesystem_filter);
+                                    filesystem_filter, paths);
       should_close_generated_prefix_quote = decoded_token.quote_character == 0;
+      is_path_completion = true;
     } else if (!decoded_token.text.is_empty()) {
       let collector = is_directory_change_command
                           ? collect_directory_change_operand(
@@ -2002,6 +2611,29 @@ complete(StringView                   line,
       }
     }
 
+    let const open_quote          = decoded_token.quote_character;
+    let const do_record_spec_path = [&](StringView key,
+                                        StringView raw) throws {
+      if (candidates.count() == 1 && open_quote != 0 &&
+          !is_quote_closed_after_token && !key.is_empty() &&
+          !os::is_directory_separator(key[key.length - 1]))
+      {
+        return;
+      }
+
+      let const root_length = os::path_root_length(raw);
+
+      while (raw.length > root_length &&
+             os::is_directory_separator(raw[raw.length - 1]))
+        raw = raw.substring_of_length(0, raw.length - 1);
+
+      if (os::path_is_absolute(raw) || os::path_is_drive_relative(raw)) {
+        record_preview_path(preview_paths, key, Path{{}, arena}, raw);
+      } else {
+        record_preview_path(preview_paths, key, base_directory, raw);
+      }
+    };
+
     longest_common_prefix = compute_longest_common_prefix(
         candidates, should_ignore_common_prefix_case);
     if (should_close_generated_prefix_quote &&
@@ -2021,6 +2653,10 @@ complete(StringView                   line,
       longest_common_prefix = rebuild_shell_syntax_candidate(
           token, decoded_token, longest_common_prefix.view(),
           should_quote_words);
+
+      let const should_record_spec_paths =
+          paths != nullptr && is_spec_candidates &&
+          do_has_spec_option(completion_option::FileNames);
 
       let is_every_candidate_unchanged = true;
 
@@ -2045,14 +2681,17 @@ complete(StringView                   line,
 
           if (description.has_value())
             rebuilt_descriptions.set(rebuilt.view(), description->view());
+          if (should_record_spec_paths)
+            do_record_spec_path(rebuilt.view(), candidate.view());
           candidate = steal(rebuilt);
         }
 
         descriptions = steal(rebuilt_descriptions);
+      } else if (should_record_spec_paths) {
+        for (let const &candidate : candidates)
+          do_record_spec_path(candidate.view(), candidate.view());
       }
     }
-
-    let const open_quote = decoded_token.quote_character;
 
     if (open_quote != 0 && !is_quote_closed_after_token &&
         candidates.count() == 1 && !candidates[0].is_empty() &&
@@ -2099,6 +2738,13 @@ complete(StringView                   line,
       is_command,
       is_tier_ranked,
       do_has_spec_option(completion_option::NoSpace),
+      steal(preview_paths),
+      is_spec_candidates,
+      is_initial_insert,
+      is_for_listing && has_path_separator,
+      is_path_completion ||
+          (is_spec_candidates &&
+           do_has_spec_option(completion_option::FileNames)),
   };
 }
 

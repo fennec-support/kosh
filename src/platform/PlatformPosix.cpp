@@ -3328,11 +3328,14 @@ exit_process_after_catastrophic_failure(const char *message,
 {
   sigset_t blocked_signals;
 
-  if (sigemptyset(&blocked_signals) == 0 &&
+  let const should_write =
+      sigemptyset(&blocked_signals) == 0 &&
       sigaddset(&blocked_signals, SIGPIPE) == 0 &&
-      pthread_sigmask(SIG_BLOCK, &blocked_signals, nullptr) == 0)
-  {
-    run_fatal_exit_hook();
+      pthread_sigmask(SIG_BLOCK, &blocked_signals, nullptr) == 0;
+
+  run_fatal_exit_hook();
+
+  if (should_write) {
     let const written_byte_count =
         message_byte_count < 4096 ? message_byte_count : usize{4096};
 

@@ -2597,10 +2597,18 @@ FileWatcher::reports_child_changes() const wontthrow -> bool
   return false;
 }
 
+static void (*FATAL_EXIT_HOOK)() = nullptr;
+
+static fn
+run_fatal_exit_hook() wontthrow -> void
+{
+  if (FATAL_EXIT_HOOK != nullptr) FATAL_EXIT_HOOK();
+}
+
 fn
 install_fatal_exit_hook(void (*hook)()) -> void
 {
-  unused(hook);
+  FATAL_EXIT_HOOK = hook;
 }
 
 wontreturn fn

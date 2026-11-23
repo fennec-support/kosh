@@ -333,6 +333,89 @@ static fn
 fill_file_status(const struct stat &info, file_status &status)
     wontthrow -> void;
 
+static pure fn
+directory_entry_kind(const struct dirent &entry) wontthrow -> Path::EntryKind
+{
+  switch (entry.d_type) {
+  case DT_DIR:     return Path::EntryKind::Directory;
+  case DT_REG:     return Path::EntryKind::Regular;
+  case DT_LNK:     return Path::EntryKind::Symlink;
+  case DT_UNKNOWN: return Path::EntryKind::Unknown;
+  default:         return Path::EntryKind::Other;
+  }
+}
+
+DirectoryCursor::DirectoryCursor(DirectoryCursor &&other) wontthrow
+    : m_handle(other.m_handle)
+{
+  other.m_handle = nullptr;
+}
+
+fn
+DirectoryCursor::operator=(DirectoryCursor &&other) wontthrow
+    -> DirectoryCursor &
+{
+  if (this != &other) {
+    close();
+    m_handle       = other.m_handle;
+    other.m_handle = nullptr;
+  }
+
+  return *this;
+}
+
+fn
+DirectoryCursor::open(const Path &directory, bool should_follow_symlink) throws
+    -> void
+{
+  close();
+  if (should_follow_symlink) {
+    m_handle = ::opendir(directory.c_str());
+    return;
+  }
+
+  let const fd = ::open(directory.c_str(),
+                        O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+  if (fd < 0) return;
+  m_handle = ::fdopendir(fd);
+  if (m_handle == nullptr) ::close(fd);
+}
+
+fn
+DirectoryCursor::next(Allocator allocator) throws -> Maybe<Path::DirectoryChild>
+{
+  while (m_handle != nullptr) {
+    let const *entry = ::readdir(m_handle);
+    if (entry == nullptr) {
+      close();
+      break;
+    }
+
+    let const name = StringView{entry->d_name};
+    if (name == "." || name == "..") continue;
+
+    return Path::DirectoryChild{String{allocator, name},
+                                directory_entry_kind(*entry)};
+  }
+
+  return None;
+}
+
+fn
+DirectoryCursor::close() wontthrow -> void
+{
+  if (m_handle != nullptr) {
+    ::closedir(m_handle);
+    m_handle = nullptr;
+  }
+}
+
+pure fn
+DirectoryCursor::is_open() const wontthrow -> bool
+{
+  return m_handle != nullptr;
+}
+
 static fn
 list_directory_typed_handle(DIR *handle, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
@@ -357,24 +440,8 @@ list_directory_typed_handle(DIR *handle, Allocator allocator) throws
       continue;
     }
 
-    Path::EntryKind kind = Path::EntryKind::Unknown;
-
-    switch (entry->d_type) {
-    case DT_DIR: kind = Path::EntryKind::Directory; break;
-
-    case DT_REG: kind = Path::EntryKind::Regular; break;
-
-    case DT_LNK: kind = Path::EntryKind::Symlink; break;
-
-    case DT_UNKNOWN: kind = Path::EntryKind::Unknown; break;
-
-    default: kind = Path::EntryKind::Other; break;
-    }
-
-    entries.push(Path::DirectoryChild{
-        String{allocator, name},
-        kind
-    });
+    entries.push(Path::DirectoryChild{String{allocator, name},
+                                     directory_entry_kind(*entry)});
   }
 
   return entries;

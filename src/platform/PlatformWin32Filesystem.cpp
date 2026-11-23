@@ -993,6 +993,97 @@ restore_current_directory(const DirectoryReference &reference) wontthrow -> bool
   return SetCurrentDirectoryW(restored_path) != 0;
 }
 
+static pure fn
+directory_entry_kind(DWORD attributes) wontthrow -> Path::EntryKind
+{
+  if ((attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
+    return Path::EntryKind::Symlink;
+  if ((attributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+    return Path::EntryKind::Directory;
+
+  return Path::EntryKind::Regular;
+}
+
+DirectoryCursor::DirectoryCursor(DirectoryCursor &&other) wontthrow
+    : m_handle(other.m_handle), m_entry(other.m_entry),
+      m_has_first_entry(other.m_has_first_entry)
+{
+  other.m_handle = INVALID_HANDLE_VALUE;
+}
+
+fn
+DirectoryCursor::operator=(DirectoryCursor &&other) wontthrow
+    -> DirectoryCursor &
+{
+  if (this != &other) {
+    close();
+    m_handle          = other.m_handle;
+    m_entry           = other.m_entry;
+    m_has_first_entry = other.m_has_first_entry;
+    other.m_handle    = INVALID_HANDLE_VALUE;
+  }
+
+  return *this;
+}
+
+fn
+DirectoryCursor::open(const Path &directory, bool should_follow_symlink) throws
+    -> void
+{
+  close();
+  if (!should_follow_symlink && directory.is_symbolic_link()) return;
+
+  let pattern = String{heap_allocator(), directory.view()};
+  if (!directory.has_trailing_separator()) pattern.push(DIRECTORY_SEPARATOR);
+  pattern.push('*');
+  let const wide_pattern = path_to_wide(pattern.view(), heap_allocator());
+  if (!wide_pattern.has_value()) return;
+
+  m_handle          = FindFirstFileW(wide_pattern->begin(), &m_entry);
+  m_has_first_entry = is_open();
+}
+
+fn
+DirectoryCursor::next(Allocator allocator) throws -> Maybe<Path::DirectoryChild>
+{
+  while (is_open()) {
+    if (!m_has_first_entry && FindNextFileW(m_handle, &m_entry) == 0) {
+      close();
+      break;
+    }
+    m_has_first_entry = false;
+    let const *name = m_entry.cFileName;
+    if (name[0] == L'.' && (name[1] == L'\0' ||
+                            (name[1] == L'.' && name[2] == L'\0')))
+    {
+      continue;
+    }
+    let text = wide_to_utf8(name, static_cast<usize>(lstrlenW(name)), allocator);
+    if (!text.has_value()) continue;
+
+    return Path::DirectoryChild{text.take(),
+                                directory_entry_kind(m_entry.dwFileAttributes)};
+  }
+
+  return None;
+}
+
+fn
+DirectoryCursor::close() wontthrow -> void
+{
+  if (is_open()) {
+    FindClose(m_handle);
+    m_handle = INVALID_HANDLE_VALUE;
+  }
+  m_has_first_entry = false;
+}
+
+pure fn
+DirectoryCursor::is_open() const wontthrow -> bool
+{
+  return m_handle != INVALID_HANDLE_VALUE;
+}
+
 /* memory: one String per entry and the entries list, both from allocator.
            the caller owns them.
    time:   one FindFirstFileW() call, then one FindNextFileW() call per entry.
@@ -1036,13 +1127,8 @@ list_directory_typed(StringView dir, Allocator allocator) throws
       continue;
     }
 
-    Path::EntryKind kind = Path::EntryKind::Regular;
-
-    if ((data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
-      kind = Path::EntryKind::Symlink;
-    else if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
-      kind = Path::EntryKind::Directory;
-    entries.push(Path::DirectoryChild{name.take(), kind});
+    entries.push(Path::DirectoryChild{
+        name.take(), directory_entry_kind(data.dwFileAttributes)});
   } while (FindNextFileW(handle, &data) != 0);
 
   if (GetLastError() != ERROR_NO_MORE_FILES) return None;

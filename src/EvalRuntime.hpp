@@ -600,6 +600,8 @@ private:
   u64        m_shell_options{option_mask(shell_option_id::ExtendedArithmetic) |
                       option_mask(shell_option_id::Failglob) |
                       option_mask(shell_option_id::Hashall) |
+                      option_mask(shell_option_id::SpaceAfterCompletion) |
+                      option_mask(shell_option_id::SpaceAfterDirectoryCompletion) |
                       option_mask(shell_option_id::HistoryPrefixSearch) |
                       option_mask(shell_option_id::InteractiveHints) |
                       option_mask(shell_option_id::InteractiveDiagnostics) |

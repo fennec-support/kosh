@@ -164,7 +164,7 @@ Shell settings are inspected and mutated via `set`, `shopt`, and `koshconf`, and
 | 8 | i | `editor.history.arrow_keys_search_by_typed_prefix` |  | Boolean (`on` or `off`). |
 | 9 | i | `editor.history.file_path` |  | UTF-8 path string; maps to `KOSH_HISTORY_FILE`. |
 | 10 | i | `editor.history.max_entries` |  | Integer `0` to `2147483647`; maps to `KOSH_HISTORY_SIZE`. |
-| 11 | i | `completion.add_space_after_completed_word` |  | Boolean (`on` or `off`). |
+| 11 | i | `completion.add_space_after_completed_word` |  | `on` (default), `off`, or `on-excluding-trailing-slash`. |
 | 12 | i | `optimizer.warning_level` | `set -W` | Integer `0` to `3`. |
 | 13 | i | `optimizer.show_annoying_tier` |  | Boolean (`on` or `off`). |
 | 14 | s | `optimizer.analyze_before_running` |  | Boolean (`on` or `off`). |

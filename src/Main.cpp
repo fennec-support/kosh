@@ -2400,7 +2400,6 @@ start_line_editor(EvalContext &context) throws -> void
 
   LOG(Info, "initializing the line editor");
   toiletline::initialize();
-  os::install_fatal_exit_hook(toiletline::restore_terminal_for_exit);
   toiletline::set_history_enabled(false);
   toiletline::enable_job_notifications(context);
   toiletline::set_colors_enabled(colors::stdout_wants_color());
@@ -2598,7 +2597,7 @@ struct InteractiveSession
   {
     loop {
       let[code, input, accepted_history_event_number] = toiletline::get_input(
-          prompt, right_prompt, transient_prompt, transient_right_prompt);
+          prompt, right_prompt, transient_prompt, transient_right_prompt, &context);
 
       switch (code) {
       case TL_PRESSED_TAB: toiletline::set_input(input); continue;

@@ -762,11 +762,20 @@ without executing \f[CR]make\f[R], \f[CR]cmake\f[R], or
 .RE
 .IP \(bu 2
 \f[B]Insertion and selector modes (\f[CB]\-\-tab\-selector\f[B] /
-\f[CB]completion.menu_style\f[B])\f[R] \- Pressing \f[CR]Tab\f[R]
-inserts the longest common prefix.
-A single match replaces the token and appends a space according to
-\f[CR]completion.add_space_after_completed_word\f[R] (\f[CR]off\f[R]
-default, \f[CR]on\f[R], or \f[CR]on\-excluding\-trailing\-slash\f[R]).
+\f[CB]completion.menu_style\f[B])\f[R] \- \f[CR]Tab\f[R] matches the
+whole token under the cursor, including text to its right, and inserts
+the longest common prefix when it extends that token.
+Accepting a candidate replaces the whole token.
+An initial\-word Bash spec (\f[CR]complete \-I\f[R]) can still insert
+before an existing command when a fresh \f[CR]Tab\f[R] is pressed at its
+exact start.
+When a fresh \f[CR]Tab\f[R] in native mode completes a single file or
+directory, it inserts no trailing space.
+Non\-path completions and acceptance in an open menu still follow
+\f[CR]completion.add_space_after_completed_word\f[R] (\f[CR]on\f[R] by
+default, \f[CR]off\f[R], or \f[CR]on\-excluding\-trailing\-slash\f[R])
+where applicable.
+A Bash spec with \f[CR]nospace\f[R] suppresses that space.
 Multiple candidates open the configured selector:
 .PP
 .TS
@@ -815,12 +824,77 @@ lacking decoration support) and keeps \f[CR]Ctrl\-R\f[R] history search
 inline.
 T}
 .TE
+.PP
+The native menu displays up to 16 candidate rows, depending on the
+available terminal height.
+.IP \(bu 2
+\f[B]Directory navigation and file details\f[R] \- In the native path
+menu, \f[CR]Right\f[R] and \f[CR]Ctrl\-Right\f[R] open the highlighted
+directory, and \f[CR]Ctrl\-Left\f[R] goes to the parent.
+These keys edit the pending path without changing the shell\(aqs working
+directory.
+At a bare \f[CR]./\f[R] or \f[CR]/\f[R], \f[CR]Ctrl\-Left\f[R] leaves
+the path, cursor, and menu unchanged.
+Remove the prefix by editing the line.
+On a wide terminal, the right\-hand pane lists directories first, in the
+same name order as the main menu.
+If the terminal has room, the pane shows up to 15 entries regardless of
+how many candidates the main menu shows.
+When more entries exist than fit, a gray
+\f[CR]previewing N out of M\f[R] line reports how many entries the pane
+shows and how many the directory contains.
+An empty directory shows a bold gray \f[CR]<empty>\f[R].
+For files, the pane shows the type and any details it can read from the
+first 8192 bytes in bold, such as image dimensions, executable
+architecture, or audio sample rate.
+When there is room, a separate gray line shows permissions, local
+modification time, and relative age.
+The pane does not take keyboard focus.
+.PP
+When \f[CR]Ctrl\-Left\f[R] returns to the parent, the menu highlights
+the directory it just left.
+.PP
+For a symbolic link, the preview shows the stored destination, then the
+target\(aqs type and details or its directory entries.
+Relative destinations resolve from the link\(aqs parent directory.
+A missing target appears as \f[CR]dangling target\f[R].
+The preview identifies special files without opening them.
+.IP \(bu 2
+\f[B]Fuzzy path search\f[R] \- When the native path menu says
+\f[CR]no matches. tab to fuzzy search\f[R], press \f[CR]Tab\f[R] again
+to search recursively below the deepest existing directory in the path.
+The search does not follow directory symlinks within that directory
+tree.
+The unresolved text starts the query.
+Matches appear as the search finds them, with \f[CR]loading...\f[R] at
+the bottom until the search finishes.
+Type or press \f[CR]Backspace\f[R] to refine the query while the search
+runs.
+\f[CR]Ctrl\-Enter\f[R] inserts the highlighted match as an argument and
+leaves the query and menu active for another selection.
+\f[CR]Tab\f[R] accepts a match, and \f[CR]Escape\f[R] closes the menu
+without running the line.
+.IP \(bu 2
+\f[B]Modified Enter\f[R] \- When \f[CR]Ctrl\-Enter\f[R] accepts a file
+path in the native menu and advances to the next argument, that argument
+starts with the same directory, and the menu highlights the file just
+accepted.
+Use the arrow keys and \f[CR]Ctrl\-Enter\f[R] again to add another file
+from that directory.
+This binding requires a terminal that reports \f[CR]Ctrl\-Enter\f[R]
+separately from \f[CR]Enter\f[R].
+If the terminal sends plain \f[CR]Enter\f[R] instead, the shell submits
+the line as it does on \f[CR]Enter\f[R].
 .IP \(bu 2
 \f[B]History search (\f[CB]Ctrl\-R\f[B])\f[R] \- Searches a snapshot of
 the shared history file newest\-first through the selected selector with
 the current line as the initial query, without mutating the in\-memory
 private history list.
-An accepted entry replaces the line.
+The native menu shows up to three logical lines per entry, preserves
+blank lines, and displays no history numbers.
+It clips long lines to the available width and adds \f[CR]...\f[R] to
+the third line if more lines follow.
+An accepted entry replaces the line with the complete command.
 .SS Terminal shell integration marks
 Interactive sessions attached to a terminal emit \f[CR]OSC 133\f[R]
 (\f[CR]A\f[R], \f[CR]B\f[R], \f[CR]C\f[R], \f[CR]D\f[R])
@@ -1008,6 +1082,11 @@ T}@T{
 Edit buffer in \f[CR]$VISUAL\f[R], \f[CR]$EDITOR\f[R], or \f[CR]vi\f[R].
 T}
 T{
+\f[CR]Ctrl\-X Ctrl\-F\f[R]
+T}@T{
+Open the fuzzy file picker.
+T}
+T{
 \f[CR]Alt\-X\f[R], \f[CR]Ctrl\-X z\f[R]
 T}@T{
 Open \f[CR]M\-x\f[R] command minibuffer (\f[CR]Alt\-X\f[R]), or repeat
@@ -1053,6 +1132,28 @@ T}@T{
 Enter multi\-cursor editing mode.
 T}
 .TE
+.PP
+\f[CR]Ctrl\-X Ctrl\-F\f[R], \f[CR]M\-x find\-file\f[R], and Vi
+\f[CR]:fzf\f[R] open the same fuzzy file picker at the shell prompt and
+in \f[CR]slurp\f[R].
+The picker starts a recursive search in the working directory before you
+type and shows matches as they arrive.
+As in the fuzzy path search that opens on a second \f[CR]Tab\f[R] after
+no matches, the picker displays the query inline and previews the
+selected path in dim text.
+The picker shows up to 16 matches at once, depending on terminal height.
+The search does not follow directory symlinks.
+Use \f[CR]Up\f[R] and \f[CR]Down\f[R] to select an entry and scroll
+through more matches.
+\f[CR]Tab\f[R] or \f[CR]Right\f[R] enters the selected directory, and
+\f[CR]Ctrl\-Left\f[R] returns to its parent.
+Browsing does not change the shell\(aqs working directory.
+\f[CR]Enter\f[R] accepts the selected path and closes the picker.
+At the shell prompt, it inserts the shell\-quoted path as a separate
+word without submitting the line.
+In \f[CR]slurp\f[R], it opens a file for editing; directories are not
+valid editing targets.
+\f[CR]Escape\f[R] returns to the current draft or buffer.
 .SS Vi command, visual, and rectangle mode keys
 In Vi command mode, arrow keys move across buffer rows without recalling
 history.
@@ -1277,12 +1378,24 @@ T{
 Completion menu
 T}@T{
 \f[CR]Down\f[R]/\f[CR]Ctrl\-N\f[R]/\f[CR]Up\f[R]/\f[CR]Ctrl\-P\f[R]/\f[CR]Shift\-Tab\f[R]
-cycle rows; \f[CR]Tab\f[R] accepts (opening directories);
-\f[CR]Right\f[R] accepts and chains completion; \f[CR]Enter\f[R] closes
-menu and runs command; typing or \f[CR]Backspace\f[R] narrows or widens
-the rows; \f[CR]Escape\f[R] closes the menu and keeps the edited line;
-\f[CR]Ctrl\-G\f[R] and unrecognized keys close the menu and restore the
-original line; any other key closes the menu, then acts on the line.
+cycle rows; \f[CR]Tab\f[R] accepts; \f[CR]Ctrl\-Enter\f[R] accepts the
+highlighted word and continues completion without running the command.
+\f[CR]Right\f[R] opens the highlighted directory or accepts a
+replacement that changes the token and continues completion.
+\f[CR]Ctrl\-Right\f[R] does the same in a path menu.
+With a Bash programmable completion, \f[CR]Ctrl\-Right\f[R] accepts the
+highlighted word and advances past one separator, unless the spec uses
+\f[CR]nospace\f[R].
+\f[CR]Ctrl\-Left\f[R] removes a word accepted this way and its separator
+in one edit, and can back through consecutive such acceptances.
+Otherwise, \f[CR]Ctrl\-Left\f[R] goes to the parent in a path menu, does
+nothing at a bare \f[CR]./\f[R] or \f[CR]/\f[R], or moves the cursor
+normally.
+These arrows move the cursor normally when they do not act on a
+completion.
+\f[CR]Enter\f[R] closes the menu and runs the command; typing or
+\f[CR]Backspace\f[R] narrows or widens the rows; \f[CR]Escape\f[R] keeps
+the edited line; \f[CR]Ctrl\-G\f[R] restores the original line.
 T}
 T{
 History search
@@ -1893,16 +2006,13 @@ keeping owner, group, and links, after a private backup in
 The backup is removed after a successful write and reported after a
 failed one, and without a backup nothing is written.
 .IP \(bu 2
-\f[B]\f[CB]slurp\f[B] file switching\f[R] \- \f[CR]M\-x find\-file\f[R]
-opens a named file after its path is accepted.
-\f[CR]Tab\f[R] completes raw filenames, including spaces and
-metacharacters, and \f[CR]Tab\f[R] and \f[CR]Shift\-Tab\f[R] cycle
-ambiguous candidates.
-A dirty buffer offers Save, Discard, or Cancel.
+\f[B]\f[CB]slurp\f[B] file switching\f[R] \- Use the same recursive
+fuzzy file picker as at the shell prompt.
+You can also enter a literal path; \f[CR]\-\f[R] names a file.
+A dirty buffer offers Save, Discard, or Cancel before switching.
 A failed save or open keeps the current buffer.
 The new file has its own undo history, and the original operand list
 resumes when it closes.
-A path of \f[CR]\-\f[R] in this prompt names a file.
 .IP \(bu 2
 \f[B]\f[CB]slurp\f[B] filter input\f[R] \- A command\-line operand of
 \f[CR]\-\f[R] reads standard input, while the controlling terminal

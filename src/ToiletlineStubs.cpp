@@ -670,12 +670,6 @@ set_open_file_callback(tl_open_file_fn callback) -> void
 }
 
 fn
-set_path_complete_callback(tl_path_complete_fn callback) -> void
-{
-  unused(callback);
-}
-
-fn
 set_saved_text(const char *text) -> void
 {
   unused(text);
@@ -1277,9 +1271,11 @@ set_idle_title() -> void
 {}
 
 fn
-get_input(const String &prompt) -> input_result
+get_input(const String &prompt, koshka::EvalContext *file_picker_context)
+    -> input_result
 {
   unused(prompt);
+  unused(file_picker_context);
   throw koshka::Error{"This build has no line editor"};
 }
 
@@ -1287,13 +1283,14 @@ fn
 get_input(const String                &prompt,
           const String                &right_prompt,
           const koshka::Maybe<String> &transient_prompt,
-          const koshka::Maybe<String> &transient_right_prompt) -> input_result
+          const koshka::Maybe<String> &transient_right_prompt,
+          koshka::EvalContext         *file_picker_context) -> input_result
 {
   unused(right_prompt);
   unused(transient_prompt);
   unused(transient_right_prompt);
 
-  return get_input(prompt);
+  return get_input(prompt, file_picker_context);
 }
 
 fn
@@ -1308,10 +1305,6 @@ enter_raw_mode() -> void
 
 fn
 exit_raw_mode() -> void
-{}
-
-fn
-restore_terminal_for_exit() wontthrow -> void
 {}
 
 fn

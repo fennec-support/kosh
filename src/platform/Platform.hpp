@@ -2103,6 +2103,42 @@ list_directory_typed(StringView dir) throws
 cold fn
 list_directory_typed(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>;
+
+/* Owns one native directory stream. */
+class DirectoryCursor
+{
+public:
+  DirectoryCursor() = default;
+  DirectoryCursor(const DirectoryCursor &) = delete;
+  fn
+  operator=(const DirectoryCursor &) -> DirectoryCursor & = delete;
+  DirectoryCursor(DirectoryCursor &&other) wontthrow;
+  fn
+  operator=(DirectoryCursor &&other) wontthrow -> DirectoryCursor &;
+  ~DirectoryCursor() { close(); }
+
+  fn
+  open(const Path &directory, bool should_follow_symlink = false) throws
+      -> void;
+  /* Each returned name uses allocator. End of directory or a native read
+     failure closes the stream and returns None. */
+  fn
+  next(Allocator allocator) throws -> Maybe<Path::DirectoryChild>;
+  fn
+  close() wontthrow -> void;
+  pure fn
+  is_open() const wontthrow -> bool;
+
+private:
+#if K_PLATFORM_IS K_WIN32
+  HANDLE           m_handle{INVALID_HANDLE_VALUE};
+  WIN32_FIND_DATAW m_entry{};
+  bool             m_has_first_entry{false};
+#else
+  DIR *m_handle{nullptr};
+#endif
+};
+
 cold fn
 list_directory_for_batch(StringView dir, Allocator allocator) throws
     -> directory_batch_listing;

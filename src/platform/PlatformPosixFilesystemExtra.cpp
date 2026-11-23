@@ -1420,6 +1420,10 @@ struct DirectoryStatusNameComparator
   }
 };
 
+/* Temporary parent paths, operation indices, and directory listings use heap
+   storage released on return. For k requests sharing a directory with m
+   children, the batch reads and sorts all m entries, then performs k binary
+   lookups. Singleton requests and missing statuses use direct calls. */
 static fn
 execute_getattrlistbulk_batch(const batched_syscall  *operations,
                               usize                   operation_count,
@@ -1511,21 +1515,16 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
 
         result = {operation.request_id, 0, 0};
 
-        bool has_status = false;
+        let const filename =
+            BatchOperationAccess::get_path(operation)->filename();
+        let const position = sorted_entries.find(filename);
 
-        if (entries.has_value()) {
-          let const filename =
-              BatchOperationAccess::get_path(operation)->filename();
-          let const position = sorted_entries.find(filename);
-
-          if (position.has_value() && sorted_entries[*position].has_status) {
-            *BatchOperationAccess::get_status(operation) =
-                sorted_entries[*position].status;
-            has_status = true;
-          }
+        if (position.has_value() && sorted_entries[*position].has_status) {
+          *BatchOperationAccess::get_status(operation) =
+              sorted_entries[*position].status;
+        } else {
+          execute_batched_syscall_direct(operation, result);
         }
-
-        if (!has_status) execute_batched_syscall_direct(operation, result);
       }
 
       group_start = group_end;

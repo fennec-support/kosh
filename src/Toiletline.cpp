@@ -15,6 +15,7 @@
 #include "CLI.hpp"
 #include "CLIColors.hpp"
 #include "Completion.hpp"
+#include "CompletionInternal.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "ExecContext.hpp"
@@ -123,7 +124,7 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 #define TL_MALLOC  tl_arena_malloc
 #define TL_REALLOC tl_arena_realloc
 #define TL_FREE    tl_arena_free
-#define TL_ABORT() abort()
+#define TL_ABORT() GUARANTEE(false, "Toiletline allocation failed")
 
 #define TL_NO_SUSPEND
 #define TL_CTRL_Z_UNDO
@@ -132,7 +133,7 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 #if defined KOSH_VENDORED_REGEX
 #define TL_REGEX_HEADER "../../vendor/regex/regex.h"
 #endif
-#define TL_ASSERT           ASSERT
+#define TL_ASSERT           GUARANTEE
 #define TL_HISTORY_MAX_SIZE (1024 * 4)
 #define TL_STRING_MAX_LEN   65535
 
@@ -189,10 +190,45 @@ does_width_table_match(bool is_wide,
 
 namespace {
 
+static fn
+restore_terminal_for_exit() wontthrow -> void
+{
+  if (!::itl_g_entered_raw_mode) return;
+
+#if K_PLATFORM_IS K_WIN32
+  if (::itl_g_full_screen) {
+    static constexpr char leave_screen[] = ITL_MOUSE_OFF "\x1b[?1049l";
+
+    unused(::itl_tty_write(leave_screen, sizeof(leave_screen) - 1));
+  }
+  if (::itl_g_vi_cursor_shape != ITL_VI_CURSOR_DEFAULT_SHAPE)
+    unused(::itl_tty_write("\x1b[0 q", 5));
+
+  unused(SetConsoleMode(KOSH_STDIN, ::itl_g_original_tty_in_mode));
+  unused(SetConsoleMode(KOSH_STDOUT, ::itl_g_original_tty_out_mode));
+  unused(SetConsoleCP(::itl_g_original_tty_cp));
+  unused(SetConsoleOutputCP(::itl_g_original_tty_output_cp));
+  unused(_setmode(STDIN_FILENO, ::itl_g_original_mode));
+#else
+  ::tl_restore_terminal_for_exit();
+#endif
+  ::itl_g_entered_raw_mode = false;
+}
+
 enum class selector_outcome : u8;
 
 /* the byte distance between the codepoint marks of the highlight cache. */
 constexpr usize CODEPOINT_MARK_BYTE_COUNT = 4096;
+
+static fn
+kosh_completion_preview(const char *,
+                        const char  *detail_key,
+                        const char **heading,
+                        const char **footer,
+                        const char **marker,
+                        size_t      *entry_row_count,
+                        size_t      *entry_count,
+                        int         *is_file_description) -> const char *;
 
 struct CompletionSession
 {
@@ -202,6 +238,8 @@ struct CompletionSession
   koshka::ArrayList<const char *> candidate_pointers{koshka::heap_allocator()};
   koshka::ArrayList<const char *> description_pointers{
       koshka::heap_allocator()};
+  koshka::ArrayList<const char *> detail_key_pointers{koshka::heap_allocator()};
+  koshka::completion::editor_path_search path_search;
   bool                      is_highlight_color_enabled{false};
   bool                      should_show_hints{true};
   bool                      should_show_diagnostics{true};
@@ -227,6 +265,11 @@ struct CompletionSession
     has_idle_settled_line = false;
     analyzed_line.clear();
     analysis_finding.clear();
+    preview_key.clear();
+    preview_text.clear();
+    preview_heading.clear();
+    preview_footer.clear();
+    path_search = {};
   }
 
   fn
@@ -236,6 +279,8 @@ struct CompletionSession
   select_history(const char *const *entries,
                  size_t             count,
                  const char       **out_selected) -> int;
+  fn
+  set_path_details(tl_completion *out) throws -> void;
   fn
   complete(const char    *buffer,
            size_t         cursor,
@@ -251,6 +296,15 @@ struct CompletionSession
   idle(const char *buffer, size_t cursor) -> int;
 
   koshka::String     hint_row{koshka::heap_allocator()};
+  koshka::String     preview_key{koshka::heap_allocator()};
+  koshka::String     preview_text{koshka::heap_allocator()};
+  koshka::String     preview_heading{koshka::heap_allocator()};
+  koshka::String     preview_footer{koshka::heap_allocator()};
+  koshka::String     sibling_parent{koshka::heap_allocator()};
+  const char         *preview_marker{nullptr};
+  usize               preview_entry_row_count{0};
+  usize               preview_entry_count{0};
+  bool                is_preview_file_description{false};
   koshka::String     syntax_checked_line{koshka::heap_allocator()};
   koshka::String     syntax_problem{koshka::heap_allocator()};
   koshka::mimic_mood syntax_checked_mood{koshka::mimic_mood::Default};
@@ -1298,6 +1352,80 @@ kosh_edit_callback(const char *buffer, const char **out_edited) -> int
   }
 }
 
+static fn
+completion_directory_identity(const char *word, char *out, usize capacity)
+    -> bool
+{
+  using namespace koshka;
+  using namespace completion::internal;
+  if (COMPLETION_SESSION.context == nullptr ||
+      COMPLETION_SESSION.base_directory == nullptr)
+  {
+    return false;
+  }
+
+  try {
+    let const scratch = completion::ScopedCompletionScratch{};
+    let const decoded = utils::decode_shell_word(
+        StringView{word, strlen(word)}, completion_allocator());
+    let const path = resolve_listing_directory(
+        decoded.text.view(), *COMPLETION_SESSION.base_directory,
+        *COMPLETION_SESSION.context, decoded.leading);
+    let const text = path.view();
+    let const root = os::path_root_length(text);
+    let end = text.length;
+    while (end > root && os::is_directory_separator(text[end - 1])) --end;
+    if (end >= capacity) return false;
+    memcpy(out, text.data, end);
+    out[end] = '\0';
+
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
+
+fn
+completion_path_parent(const char *candidate) -> const char *
+{
+  using namespace koshka;
+  using namespace completion::internal;
+  try {
+    let const scratch = completion::ScopedCompletionScratch{};
+    let const allocator = completion_allocator();
+    let const token = StringView{candidate, strlen(candidate)};
+    let const decoded = utils::decode_shell_word(token, allocator);
+    let const part = split_path_token(decoded.text.view()).directory_part;
+    let parent = part.is_empty()
+                      ? String{allocator, "./"}
+                      : rebuild_shell_syntax_candidate(token, decoded, part);
+    if (!part.is_empty() && decoded.quote_character != 0)
+      parent.push(decoded.quote_character);
+    COMPLETION_SESSION.sibling_parent.clear();
+    COMPLETION_SESSION.sibling_parent.append(parent.view());
+
+    return COMPLETION_SESSION.sibling_parent.c_str();
+  } catch (...) {
+    return nullptr;
+  }
+}
+
+fn
+CompletionSession::set_path_details(tl_completion *out) -> void
+{
+  detail_key_pointers.clear();
+  if (result->preview_paths.count() == 0) return;
+
+  detail_key_pointers.reserve(result->candidates.count());
+  for (let const &candidate : result->candidates) {
+    let const path = result->preview_paths.find(candidate.view());
+    detail_key_pointers.push(path.has_value() ? path->c_str() : nullptr);
+  }
+  out->detail_keys = detail_key_pointers.begin();
+  out->preview     = kosh_completion_preview;
+  out->path_parent = completion_path_parent;
+}
+
 fn
 CompletionSession::complete(const char    *buffer,
                             size_t         cursor,
@@ -1306,6 +1434,73 @@ CompletionSession::complete(const char    *buffer,
 {
   if (context == nullptr || result == nullptr) {
     return 0;
+  }
+
+  if (out->is_path_search || out->should_search_siblings) {
+    try {
+      let const byte_count = strlen(buffer);
+      let const token_byte = toiletline::get_codepoint_byte_offset(
+          buffer, byte_count, out->token_start);
+      let const cursor_byte = toiletline::get_codepoint_byte_offset(
+          buffer, byte_count, cursor);
+      if (cursor_byte < token_byte) return 0;
+
+      let const token = koshka::StringView{buffer + token_byte,
+                                           cursor_byte - token_byte};
+      usize query_start = 0;
+      if (out->path_query_start != 0) {
+        let const query_byte = toiletline::get_codepoint_byte_offset(
+            buffer, byte_count, out->path_query_start);
+        if (query_byte < token_byte || query_byte > cursor_byte) return 0;
+        query_start = query_byte - token_byte;
+      }
+
+      if (out->is_path_search) {
+        out->has_more_paths = koshka::completion::search_editor_path(
+            token, *context, *base_directory, query_start, path_search);
+        if (query_start != 0) {
+          out->path_query_start =
+              out->token_start + ::tl_utf8_strnlen(token.data, query_start);
+        }
+        out->count = path_search.matches.count();
+        out->path_row_id = [](size_t row) -> uint32_t {
+          return koshka::completion::editor_path_row_id(
+              COMPLETION_SESSION.path_search, row);
+        };
+        out->path_row_of = [](uint32_t id, size_t previous_row) -> size_t {
+          return koshka::completion::editor_path_row_of(
+              COMPLETION_SESSION.path_search, id, previous_row);
+        };
+        out->path_row_name = [](size_t row) -> const char * {
+          try {
+            return koshka::completion::editor_path_row_name(
+                COMPLETION_SESSION.path_search, row);
+          } catch (...) {
+            return nullptr;
+          }
+        };
+
+        return 1;
+      }
+
+      candidate_pointers.clear();
+      result->candidates.clear();
+      result->descriptions.clear();
+      result->preview_paths.clear();
+      result->longest_common_prefix.clear();
+      result->candidates = koshka::completion::complete_editor_path_siblings(
+          token, *context, *base_directory, result->preview_paths);
+      candidate_pointers.reserve(result->candidates.count());
+      for (let const &candidate : result->candidates)
+        candidate_pointers.push(candidate.c_str());
+      out->candidates = candidate_pointers.begin();
+      out->count      = candidate_pointers.count();
+      set_path_details(out);
+
+      return out->count != 0;
+    } catch (...) {
+      return 0;
+    }
   }
 
   try {
@@ -1317,6 +1512,11 @@ CompletionSession::complete(const char    *buffer,
         koshka::completion::ScopedDocumentationDeferral{is_explicit_completion};
 
     if (is_explicit_completion) {
+      preview_key.clear();
+      preview_text.clear();
+      preview_heading.clear();
+      preview_footer.clear();
+
       context->program_resolver().begin_explicit_completion(
           koshka::ProgramResolver::CompletionRefresh::Listings);
     }
@@ -1340,15 +1540,25 @@ CompletionSession::complete(const char    *buffer,
 
     const usize byte_cursor =
         toiletline::get_codepoint_byte_offset(buffer, byte_count, cursor);
+    using koshka::completion::completion_origin;
+    let const origin =
+        !is_explicit_completion ? completion_origin::Other
+        : ::itl_g_loading_is_menu_reload ? completion_origin::EditorMenu
+                                         : completion_origin::EditorTab;
 
     koshka::arm_message_leading_newline(true);
     result->candidates.clear();
     result->descriptions.clear();
+    result->preview_paths.clear();
     result->longest_common_prefix.clear();
     *result = koshka::completion::complete(
         line, byte_cursor, *context, *base_directory, nullptr, false,
         is_for_listing != 0 ? koshka::completion::completion_mode::Listing
-                            : koshka::completion::completion_mode::Ghost);
+                            : koshka::completion::completion_mode::Ghost,
+        nullptr,
+        is_explicit_completion &&
+            tab_selector == koshka::tab_selector_mode::Interactive,
+        origin);
     let const &completions = *result;
 
     koshka::arm_message_leading_newline(false);
@@ -1357,8 +1567,24 @@ CompletionSession::complete(const char    *buffer,
 
     let const token_start_codepoint =
         ::tl_utf8_strnlen(buffer, completions.token_start);
+    let const token_end_codepoint =
+        ::tl_utf8_strnlen(buffer, completions.token_end);
+    out->token_start = token_start_codepoint;
+    out->token_end   = token_end_codepoint;
+    if (completions.can_search_paths && completions.candidate_count == 0 &&
+        tab_selector == koshka::tab_selector_mode::Interactive)
+    {
+      let const end = completions.token_end < byte_cursor
+                          ? completions.token_end
+                          : byte_cursor;
+      let const token = line.substring_of_length(
+          completions.token_start, end - completions.token_start);
+      out->can_search_paths = koshka::completion::editor_path_search_start(
+                                 token, *context, *base_directory) != 0;
+    }
     let const token_codepoint_count =
-        cursor >= token_start_codepoint ? cursor - token_start_codepoint : 0;
+        completions.is_initial_insert ? 0
+                                      : token_end_codepoint - token_start_codepoint;
     if (is_explicit_completion &&
         run_selector(*result, token_codepoint_count) ==
             selector_outcome::Dismissed)
@@ -1393,14 +1619,20 @@ CompletionSession::complete(const char    *buffer,
       out->descriptions = description_pointers.begin();
     }
 
+    if (is_explicit_completion) set_path_details(out);
+
     out->candidates =
         is_for_listing != 0 ? candidate_pointers.begin() : nullptr;
     out->count                 = completions.candidate_count;
     out->longest_common_prefix = completions.longest_common_prefix.c_str();
-    out->token_start    = ::tl_utf8_strnlen(buffer, completions.token_start);
-    out->token_end      = ::tl_utf8_strnlen(buffer, completions.token_end);
     out->is_tier_ranked = completions.is_tier_ranked ? 1 : 0;
-    out->is_space_suppressed = completions.is_space_suppressed ? 1 : 0;
+    out->is_space_suppressed =
+        completions.is_space_suppressed ||
+        (origin == completion_origin::EditorTab &&
+         ::itl_g_completion_menu_enabled && completions.candidate_count == 1 &&
+         completions.is_path_completion);
+    out->is_spec_completion  = completions.is_spec_completion ? 1 : 0;
+    out->is_initial_insert   = completions.is_initial_insert ? 1 : 0;
 
     return 1;
   } catch (koshka::completion::documentation_pending &) {
@@ -1431,6 +1663,213 @@ kosh_completion_callback(const char    *buffer,
                          int            is_for_listing) -> int
 {
   return COMPLETION_SESSION.complete(buffer, cursor, out, is_for_listing);
+}
+
+static fn
+kosh_completion_preview(const char *,
+                        const char  *detail_key,
+                        const char **heading,
+                        const char **footer,
+                        const char **marker,
+                        size_t      *entry_row_count,
+                        size_t      *entry_count,
+                        int         *is_file_description) -> const char *
+{
+  using namespace koshka;
+
+  if (detail_key == nullptr || *detail_key == '\0') return nullptr;
+
+  let &key       = COMPLETION_SESSION.preview_key;
+  let &text      = COMPLETION_SESSION.preview_text;
+  let &title     = COMPLETION_SESSION.preview_heading;
+  let &stats     = COMPLETION_SESSION.preview_footer;
+  let &suffix    = COMPLETION_SESSION.preview_marker;
+  let &row_count = COMPLETION_SESSION.preview_entry_row_count;
+  let &count     = COMPLETION_SESSION.preview_entry_count;
+
+  if (key.view() == detail_key) {
+    *heading         = title.is_empty() ? nullptr : title.c_str();
+    *footer          = stats.is_empty() ? nullptr : stats.c_str();
+    *marker          = suffix;
+    *entry_row_count = row_count;
+    *entry_count     = count;
+    *is_file_description = COMPLETION_SESSION.is_preview_file_description;
+    return text.is_empty() ? nullptr : text.c_str();
+  }
+
+  text.clear();
+  title.clear();
+  stats.clear();
+  key.clear();
+  COMPLETION_SESSION.is_preview_file_description = false;
+  suffix    = nullptr;
+  row_count = 0;
+  count     = 0;
+
+  try {
+    key.append(detail_key);
+
+    let const       scratch   = completion::ScopedCompletionScratch{};
+    let const       allocator = completion::internal::completion_allocator();
+    let const       path      = Path{key.view(), allocator};
+    os::file_status status{};
+
+    let const has_status = os::stat_path(path.view(), status);
+    let const is_link = has_status ? os::file_type_letter(status.mode) == 'l'
+                                   : os::path_is_symbolic_link(path.view());
+    if (is_link) {
+      let const target = os::read_symlink(path.view(), allocator);
+      title.append("symbolic link -> ");
+      if (target.has_value()) {
+        completion::internal::append_with_quoted_controls(title, target->view());
+      } else {
+        title.append("(unavailable)");
+      }
+      *heading = title.c_str();
+
+      let const has_target = os::stat_path_following(path.view(), status);
+      if (!has_target || os::file_type_letter(status.mode) == 'l') {
+        text.append(!has_target && os::last_system_error_is_missing_file()
+                        ? "dangling target"
+                        : "target unavailable");
+        return text.c_str();
+      }
+    } else if (!has_status) {
+      return nullptr;
+    }
+
+    let const mode = os::format_mode_string(status.mode);
+    let const modified =
+        os::format_local_time("%Y-%m-%d %H:%M", status.modification_time);
+
+    stats.append(mode.view());
+    stats.append(", modified ");
+    stats.append(modified.is_empty() ? StringView{"unknown"} : modified.view());
+    let const now_seconds =
+        static_cast<i64>(os::realtime_microseconds() / 1000000);
+    if (!modified.is_empty() && now_seconds != 0) {
+      let const is_future = status.modification_time > now_seconds;
+      let const age_seconds =
+          is_future ? static_cast<u64>(status.modification_time) - now_seconds
+                    : static_cast<u64>(now_seconds) - status.modification_time;
+      let const unit_seconds = age_seconds >= 86400  ? 86400u
+                               : age_seconds >= 3600 ? 3600u
+                                                     : 60u;
+
+      stats.append(" (");
+      if (is_future) stats.append("in ");
+      stats.append(String::from(age_seconds / unit_seconds, allocator).view());
+      stats.push(unit_seconds == 86400  ? 'd'
+                 : unit_seconds == 3600 ? 'h'
+                                        : 'm');
+      stats.append(is_future ? ")" : " ago)");
+    }
+    *footer = stats.c_str();
+
+    let const type_letter = os::file_type_letter(status.mode);
+    if (type_letter != 'd') {
+      COMPLETION_SESSION.is_preview_file_description = true;
+      *is_file_description = true;
+#if !defined KOSH_NO_KOSHKIT
+      if (type_letter == '-') {
+        let const description =
+            koshkit::describe_file_type(path.view(), status, allocator, true);
+
+        if (description.has_value()) {
+          text.append(description->view());
+          return text.c_str();
+        }
+      }
+#endif
+      text.append(koshkit::file_type_name(status));
+      return text.c_str();
+    }
+
+    let const *entries =
+        utils::read_directory_cached(path, utils::directory_validation::Cached,
+                                     utils::directory_listing_order::Unsorted);
+
+    if (entries == nullptr) {
+      text.append("(unavailable)");
+      return text.c_str();
+    }
+
+    struct preview_entry
+    {
+      StringView name;
+      String     sort_key;
+      bool       is_directory;
+    };
+
+    constexpr usize MAX_PREVIEW_ENTRIES = 15;
+    let             ordered             = ArrayList<preview_entry>{allocator};
+
+    ordered.reserve(MAX_PREVIEW_ENTRIES);
+
+    for (let const &entry : *entries) {
+      let const name = entry.name.view();
+
+      if (name == "." || name == "..") continue;
+
+      ++count;
+
+      let const is_directory = entry.kind == Path::EntryKind::Directory;
+      let sort_key = completion::internal::path_candidate_needs_quoting(name)
+                         ? completion::internal::quote_path_candidate(name)
+                         : String{allocator, name};
+
+      if (is_directory) sort_key.push('/');
+
+      usize position = ordered.count();
+      while (position > 0) {
+        let const &previous = ordered[position - 1];
+
+        if (is_directory == previous.is_directory
+                ? !(sort_key < previous.sort_key)
+                : !is_directory)
+        {
+          break;
+        }
+        --position;
+      }
+
+      if (position == MAX_PREVIEW_ENTRIES) continue;
+      if (ordered.count() < MAX_PREVIEW_ENTRIES)
+        ordered.push({{}, String{allocator}, false});
+      for (usize index = ordered.count() - 1; index > position; --index) {
+        ordered[index] = steal(ordered[index - 1]);
+      }
+      ordered[position] = {name, steal(sort_key), is_directory};
+    }
+
+    row_count = ordered.count();
+
+    for (usize index = 0; index < row_count; ++index) {
+      let const &entry = ordered[index];
+
+      if (!text.is_empty()) text.push('\n');
+      completion::internal::append_with_quoted_controls(text, entry.name);
+      if (entry.is_directory) text.push('/');
+    }
+    if (ordered.is_empty()) suffix = "<empty>";
+    *marker          = suffix;
+    *entry_count     = count;
+    *entry_row_count = row_count;
+    return text.c_str();
+  } catch (...) {
+    text.clear();
+    title.clear();
+    stats.clear();
+    *heading         = nullptr;
+    *footer          = nullptr;
+    suffix           = nullptr;
+    *marker          = nullptr;
+    row_count        = 0;
+    *entry_row_count = 0;
+    count            = 0;
+    *entry_count     = 0;
+    return nullptr;
+  }
 }
 
 fn
@@ -1736,7 +2175,7 @@ kosh_wake_callback(int phase) -> int
 
         LOG(Info, "pid 1 received signal %d at the prompt, so the shell exits",
             static_cast<int>(koshka::os::TERMINATION_SIGNAL));
-        ::tl_restore_terminal_for_exit();
+        restore_terminal_for_exit();
         koshka::os::INTERRUPT_REQUESTED = 0;
 
         try {
@@ -2384,12 +2823,6 @@ fn
 set_open_file_callback(tl_open_file_fn callback) -> void
 {
   ::tl_set_open_file_callback(callback);
-}
-
-fn
-set_path_complete_callback(tl_path_complete_fn callback) -> void
-{
-  ::tl_set_path_complete_callback(callback);
 }
 
 fn
@@ -3626,6 +4059,13 @@ enable_completion(koshka::EvalContext &context) -> void
 {
   COMPLETION_SESSION.context = &context;
   ::tl_set_complete_callback(kosh_completion_callback);
+  ::itl_g_close_path_search = [] { COMPLETION_SESSION.path_search = {}; };
+  ::itl_g_directory_identity = completion_directory_identity;
+  if constexpr (!koshka::os::IS_FILESYSTEM_CASE_SENSITIVE) {
+    ::itl_g_same_directory_identity = [](const char *first, const char *second) {
+      return koshka::os::paths_are_same_file(first, second);
+    };
+  }
   ::tl_set_highlight_callback(kosh_highlight_callback);
   ::tl_set_highlight_follows_cursor(1);
   ::tl_set_ghost_validate_callback(kosh_ghost_validate_callback);
@@ -3647,6 +4087,9 @@ disable_shell_completion() -> void
 {
   COMPLETION_SESSION.context = nullptr;
   ::tl_set_complete_callback(nullptr);
+  ::itl_g_close_path_search = nullptr;
+  ::itl_g_directory_identity = nullptr;
+  ::itl_g_same_directory_identity = nullptr;
   ::tl_set_highlight_callback(nullptr);
   ::tl_set_highlight_follows_cursor(0);
   ::tl_set_ghost_validate_callback(nullptr);
@@ -3779,6 +4222,8 @@ initialize() -> void
     }
   }
 
+  koshka::os::install_fatal_exit_hook(restore_terminal_for_exit);
+
   if (::tl_init() != TL_SUCCESS) {
     throw koshka::ErrorWithDetails{
         "Toiletline: could not initialize the terminal: " +
@@ -3879,11 +4324,115 @@ exit(usize history_size_limit) -> void
   WAKE_NOTIFICATION_STASH.clear();
 }
 
+namespace {
+
+struct file_picker_session
+{
+  koshka::EvalContext *context;
+  koshka::Maybe<Path> directory;
+  koshka::completion::editor_path_search search;
+  String parent{koshka::heap_allocator()};
+  String quoted{koshka::heap_allocator()};
+};
+
+file_picker_session *FILE_PICKER = nullptr;
+
+fn
+picker_path_parent(const char *text) -> const char *
+{
+  using namespace koshka;
+  try {
+    let const directory = completion::internal::split_path_token(
+        StringView{text, strlen(text)}).directory_part;
+    let const root_length = os::path_root_length(directory);
+    let end = directory.length;
+
+    for (;;) {
+      while (end > root_length && os::is_directory_separator(directory[end - 1]))
+        --end;
+      if (end == root_length ||
+          Path::filename(directory.substring_of_length(0, end)) != ".")
+        break;
+      --end;
+    }
+    if (end == root_length && root_length != 0) return nullptr;
+
+    let &parent = FILE_PICKER->parent;
+    parent.clear();
+    let const trimmed = directory.substring_of_length(0, end);
+    if (end == 0) {
+      parent.append("../");
+    } else if (Path::filename(trimmed) == "..") {
+      parent.append(directory);
+      parent.append("../");
+    } else {
+      let const prefix = completion::internal::split_path_token(trimmed).directory_part;
+      parent.append(prefix.is_empty() ? StringView{"./"} : prefix);
+    }
+    return parent.c_str();
+  } catch (const Error &) {
+    return nullptr;
+  }
+}
+
+fn
+gather_picker_paths(const char *text, size_t root_length, tl_completion *out)
+    -> int
+{
+  using namespace koshka;
+  using namespace completion;
+  try {
+    let &picker = *FILE_PICKER;
+    if (!picker.directory.has_value()) picker.directory = os::read_current_directory();
+    out->path_parent = picker_path_parent;
+    out->has_more_paths = search_raw_editor_paths(
+        StringView{text, strlen(text)}, root_length, *picker.context,
+        *picker.directory, picker.search);
+    out->count = picker.search.matches.count();
+    out->path_row_name = [](size_t row) -> const char * {
+      try {
+        return editor_path_row_name(FILE_PICKER->search, row);
+      } catch (const Error &) {
+        return "";
+      }
+    };
+    out->path_row_id = [](size_t row) {
+      return editor_path_row_id(FILE_PICKER->search, row);
+    };
+    out->path_row_of = [](uint32_t id, size_t row) {
+      return editor_path_row_of(FILE_PICKER->search, id, row);
+    };
+    return 1;
+  } catch (const Error &) {
+    *out = {};
+    return 0;
+  }
+}
+
+fn
+quote_picker_path(const char *path) -> const char *
+{
+  using namespace koshka;
+  try {
+    let const raw = StringView{path, strlen(path)};
+    let &quoted = FILE_PICKER->quoted;
+    quoted.clear();
+    utils::append_shell_quoted(quoted, raw,
+        FILE_PICKER->context->get_glob_charset_for(raw) == glob_charset::Utf8);
+    return quoted.c_str();
+  } catch (const Error &) {
+    return nullptr;
+  }
+}
+
+} /* namespace */
+
 fn
 get_input(const String        &prompt,
           const String        &right_prompt,
           const Maybe<String> &transient_prompt,
-          const Maybe<String> &transient_right_prompt) -> input_result
+          const Maybe<String> &transient_right_prompt,
+          koshka::EvalContext *file_picker_context) -> input_result
 {
   ::tl_set_right_prompt(right_prompt.is_empty() ? nullptr
                                                 : right_prompt.c_str());
@@ -3934,7 +4483,21 @@ get_input(const String        &prompt,
 
   reserve_input_buffer();
 
+  let picker = file_picker_session{file_picker_context, {}, {},
+                                    String{koshka::heap_allocator()},
+                                    String{koshka::heap_allocator()}};
+  if (file_picker_context != nullptr) {
+    FILE_PICKER = &picker;
+    ::itl_g_file_picker_gather = gather_picker_paths;
+    ::itl_g_file_picker_close = [] { FILE_PICKER->search = {}; };
+    ::itl_g_file_picker_quote = ::itl_g_open_file_callback == nullptr
+                                 ? quote_picker_path : nullptr;
+  }
   i32 code = ::tl_get_input(TL_BUFFER, ::itl_g_line_max + 1, prompt.c_str());
+  ::itl_g_file_picker_gather = nullptr;
+  ::itl_g_file_picker_close = nullptr;
+  ::itl_g_file_picker_quote = nullptr;
+  FILE_PICKER = nullptr;
 
   try {
     koshka::completion::abandon_idle_documentation();
@@ -3970,11 +4533,13 @@ get_input(const String        &prompt,
 }
 
 fn
-get_input(const String &prompt) -> input_result
+get_input(const String &prompt, koshka::EvalContext *file_picker_context)
+    -> input_result
 {
   let const no_prompt = String{koshka::heap_allocator()};
 
-  return get_input(prompt, no_prompt, koshka::None, koshka::None);
+  return get_input(prompt, no_prompt, koshka::None, koshka::None,
+                   file_picker_context);
 }
 
 fn
@@ -4007,12 +4572,6 @@ exit_raw_mode() -> void
             koshka::os::last_system_error_message(),
         "The terminal may be left in raw mode, run `reset` to recover"};
   }
-}
-
-fn
-restore_terminal_for_exit() wontthrow -> void
-{
-  ::tl_restore_terminal_for_exit();
 }
 
 fn
