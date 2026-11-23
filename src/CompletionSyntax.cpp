@@ -116,7 +116,8 @@ internal::is_active_token_boundary(StringView line, usize position) wontthrow
 }
 
 pure fn
-internal::find_token_bounds(StringView line, usize cursor) wontthrow
+internal::find_token_bounds(StringView line, usize cursor,
+                            bool should_stop_at_shell_operator) wontthrow
     -> token_bounds
 {
   /* e.g. line = ls "a b" c, cursor = 9. the first pass sets start to 3 at the
@@ -124,6 +125,12 @@ internal::find_token_bounds(StringView line, usize cursor) wontthrow
      the space at index 8. the second pass finds no boundary, so end = 10. */
   usize start = 0;
   usize i     = 0;
+
+  let const do_is_boundary = [&](usize position) wontthrow -> bool {
+    return should_stop_at_shell_operator
+               ? !lexer::is_part_of_identifier(line[position])
+               : is_active_token_boundary(line, position);
+  };
 
   while (i < cursor && i < line.length) {
     let const c = line[i];
@@ -145,7 +152,7 @@ internal::find_token_bounds(StringView line, usize cursor) wontthrow
       continue;
     }
 
-    if (is_active_token_boundary(line, i)) start = i + 1;
+    if (do_is_boundary(i)) start = i + 1;
     i++;
   }
 
@@ -162,7 +169,7 @@ internal::find_token_bounds(StringView line, usize cursor) wontthrow
       continue;
     }
 
-    if (is_active_token_boundary(line, end)) break;
+    if (do_is_boundary(end)) break;
     end++;
   }
 

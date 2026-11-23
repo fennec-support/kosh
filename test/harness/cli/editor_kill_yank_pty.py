@@ -120,8 +120,8 @@ KITTY_ENTER = b"\x1b[13u"
 KITTY_ESCAPE = b"\x1b[27u"
 VI_COMMAND_CURSOR = b"\x1b[2 q"
 BRACKETED_PASTE_OFF = b"\x1b[?2004l"
-PICKER_HELP = ("fuzzy file search, enter to select, tab/right to descend, "
-               "ctrl+left parent")
+PICKER_HELP = "fuzzy file search, tab or enter to open, right to descend"
+SHELL_PICKER_HELP = "fuzzy file search, tab or enter to insert, right to descend"
 PICKER_BLUE = ((5, 26), (2, 40, 102, 206))
 PICKER_DIRECTORY = "./a-browser/"
 PICKER_CHILD = "./a-browser/child.txt"
@@ -941,18 +941,33 @@ def read_slurped(path):
         return handle.read()
 
 
-def get_picker_query(screen, query, help_text=PICKER_HELP):
+def get_picker_query(screen, query, help_text=None, *, caret=None):
     lines = screen.get_lines()
     row = screen.row
-    column = screen.column - len(query)
+    column = screen.column - (len(query) if caret is None else caret)
+    if help_text is None:
+        help_text = SHELL_PICKER_HELP if row == screen.get_prompt_row() else PICKER_HELP
     if (column < 0 or row + 1 >= len(lines)
             or has_text("Fuzzy search:")(screen)
             or lines[row + 1] != " " * column + help_text):
         return None
-    cells = screen.rows[row][column:screen.column]
-    if "".join(cell[0] for cell in cells) == query and not any(cell[1] for cell in cells):
+    cells = screen.rows[row][column:column + len(query)]
+    if ("".join(cell[0] for cell in cells) == query
+            and not any(cell[1] for cell in cells)):
         return row, column
     return None
+
+
+def has_picker_colors(screen, prefix, suffix):
+    position = get_picker_query(screen, prefix + suffix)
+    if position is None:
+        return False
+    row, column = position
+    start = screen.get_prompt_width() if row == screen.get_prompt_row() else column
+    cells = screen.rows[row]
+    boundary = column + len(prefix)
+    return (all(cell[3] != (92,) for cell in cells[start:boundary])
+            and all(cell[3] == (92,) for cell in cells[boundary:boundary + len(suffix)]))
 
 
 def has_picker_row(screen, text, is_selected, is_shell=False, query="./"):
@@ -1009,7 +1024,7 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
         return (has_picker_row(screen, PICKER_DIRECTORY, True)
                 and has_picker_row(screen, PICKER_NESTED, False))
 
-    session = Session(binary, directory, command_directory, rows=24)
+    session = Session(binary, directory, command_directory, rows=24, columns=180)
     try:
         session.wait_until(is_line(""))
         session.send(b"slurp start.txt\r")
@@ -1030,8 +1045,30 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
                       and has_text("child.txt")(screen)
                       and not has_text("picker data done.txt")(screen))
         session.send(b"\x1b[1;5D")
-        report.record("slurp-fuzzy-ctrl-left-browses-the-parent", session,
-                      has_initial_rows)
+        report.record("slurp-fuzzy-ctrl-left-moves-within-the-directory-query", session,
+                      lambda screen: get_picker_query(
+                          screen, PICKER_DIRECTORY, caret=2) is not None
+                      and has_text(PICKER_CHILD)(screen))
+        session.send(b"\x1b[1;5C")
+        report.record("slurp-fuzzy-ctrl-right-moves-within-the-directory-query", session,
+                      lambda screen: get_picker_query(
+                          screen, PICKER_DIRECTORY, caret=len(PICKER_DIRECTORY) - 1)
+                      is not None and has_text(PICKER_CHILD)(screen))
+        session.send(CTRL_A)
+        report.record("slurp-fuzzy-ctrl-a-moves-to-query-start", session,
+                      lambda screen: get_picker_query(
+                          screen, PICKER_DIRECTORY, caret=0) is not None)
+        session.send(b"\x05")
+        report.record("slurp-fuzzy-ctrl-e-moves-to-query-end", session,
+                      lambda screen: get_picker_query(screen, PICKER_DIRECTORY) is not None)
+        session.send(b"\x1b[1;5D" + b"x")
+        report.record("slurp-fuzzy-inserts-at-the-moved-query-caret", session,
+                      lambda screen: get_picker_query(
+                          screen, "./xa-browser/", caret=3) is not None)
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: not has_text(PICKER_HELP)(screen))
+        session.send(CTRL_X_CTRL_F)
+        session.wait_until(has_initial_rows)
         session.send(b"\r")
         report.record("slurp-fuzzy-enter-validates-directory-without-descending",
                       session, lambda screen: has_text("it is a directory")(screen)
@@ -1097,31 +1134,128 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
         session.send(b":q\r")
         session.wait_until(is_line(""))
         run_shell_picker_checks(session, report)
-        spaced_directory = "zz selected directory"
+        quoted_draft = 'printf \'<%s>\\n\' "old value"'
+        session.send(quoted_draft.encode() + LEFT * len(' value"'))
+        session.wait_until(lambda screen: is_line(quoted_draft)(screen)
+                           and screen.column == screen.get_prompt_width() +
+                           len(quoted_draft) - len(' value"'))
+        mark = len(session.raw)
+        session.send(CTRL_X_CTRL_F + b"child.txt")
+        session.wait_until(lambda screen: has_picker_row(
+            screen, PICKER_CHILD, True, is_shell=True, query="./child.txt"))
+        session.send(b"\t" + KITTY_ESCAPE)
+        report.record("shell-fuzzy-inserts-after-an-intact-quoted-word", session,
+                      lambda screen: is_line(quoted_draft + " " + PICKER_CHILD)(screen)
+                      and not has_text(SHELL_PICKER_HELP)(screen)
+                      and b"\x1b]133;C" not in session.raw[mark:])
+        clear_line(session)
+
+        unfinished = 'echo "old value'
+        session.send(b"\x1b[200~" + unfinished.encode() + b"\x1b[201~")
+        session.wait_until(is_line(unfinished))
+        mark = len(session.raw)
+        session.send(CTRL_X_CTRL_F + b"child.txt")
+        opened = session.wait_until(lambda screen: has_picker_row(
+            screen, PICKER_CHILD, True, is_shell=True, query="./child.txt"))
+        session.send(b"\t" + KITTY_ESCAPE)
+        report.record("shell-fuzzy-leaves-an-unfinished-quote-unchanged", session,
+                      lambda screen: opened and is_line(unfinished)(screen)
+                      and not has_text(SHELL_PICKER_HELP)(screen)
+                      and b"\x1b]133;C" not in session.raw[mark:])
+        clear_line(session)
+
+        open(os.path.join(directory, "child.txt"), "w").close()
+        session.send(b"cat ./a-browser" + CTRL_X_CTRL_F)
+        report.record("shell-fuzzy-seeds-existing-directory-without-a-slash", session,
+                      lambda screen: has_picker_row(screen, PICKER_CHILD, True,
+                          is_shell=True, query=PICKER_DIRECTORY)
+                      and not has_minibuffer("./child.txt")(screen))
+        session.send(KITTY_ESCAPE)
+        report.record("shell-fuzzy-escape-restores-the-unaccepted-path", session,
+                      is_line("cat ./a-browser"))
+        clear_line(session)
+
+        session.send(b"cat ./a-browser" + CTRL_X_CTRL_F + b"child")
+        session.wait_until(lambda screen: has_picker_row(
+            screen, PICKER_CHILD, True, is_shell=True, query=PICKER_DIRECTORY + "child"))
+        mark = len(session.raw)
+        session.send(b"\t")
+        report.record("shell-fuzzy-tab-replaces-the-path-without-quoting", session,
+                      lambda screen: is_line("cat " + PICKER_CHILD)(screen)
+                      and not has_text(SHELL_PICKER_HELP)(screen)
+                      and b"\x1b]133;C" not in session.raw[mark:])
+        clear_line(session)
+
+        for name, prefix, suffix in (
+                ("nested-command-substitution", 'printf "%s" "$(cat ', ')"'),
+                ("adjacent-redirection", "cat ", ">picker-output")):
+            draft = prefix + "./a-browser" + suffix
+            offset = len(draft) - len(suffix)
+            session.send(draft.encode() + LEFT * len(suffix))
+            session.wait_until(lambda screen: is_line(draft)(screen)
+                               and screen.column == screen.get_prompt_width() + offset)
+            mark = len(session.raw)
+            session.send(CTRL_X_CTRL_F + b"child")
+            session.wait_until(lambda screen: has_picker_row(
+                screen, PICKER_CHILD, True, is_shell=True, query=PICKER_DIRECTORY + "child"))
+            session.send(b"\t" + KITTY_ESCAPE)
+            report.record("shell-fuzzy-preserves-" + name, session,
+                          lambda screen: is_line(prefix + PICKER_CHILD + suffix)(screen)
+                          and not has_text(SHELL_PICKER_HELP)(screen)
+                          and b"\x1b]133;C" not in session.raw[mark:])
+            clear_line(session)
+
+        spaced_directory = "zz selected $directory"
         os.mkdir(os.path.join(directory, spaced_directory))
-        session.send(b"cat " + CTRL_X_CTRL_F + b"zz selected")
         directory_row = "./" + spaced_directory + "/"
+        session.send(b"printf '<%s>\\n' " + CTRL_X_CTRL_F + b"zz selected")
         session.wait_until(lambda screen: has_picker_row(
             screen, directory_row, True, is_shell=True, query="./zz selected"))
-        session.send(b"\t")
-        report.record("shell-fuzzy-tab-descends-into-selected-directory", session,
+        session.send(RIGHT)
+        report.record("shell-fuzzy-right-descends-into-selected-directory", session,
                       lambda screen: get_picker_query(screen, directory_row) is not None)
-        session.send(b"\x1b[1;5Dzz selected")
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: not has_text(SHELL_PICKER_HELP)(screen))
+        session.send(CTRL_X_CTRL_F + b"zz selected")
         session.wait_until(lambda screen: has_picker_row(
             screen, directory_row, True, is_shell=True, query="./zz selected"))
         mark = len(session.raw)
         session.send(b"\r")
+        accepted = "printf '<%s>\\n' " + shlex.quote(directory_row)
+        report.record("shell-fuzzy-enter-inserts-and-closes-without-running", session,
+                      lambda screen: is_line(accepted)(screen)
+                      and not has_text(SHELL_PICKER_HELP)(screen)
+                      and b"\x1b]133;C" not in session.raw[mark:])
+        session.send(b"\r")
+        report.record("shell-fuzzy-accepted-path-runs-literally-on-next-enter", session,
+                      lambda screen: is_line("")(screen)
+                      and screen.count_lines("<" + directory_row + ">") == 1)
 
-        def has_inserted_directory(screen):
-            state = get_state(screen)
-            if state is None or has_text(PICKER_HELP)(screen):
-                return False
-            return (shlex.split(state[0]) == ["cat", directory_row]
-                    and b"\x1b]133;C" not in session.raw[mark:])
+        for mode, file_space, directory_space in (
+                ("on", 1, 1), ("off", 0, 0),
+                ("on-excluding-trailing-slash", 1, 0)):
+            session.send(("koshconf set completion.add_space_after_completed_word "
+                          + mode + "\r").encode())
+            session.wait_until(is_line(""))
+            for kind, path, query, key, space in (
+                    ("file", PICKER_CHILD, "./a-browser/child", b"\t", file_space),
+                    ("directory", directory_row, "./zz selected", b"\r", directory_space)):
+                session.send(b"cat " + CTRL_X_CTRL_F + query[2:].encode())
+                opened = session.wait_until(lambda screen: has_picker_row(
+                    screen, path, True, is_shell=True, query=query))
+                mark = len(session.raw)
+                session.send(key)
+                draft = "cat " + shlex.quote(path)
+                report.record("shell-fuzzy-spacing-" + mode + "-" + kind, session,
+                              lambda screen: opened and is_line(draft)(screen)
+                              and not has_text(SHELL_PICKER_HELP)(screen)
+                              and screen.row == screen.get_prompt_row()
+                              and screen.column == screen.get_prompt_width() + len(draft) + space
+                              and b"\x1b]133;C" not in session.raw[mark:])
+                clear_line(session)
 
-        report.record("shell-fuzzy-enter-inserts-selected-directory-without-running",
-                      session, has_inserted_directory)
-        clear_line(session)
+        session.send(b"koshconf set completion.add_space_after_completed_word on\r")
+        session.wait_until(is_line(""))
 
         session.send(CTRL_X_CTRL_F + b"zzwindow")
         report.record("shell-fuzzy-shows-sixteen-candidates", session,
@@ -1138,7 +1272,7 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
         report.record("shell-fuzzy-updates-ghost-after-scrolling", session,
                       lambda screen: has_picker_ghost(screen, "./zzwindow", "-16"))
         session.send(KITTY_ESCAPE)
-        session.wait_until(lambda screen: not has_text(PICKER_HELP)(screen))
+        session.wait_until(lambda screen: not has_text(SHELL_PICKER_HELP)(screen))
         session.send(b"printf 'slurp-fuzzy-done\\n'; exit\r")
         report.record("slurp-fuzzy-session-returns-to-the-shell", session,
                       has_row("slurp-fuzzy-done"))
@@ -1157,7 +1291,7 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
 
         def has_clipped_picker_row(screen):
             help_width = columns - (screen.column - len("./zzclipped")) - 1
-            clipped_help = PICKER_HELP[:help_width - 3] + "..."
+            clipped_help = SHELL_PICKER_HELP[:help_width - 3] + "..."
             position = get_picker_query(screen, "./zzclipped", clipped_help)
             if position is None:
                 return False
@@ -1223,9 +1357,18 @@ def run_shell_picker_checks(session, report):
             session.wait_until(lambda screen: VI_COMMAND_CURSOR
                                in get_raw_since(session, mark))
         mark = len(session.raw)
-        session.send(keys)
+        has_picker_hint = True
+        if name == "ctrl-x-ctrl-f":
+            session.send(CTRL_X)
+            has_picker_hint = session.wait_until(
+                lambda screen: has_text("pressed ctrl-x")(screen)
+                and has_text("ctrl-f to fuzzy file search")(screen))
+            session.send(keys[len(CTRL_X):])
+        else:
+            session.send(keys)
         report.record("shell-" + name + "-shows-initial-picker-rows", session,
-                      lambda screen: has_picker_row(screen, PICKER_DIRECTORY, True,
+                      lambda screen: has_picker_hint
+                      and has_picker_row(screen, PICKER_DIRECTORY, True,
                                                     is_shell=True)
                       and has_picker_row(screen, PICKER_NESTED, False,
                                          is_shell=True))
@@ -1240,25 +1383,27 @@ def run_shell_picker_checks(session, report):
         def has_filtered_picker(screen):
             return (has_picker_row(screen, PICKER_NESTED, True, is_shell=True,
                                    query="./dpspc")
+                    and has_picker_colors(screen, "./", "dpspc")
                     and (name != "m-x-find-file" or
                          screen.get_lines()[screen.row].endswith("cat ./dpspc tail")))
 
         report.record("shell-" + name + "-filters-live-picker-rows", session,
                       has_filtered_picker)
-        session.send(KITTY_ESCAPE if name == "m-x-find-file" else b"\r")
+        session.send(KITTY_ESCAPE if name == "m-x-find-file" else b"\t")
 
         def has_draft(screen):
             state = get_state(screen)
-            if state is None or has_text(PICKER_HELP)(screen):
+            if state is None or has_text(SHELL_PICKER_HELP)(screen):
                 return False
             typed = state[0]
             if name == "m-x-find-file":
                 matches = typed == "cat  tail" and screen.column == original_column
             else:
                 try:
-                    matches = (typed.startswith("cat ") and typed.endswith(" tail")
-                               and shlex.split(typed) ==
-                               ["cat", "./a-browser/deep space.txt", "tail"])
+                    matches = (typed == "cat " + shlex.quote(PICKER_NESTED) + " tail"
+                               and (name != "ctrl-x-ctrl-f" or
+                                    screen.column == screen.get_prompt_width() +
+                                    len("cat " + shlex.quote(PICKER_NESTED))))
                 except ValueError:
                     return False
             return (matches and b"\x1b]133;A" not in session.raw[mark:]
@@ -1277,10 +1422,25 @@ def run_shell_picker_checks(session, report):
     session.wait_until(lambda screen: has_picker_row(
         screen, PICKER_NESTED, True, is_shell=True, query="./dpspc"))
     mark = len(session.raw)
-    session.send(b"\r")
+    session.send(b"\t")
     report.record("shell-vi-fzf-inserts-a-separate-word-at-line-end", session,
                   lambda screen: is_line("cat " + shlex.quote(PICKER_NESTED))(screen)
-                  and not has_text(PICKER_HELP)(screen)
+                  and not has_text(SHELL_PICKER_HELP)(screen)
+                  and b"\x1b]133;C" not in session.raw[mark:])
+    clear_line(session)
+
+    session.send(b"cat ./a-browser")
+    session.wait_until(is_line("cat ./a-browser"))
+    mark = len(session.raw)
+    session.send(KITTY_ESCAPE)
+    session.wait_until(lambda screen: VI_COMMAND_CURSOR in session.raw[mark:])
+    session.send(b":fzf\rchild")
+    seeded = session.wait_until(lambda screen: has_picker_row(
+        screen, PICKER_CHILD, True, is_shell=True, query=PICKER_DIRECTORY + "child"))
+    session.send(b"\t")
+    report.record("shell-vi-fzf-seeds-and-replaces-the-path-at-line-end", session,
+                  lambda screen: seeded and is_line("cat " + PICKER_CHILD)(screen)
+                  and not has_text(SHELL_PICKER_HELP)(screen)
                   and b"\x1b]133;C" not in session.raw[mark:])
     clear_line(session)
     session.send(b"set -o emacs\r")

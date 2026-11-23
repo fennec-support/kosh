@@ -113,10 +113,11 @@ fuzzy-path-backspace-finds-descendants-without-escaping PASS
 fuzzy-ctrl-enter-pastes-and-retains-the-query PASS
 fuzzy-ctrl-enter-pastes-a-second-result PASS
 fuzzy-path-typing-narrows-the-menu PASS
-fuzzy-path-tab-accepts-the-scoped-match PASS
-fuzzy-path-escape-keeps-the-draft-without-running PASS
+fuzzy-path-tab-accepts-and-closes-without-running PASS
 fuzzy-path-quote-at-root-refreshes-the-query PASS
 fuzzy-ctrl-enter-closes-only-the-accepted-quote PASS
+fuzzy-path-enter-accepts-without-running PASS
+ordinary-path-menu-enter-still-runs-the-line PASS
 fuzzy-path-streams-matches-above-the-loading-footer PASS
 fuzzy-path-stream-keeps-edits-and-finishes-in-scope PASS
 fuzzy-path-escape-stops-a-loading-search PASS
@@ -210,6 +211,7 @@ history-preview-keeps-blank-line-and-marks-overflow PASS
 history-preview-scrolls-by-entry PASS
 history-preview-accepts-the-complete-command PASS
 history-preview-runs-the-full-accepted-command PASS
+plain-history-query-uses-light-green PASS
 preview-directory-beside-selection PASS
 preview-uses-menu-directory-color PASS
 preview-stats-are-gray PASS

@@ -22,6 +22,7 @@
 #include "Formatter.hpp"
 #include "Koshconf.hpp"
 #include "Koshkit.hpp"
+#include "Lexer.hpp"
 #include "Options.hpp"
 #include "ToiletlineHistory.hpp"
 #include "base/Allocator.hpp"
@@ -4410,6 +4411,80 @@ gather_picker_paths(const char *text, size_t root_length, tl_completion *out)
 }
 
 fn
+seed_picker_path(const char *buffer, size_t cursor, char *text, size_t capacity,
+                 size_t *root_length, size_t *start, size_t *end) -> bool
+{
+  using namespace koshka;
+  using namespace completion::internal;
+  try {
+    let const scratch = completion::ScopedCompletionScratch{};
+    let const line = StringView{buffer, strlen(buffer)};
+    let const cursor_byte =
+        get_codepoint_byte_offset(buffer, line.length, cursor);
+    let const statement = statement_line_start(line, cursor_byte);
+    let const command = command_substitution_range(
+        line.substring(statement), cursor_byte - statement);
+    let const command_start = statement + command.start;
+    let const command_line = line.substring_of_length(
+        command_start, command.end - command.start);
+    let const segment = command_segment_start(command_line,
+                                              cursor_byte - command_start);
+    let const offset = command_start + segment;
+    let const bounds = find_token_bounds(command_line.substring(segment),
+                                        cursor_byte - offset, true);
+    let const first = offset + bounds.start;
+    let const last  = offset + bounds.end;
+    if (first >= cursor_byte) return true;
+
+    let const token_end = ::tl_utf8_strnlen(buffer, last);
+    let const arena = completion_allocator();
+    let const decoded = utils::decode_shell_word(
+        line.substring_of_length(first, cursor_byte - first), arena);
+    let const raw = decoded.text.view();
+    let has_safe_boundary = decoded.quote_character == 0;
+    if (cursor_byte < last) {
+      let const word = line.substring_of_length(first, last - first);
+      has_safe_boundary = utils::decode_shell_word(word, arena).quote_character == 0;
+    }
+    if (has_safe_boundary) *start = *end = token_end;
+    if (raw.is_empty()) return has_safe_boundary;
+
+    let &picker = *FILE_PICKER;
+    if (!picker.directory.has_value()) picker.directory = os::read_current_directory();
+    for (usize length = raw.length; length != 0;) {
+      let const part = raw.substring_of_length(0, length);
+      let const directory = resolve_listing_directory(part, *picker.directory,
+                                                       *picker.context, decoded.leading);
+      if (directory.is_directory()) {
+        let const prefix = decoded.leading.is_tilde_active ||
+                                   decoded.leading.is_variable_active
+                               ? directory.view() : part;
+        let const needs_separator = !os::is_directory_separator(prefix[prefix.length - 1]);
+        let const suffix = raw.substring(length);
+        let const prefix_length = prefix.length + needs_separator;
+        if (prefix_length + suffix.length >= capacity)
+          return has_safe_boundary;
+
+        memcpy(text, prefix.data, prefix.length);
+        if (needs_separator) text[prefix.length] = '/';
+        *root_length = prefix_length;
+        memcpy(text + *root_length, suffix.data, suffix.length);
+        text[*root_length + suffix.length] = '\0';
+        *start = ::tl_utf8_strnlen(buffer, first);
+        *end = token_end;
+        return true;
+      }
+      length = split_path_token(part.substring_of_length(0, length - 1))
+                   .directory_part.length;
+    }
+
+    return has_safe_boundary;
+  } catch (const Error &) {}
+
+  return false;
+}
+
+fn
 quote_picker_path(const char *path) -> const char *
 {
   using namespace koshka;
@@ -4417,8 +4492,16 @@ quote_picker_path(const char *path) -> const char *
     let const raw = StringView{path, strlen(path)};
     let &quoted = FILE_PICKER->quoted;
     quoted.clear();
-    utils::append_shell_quoted(quoted, raw,
-        FILE_PICKER->context->get_glob_charset_for(raw) == glob_charset::Utf8);
+    if (utils::append_ansi_c_quote_if_needed(quoted, raw,
+            FILE_PICKER->context->get_glob_charset_for(raw) == glob_charset::Utf8)) {
+      return quoted.c_str();
+    }
+    if (!completion::internal::path_candidate_needs_quoting(raw) &&
+        !raw.starts_with("~") && !lexer::word_looks_like_assignment(raw)) {
+      return path;
+    }
+
+    append_shell_quoted_arg(quoted, raw, true);
     return quoted.c_str();
   } catch (const Error &) {
     return nullptr;
@@ -4492,11 +4575,14 @@ get_input(const String        &prompt,
     ::itl_g_file_picker_close = [] { FILE_PICKER->search = {}; };
     ::itl_g_file_picker_quote = ::itl_g_open_file_callback == nullptr
                                  ? quote_picker_path : nullptr;
+    ::itl_g_file_picker_seed = ::itl_g_file_picker_quote != nullptr
+                                ? seed_picker_path : nullptr;
   }
   i32 code = ::tl_get_input(TL_BUFFER, ::itl_g_line_max + 1, prompt.c_str());
   ::itl_g_file_picker_gather = nullptr;
   ::itl_g_file_picker_close = nullptr;
   ::itl_g_file_picker_quote = nullptr;
+  ::itl_g_file_picker_seed = nullptr;
   FILE_PICKER = nullptr;
 
   try {

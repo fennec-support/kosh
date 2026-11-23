@@ -500,6 +500,13 @@ def has_caret_at(screen, offset):
     return (screen.row == screen.get_prompt_row()
             and screen.column == screen.get_prompt_width() + offset)
 
+def has_green_input(screen, offset, length):
+    start = screen.get_prompt_width() + offset
+    cells = screen.rows[screen.get_prompt_row()][start:start + length]
+    return len(cells) == length and all(not cell[1] and cell[3] == (92,)
+                                        for cell in cells)
+
+
 
 def is_menu(names, total_filter=None):
     def do_check(screen):
@@ -1350,7 +1357,11 @@ def run_fuzzy_path_checks(session, report, directory):
     mark = len(session.raw)
     session.send(b"\t")
     report.record("second-path-tab-seeds-fuzzy-search", session,
-                  has_fuzzy_menu(draft, miss))
+                  lambda screen: has_fuzzy_menu(draft, miss)(screen)
+                  and has_green_input(screen, len(prefix), len(draft) - len(prefix))
+                  and all(cell[3] != (92,) for cell in screen.rows[
+                      screen.get_prompt_row()][screen.get_prompt_width():
+                                                screen.get_prompt_width() + len(prefix)]))
     session.send(BACKSPACE)
     report.record("fuzzy-path-backspace-finds-descendants-without-escaping",
                   session, has_fuzzy_menu(prefix + "dad",
@@ -1376,12 +1387,9 @@ def run_fuzzy_path_checks(session, report, directory):
                   has_fuzzy_menu(prefix + "dadr", ["n/data-draft.txt"]))
     session.send(b"\t")
     accepted = prefix + "n/data-draft.txt"
-    report.record("fuzzy-path-tab-accepts-the-scoped-match", session,
-                  lambda screen: is_line(accepted)(screen)
-                  and has_caret_at(screen, len(accepted)))
-    session.send(ESCAPE)
-    report.record("fuzzy-path-escape-keeps-the-draft-without-running", session,
+    report.record("fuzzy-path-tab-accepts-and-closes-without-running", session,
                   lambda screen: is_typed_without_menu(accepted)(screen)
+                  and has_caret_at(screen, len(accepted))
                   and b"\x1b]133;A" not in session.raw[mark:]
                   and b"\x1b]133;C" not in session.raw[mark:])
     clear_line(session)
@@ -1414,7 +1422,33 @@ def run_fuzzy_path_checks(session, report, directory):
 
     report.record("fuzzy-ctrl-enter-closes-only-the-accepted-quote", session,
                   has_retained_quoted_query)
+    mark = len(session.raw)
+    session.send(b"\r")
+    def has_accepted_draft(screen):
+        state = get_state(screen)
+        if state is None or state[1]:
+            return False
+        try:
+            words = shlex.split(state[0])
+        except ValueError:
+            return False
+        return (words == ["cat", root + "n/data-draft.txt", root + "n/data-draft.txt"]
+                and screen.get_menu() is None
+                and has_caret_at(screen, len(state[0]))
+                and b"\x1b]133;A" not in session.raw[mark:]
+                and b"\x1b]133;C" not in session.raw[mark:])
+
+    report.record("fuzzy-path-enter-accepts-without-running", session,
+                  has_accepted_draft)
     clear_line(session)
+
+    ordinary = "printf '%s\\n' " + root
+    session.send(ordinary.encode() + b"\t")
+    opened = session.wait_until(is_typed_with_menu(ordinary))
+    session.send(b"\r")
+    report.record("ordinary-path-menu-enter-still-runs-the-line", session,
+                  lambda screen: opened and is_line("")(screen)
+                  and screen.count_lines(root) == 1)
 
 
 def run_streaming_fuzzy_checks(session, report, directory):
@@ -2278,7 +2312,8 @@ def run_history_preview_checks(binary, directory, report):
         return (prompt_row >= 0 and bool(lines) and HISTORY_HEADER in lines[0]
                 and [line.strip() for line in lines[1:len(rows) + 1]] == rows
                 and not any(line.strip() for line in lines[len(rows) + 1:])
-                and has_caret_at(screen, len("hist-view")))
+                and has_caret_at(screen, len("hist-view"))
+                and has_green_input(screen, 0, len("hist-view")))
 
     session = Session(binary, directory, directory, rows=8)
     try:
@@ -2321,6 +2356,22 @@ def run_history_preview_checks(binary, directory, report):
                       lambda screen: screen.count_lines("hist-view-hidden-four") == 1)
         session.wait_until(is_line(""))
         session.wait_for_raw_mode()
+        session.send(b"koshconf set completion.menu_style plain\r")
+        session.wait_until(is_line(""))
+        session.send(b"hist-view-single" + CTRL_R)
+        def has_plain_query(screen):
+            row = screen.get_prompt_row() + 1
+            if screen.row != row or row >= len(screen.rows):
+                return False
+            start = screen.column - len("hist-view-single")
+            cells = screen.rows[row][start:screen.column]
+            return (start >= 0
+                    and "".join(cell[0] for cell in cells) == "hist-view-single"
+                    and all(not cell[1] and cell[3] == (92,) for cell in cells))
+
+        report.record("plain-history-query-uses-light-green", session, has_plain_query)
+        session.send(ESCAPE)
+        clear_line(session)
         session.send(b"printf 'history-preview-done\\n'; exit\r")
         saw_marker = session.wait_until(
             lambda screen: "history-preview-done" in screen.get_lines())

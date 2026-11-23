@@ -68,7 +68,9 @@ struct path_token
 pure fn
 quoted_run_end(StringView line, usize position) wontthrow -> usize;
 pure fn
-find_token_bounds(StringView line, usize cursor) wontthrow -> token_bounds;
+find_token_bounds(StringView line, usize cursor,
+                  bool should_stop_at_shell_operator = false) wontthrow
+    -> token_bounds;
 pure fn
 is_active_token_boundary(StringView line, usize position) wontthrow -> bool;
 fn

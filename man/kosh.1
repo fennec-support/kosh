@@ -868,12 +868,13 @@ tree.
 The unresolved text starts the query.
 Matches appear as the search finds them, with \f[CR]loading...\f[R] at
 the bottom until the search finishes.
-Type or press \f[CR]Backspace\f[R] to refine the query while the search
-runs.
+Type or press \f[CR]Backspace\f[R] to refine the light\-green query
+while the search runs.
 \f[CR]Ctrl\-Enter\f[R] inserts the highlighted match as an argument and
 leaves the query and menu active for another selection.
-\f[CR]Tab\f[R] accepts a match, and \f[CR]Escape\f[R] closes the menu
-without running the line.
+\f[CR]Enter\f[R] and \f[CR]Tab\f[R] accept the highlighted match and
+close the menu without running the line.
+\f[CR]Escape\f[R] closes the menu without running the line.
 .IP \(bu 2
 \f[B]Modified Enter\f[R] \- When \f[CR]Ctrl\-Enter\f[R] accepts a file
 path in the native menu and advances to the next argument, that argument
@@ -883,13 +884,14 @@ Use the arrow keys and \f[CR]Ctrl\-Enter\f[R] again to add another file
 from that directory.
 This binding requires a terminal that reports \f[CR]Ctrl\-Enter\f[R]
 separately from \f[CR]Enter\f[R].
-If the terminal sends plain \f[CR]Enter\f[R] instead, the shell submits
-the line as it does on \f[CR]Enter\f[R].
+If the terminal sends plain \f[CR]Enter\f[R] instead, the editor uses
+the current menu\(aqs \f[CR]Enter\f[R] behavior.
 .IP \(bu 2
 \f[B]History search (\f[CB]Ctrl\-R\f[B])\f[R] \- Searches a snapshot of
 the shared history file newest\-first through the selected selector with
 the current line as the initial query, without mutating the in\-memory
 private history list.
+The editor displays the query in light green.
 The native menu shows up to three logical lines per entry, preserves
 blank lines, and displays no history numbers.
 It clips long lines to the available width and adds \f[CR]...\f[R] to
@@ -1134,26 +1136,32 @@ T}
 .TE
 .PP
 \f[CR]Ctrl\-X Ctrl\-F\f[R], \f[CR]M\-x find\-file\f[R], and Vi
-\f[CR]:fzf\f[R] open the same fuzzy file picker at the shell prompt and
-in \f[CR]slurp\f[R].
-The picker starts a recursive search in the working directory before you
-type and shows matches as they arrive.
-As in the fuzzy path search that opens on a second \f[CR]Tab\f[R] after
-no matches, the picker displays the query inline and previews the
-selected path in dim text.
-The picker shows up to 16 matches at once, depending on terminal height.
-The search does not follow directory symlinks.
-Use \f[CR]Up\f[R] and \f[CR]Down\f[R] to select an entry and scroll
-through more matches.
-\f[CR]Tab\f[R] or \f[CR]Right\f[R] enters the selected directory, and
-\f[CR]Ctrl\-Left\f[R] returns to its parent.
-Browsing does not change the shell\(aqs working directory.
-\f[CR]Enter\f[R] accepts the selected path and closes the picker.
-At the shell prompt, it inserts the shell\-quoted path as a separate
-word without submitting the line.
-In \f[CR]slurp\f[R], it opens a file for editing; directories are not
-valid editing targets.
-\f[CR]Escape\f[R] returns to the current draft or buffer.
+\f[CR]:fzf\f[R] open the same recursive fuzzy file picker at the shell
+prompt and in \f[CR]slurp\f[R].
+The picker starts in the working directory unless a path at the shell
+caret seeds the search.
+An existing directory seeds the search inside that directory, even
+without a trailing slash.
+The picker shows up to 16 matches at once as they arrive and does not
+follow directory symlinks.
+The editable query after the resolved directory prefix is light green;
+the preview is dim.
+Use \f[CR]Up\f[R] and \f[CR]Down\f[R] to select and scroll,
+\f[CR]Ctrl\-A\f[R] and \f[CR]Ctrl\-E\f[R] to move to the start and end
+of the query, and \f[CR]Ctrl\-Left\f[R] and \f[CR]Ctrl\-Right\f[R] to
+move across path components without changing the search root.
+\f[CR]Right\f[R] enters the selected directory without changing the
+working directory.
+At the shell prompt, \f[CR]Tab\f[R] or \f[CR]Enter\f[R] inserts the
+highlighted path and closes the picker without running the line.
+The selection replaces a path that seeded the search.
+The picker quotes a path only when needed to keep it literal.
+Both fuzzy search menus honor
+\f[CR]completion.add_space_after_completed_word\f[R] at the end of the
+draft; neither adds an optional space before existing text.
+In \f[CR]slurp\f[R], \f[CR]Tab\f[R] or \f[CR]Enter\f[R] opens the
+selected file for editing.
+\f[CR]Escape\f[R] cancels the picker and restores the draft or buffer.
 .SS Vi command, visual, and rectangle mode keys
 In Vi command mode, arrow keys move across buffer rows without recalling
 history.
@@ -1393,9 +1401,12 @@ nothing at a bare \f[CR]./\f[R] or \f[CR]/\f[R], or moves the cursor
 normally.
 These arrows move the cursor normally when they do not act on a
 completion.
-\f[CR]Enter\f[R] closes the menu and runs the command; typing or
-\f[CR]Backspace\f[R] narrows or widens the rows; \f[CR]Escape\f[R] keeps
-the edited line; \f[CR]Ctrl\-G\f[R] restores the original line.
+\f[CR]Enter\f[R] closes the menu and runs the command, except in fuzzy
+path search, where \f[CR]Enter\f[R] and \f[CR]Tab\f[R] accept and close
+without running.
+Typing or \f[CR]Backspace\f[R] narrows or widens the rows;
+\f[CR]Escape\f[R] keeps the edited line; \f[CR]Ctrl\-G\f[R] restores the
+original line.
 T}
 T{
 History search
