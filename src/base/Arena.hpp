@@ -150,6 +150,13 @@ public:
   }
 
 private:
+  friend fn
+  bump_arena_allocate(BumpArena *arena, usize length, usize alignment) throws
+      -> opaque *;
+
+  hot fn
+  allocate_with_valid_alignment(usize size, usize alignment) throws -> opaque *;
+
   struct block
   {
     u8   *base;

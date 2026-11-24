@@ -14,6 +14,7 @@
 #include "Errors.hpp"
 #include "base/Common.hpp"
 #include "base/Containers.hpp"
+#include "base/Debug.hpp"
 
 #define FLAG_LIST T__FLAG_LIST
 
@@ -86,8 +87,8 @@ public:
   alwaysinline
   SynopsisList(std::initializer_list<StringView> lines) wontthrow
   {
-    if (lines.size() > countof(m_lines))
-      TRAP("the help synopsis exceeds its fixed capacity");
+    GUARANTEE(lines.size() <= countof(m_lines),
+              "the help synopsis exceeds its fixed capacity");
 
     for (let const line : lines)
       m_lines[m_count++] = line;
@@ -114,7 +115,7 @@ public:
   pure fn
   operator[](usize index) const wontthrow -> StringView
   {
-    ASSERT(index < m_count);
+    GUARANTEE(index < m_count, "help synopsis index out of bounds");
 
     return m_lines[index];
   }
@@ -130,8 +131,8 @@ public:
   fn
   push(Flag *flag) wontthrow -> void
   {
-    if (m_count >= countof(m_flags))
-      TRAP("the flag registry exceeds its fixed capacity");
+    GUARANTEE(m_count < countof(m_flags),
+              "the flag registry exceeds its fixed capacity");
     m_flags[m_count++] = flag;
   }
 
@@ -156,7 +157,7 @@ public:
   pure fn
   operator[](usize index) const wontthrow -> Flag *
   {
-    ASSERT(index < m_count);
+    GUARANTEE(index < m_count, "flag index out of bounds");
 
     return m_flags[index];
   }
@@ -855,7 +856,6 @@ struct RollingHistory
   get_boundary(u64 window_start_nanoseconds) const wontthrow
       -> rolling_window_boundary
   {
-    ASSERT(!timestamps.is_empty());
     if (window_start_nanoseconds <= timestamps[0]) return {0, 0, timestamps[0]};
 
     usize before = 0;

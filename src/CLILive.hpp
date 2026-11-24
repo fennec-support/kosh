@@ -412,11 +412,12 @@ run_pager(const ExecContext           &ec,
           const ArrayList<StringView> &sources,
           const pager_options         &options) throws -> i32;
 
-/* returns text with every control byte in ^ notation and every byte that is
-   not UTF-8 or is a C1 control character as the replacement character, so
-   that foreign text cannot steer a terminal. */
+/* escapes control bytes in ^ notation and invalid UTF-8 and C1 controls as
+   the replacement character. Line feeds can be preserved. */
 fn
-escape_terminal_text(Allocator allocator, StringView text) throws
+escape_terminal_text(Allocator  allocator,
+                     StringView text,
+                     bool       should_preserve_line_feeds = false) throws
     -> String;
 
 struct LiveProcessIdentity

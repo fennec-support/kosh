@@ -29,11 +29,7 @@ public:
   CopyOnWrite(const CopyOnWrite &other) wontthrow
       : m_allocator{other.m_allocator}, m_shared{other.m_shared}
   {
-    if (m_shared != nullptr) {
-      GUARANTEE(m_shared->reference_count < UINT32_MAX,
-                "copy-on-write reference count overflow");
-      m_shared->reference_count++;
-    }
+    add_reference();
   }
 
   CopyOnWrite(CopyOnWrite &&other) wontthrow
@@ -50,11 +46,7 @@ public:
     release();
     m_allocator = other.m_allocator;
     m_shared    = other.m_shared;
-    if (m_shared != nullptr) {
-      GUARANTEE(m_shared->reference_count < UINT32_MAX,
-                "copy-on-write reference count overflow");
-      m_shared->reference_count++;
-    }
+    add_reference();
 
     return *this;
   }
@@ -181,6 +173,16 @@ private:
     let *const storage = allocator.alloc_array<shared>(1);
 
     return new (storage) shared{1, steal(value)};
+  }
+
+  fn
+  add_reference() wontthrow -> void
+  {
+    if (m_shared == nullptr) return;
+
+    GUARANTEE(m_shared->reference_count < UINT32_MAX,
+              "copy-on-write reference count overflow");
+    m_shared->reference_count++;
   }
 
   fn

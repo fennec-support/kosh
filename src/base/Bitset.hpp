@@ -11,6 +11,7 @@
 #include "Allocator.hpp"
 #include "ArrayList.hpp"
 #include "Common.hpp"
+#include "Debug.hpp"
 
 namespace koshka {
 

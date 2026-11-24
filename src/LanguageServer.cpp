@@ -2101,10 +2101,9 @@ Server::collect_rename_spans(const Document         &document,
   bool       is_heredoc_expanding = true;
   let const  source               = document.normalized_source.view();
   let const &records              = document.symbol_records;
+  let references = ArrayList<parameter_reference>{heap_allocator()};
 
-  let const do_append_references =
-      [&](const ArrayList<parameter_reference> &references,
-          highlight_role                        role) throws -> void {
+  let const do_append_references = [&](highlight_role role) throws -> void {
     for (let const &reference : references) {
       if (source.substring_of_length(reference.start,
                                      reference.end - reference.start) == name)
@@ -2112,6 +2111,8 @@ Server::collect_rename_spans(const Document         &document,
         out_spans.push(rename_span{role, reference.start, reference.end});
       }
     }
+
+    references.clear();
   };
 
   visit_document_spans(
@@ -2124,25 +2125,15 @@ Server::collect_rename_spans(const Document         &document,
           is_heredoc_expanding = lexer::heredoc_word_joins_lines(text);
         }
 
+        let const is_expanding_heredoc =
+            span.role == highlight_role::heredoc && is_heredoc_expanding;
+
         if (kind == rename_kind::variable &&
-            span.role == highlight_role::heredoc && is_heredoc_expanding)
+            (is_expanding_heredoc || span.role == highlight_role::flag))
         {
-          let references = ArrayList<parameter_reference>{heap_allocator()};
-
           append_word_references(records, text, 0, text.length, span.start,
-                                 references, true);
-          do_append_references(references, span.role);
-
-          return true;
-        }
-
-        if (kind == rename_kind::variable &&
-            span.role == highlight_role::flag) {
-          let references = ArrayList<parameter_reference>{heap_allocator()};
-
-          append_word_references(records, text, 0, text.length, span.start,
-                                 references);
-          do_append_references(references, span.role);
+                                 references, is_expanding_heredoc);
+          do_append_references(span.role);
 
           return true;
         }
@@ -2165,11 +2156,9 @@ Server::collect_rename_spans(const Document         &document,
         }
 
         if (text.starts_with("${")) {
-          let references = ArrayList<parameter_reference>{heap_allocator()};
-
           append_braced_references(records, text, 0, text.length, span.start,
                                    references);
-          do_append_references(references, span.role);
+          do_append_references(span.role);
 
           return true;
         }
@@ -2206,11 +2195,9 @@ Server::collect_rename_spans(const Document         &document,
     for (let const span : records.arithmetic_spans) {
       if (is_associative_subscript(source, span.position, records)) continue;
 
-      let references = ArrayList<parameter_reference>{heap_allocator()};
-
       append_arithmetic_references(source, span.position,
                                    span.position + span.length, 0, references);
-      do_append_references(references, highlight_role::variable);
+      do_append_references(highlight_role::variable);
     }
   }
 

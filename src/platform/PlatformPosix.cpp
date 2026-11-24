@@ -3321,10 +3321,9 @@ run_fatal_exit_hook() wontthrow -> void
   }
 }
 
-wontreturn fn
-exit_process_after_catastrophic_failure(const char *message,
-                                        usize       message_byte_count,
-                                        i32         status) wontthrow -> void
+static fn
+write_catastrophic_failure(const char *message,
+                           usize       message_byte_count) wontthrow -> void
 {
   sigset_t blocked_signals;
 
@@ -3336,19 +3335,9 @@ exit_process_after_catastrophic_failure(const char *message,
   run_fatal_exit_hook();
 
   if (should_write) {
-    let const written_byte_count =
-        message_byte_count < 4096 ? message_byte_count : usize{4096};
-
-    let const write_result = write(KOSH_STDERR, message, written_byte_count);
+    let const write_result = write(KOSH_STDERR, message, message_byte_count);
     unused(write_result);
   }
-
-#if !defined NDEBUG
-  unused(status);
-  t__debugtrap();
-#else
-  exit_process_immediately(status);
-#endif
 }
 
 static fn

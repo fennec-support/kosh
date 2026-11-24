@@ -68,8 +68,9 @@ struct path_token
 pure fn
 quoted_run_end(StringView line, usize position) wontthrow -> usize;
 pure fn
-find_token_bounds(StringView line, usize cursor,
-                  bool should_stop_at_shell_operator = false) wontthrow
+find_token_bounds(StringView line,
+                  usize      cursor,
+                  bool       should_stop_at_shell_operator = false) wontthrow
     -> token_bounds;
 pure fn
 is_active_token_boundary(StringView line, usize position) wontthrow -> bool;
@@ -88,6 +89,8 @@ command_segment_end(StringView line, usize position) wontthrow -> usize;
 
 pure fn
 split_path_token(StringView token) wontthrow -> path_token;
+pure fn
+trim_editor_path_root(StringView directory) wontthrow -> StringView;
 pure fn
 path_candidate_needs_quoting(StringView candidate) wontthrow -> bool;
 fn
@@ -281,10 +284,8 @@ fn
 statement_line_start(StringView line, usize cursor) throws -> usize;
 
 fn
-collect_case_pattern_ends(
-    StringView                                      line,
-    SortedArrayList<usize, OrderComparator<usize>> &positions) throws
-    -> void;
+collect_case_pattern_ends(StringView        line,
+                          ArrayList<usize> &positions) throws -> void;
 
 } /* namespace completion::internal */
 

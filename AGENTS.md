@@ -143,7 +143,9 @@ calls and types stay behind src/platform/Platform.hpp and os wrappers. Routed
 platform fragments compile through platform/Platform.o. Windows path
 conversion and named-pipe behavior stay behind the platform wrappers.
 Recursive chmod, chown, and chgrp walk through os::walk_tree, which addresses
-each entry through its parent directory descriptor.
+each entry through its parent directory descriptor. Directory traversal that
+outlives one call uses os::DirectoryCursor, which owns its handle and exposes
+one DirectoryChild per next() call.
 Platform.hpp owns platform, architecture, and compiler detection. Platform
 branches use K_PLATFORM_IS or K_PLATFORM_ISNT with bits such as K_POSIX and
 K_WIN32. Architecture branches use K_ARCH_IS or K_ARCH_ISNT with K_X86_64,
@@ -213,6 +215,19 @@ a slash, an erase below the gathered token, or a changed match tier. Deferred
 gathers use the pending protocol and the 24 millisecond menu debounce. TAB,
 navigation keys, and row acceptance gather immediately. An argument with an at
 sign is highlighted as a URL when the command takes ssh or teleport targets.
+
+The completion_origin type separates a fresh Tab, a menu reload, and ghost or
+other callers. A listing from a fresh Tab or menu reload matches the whole
+token; other callers match to the caret.
+
+The native path menu opens directories with Right, goes to the parent with
+Ctrl-Left, and previews details or up to 15 directory entries in a right pane.
+A preview follows a symlink for display, reports a dangling or unavailable
+target, and identifies special files without opening them. The fuzzy search
+walks with os::DirectoryCursor and does not follow directory symlinks. The file
+picker seeds its query from the shell token, recolors the unresolved query, and
+inserts the picked path instead of opening it when the host has no open
+callback.
 
 Inline hints use builtin and koshkit registrations, aliases, functions, manpage
 caches, and help caches. They do not search PATH or open files. The editor owns

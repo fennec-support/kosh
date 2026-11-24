@@ -1421,9 +1421,9 @@ struct DirectoryStatusNameComparator
 };
 
 /* Temporary parent paths, operation indices, and directory listings use heap
-   storage released on return. For k requests sharing a directory with m
-   children, the batch reads and sorts all m entries, then performs k binary
-   lookups. Singleton requests and missing statuses use direct calls. */
+   storage released on return. Small groups scan the listing by exact name.
+   Larger groups sort once and use binary lookup. Singleton requests and
+   missing statuses use direct calls. */
 static fn
 execute_getattrlistbulk_batch(const batched_syscall  *operations,
                               usize                   operation_count,
@@ -1496,14 +1496,17 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
 
       let entries =
           list_directory_status_bulk(group_parent.view(), heap_allocator());
+      constexpr usize MAX_LINEAR_GROUP_COUNT = 4;
 
-      let sorted_entries = SortedArrayList<directory_status_entry,
-                                           DirectoryStatusNameComparator>{
-          heap_allocator(), DirectoryStatusNameComparator{}};
+      using sorted_directory_status =
+          SortedArrayList<directory_status_entry, DirectoryStatusNameComparator>;
+      let sorted_entries = Maybe<sorted_directory_status>{};
 
-      if (entries.has_value()) {
+      if (entries.has_value() &&
+          group_end - group_start > MAX_LINEAR_GROUP_COUNT)
+      {
         sorted_entries =
-            steal(*entries).make_sorted(DirectoryStatusNameComparator{});
+            entries.take().make_sorted(DirectoryStatusNameComparator{});
       }
 
       for (usize group_position = group_start; group_position < group_end;
@@ -1517,11 +1520,23 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
 
         let const filename =
             BatchOperationAccess::get_path(operation)->filename();
-        let const position = sorted_entries.find(filename);
+        const directory_status_entry *entry = nullptr;
 
-        if (position.has_value() && sorted_entries[*position].has_status) {
-          *BatchOperationAccess::get_status(operation) =
-              sorted_entries[*position].status;
+        if (sorted_entries.has_value()) {
+          if (let const position = sorted_entries->find(filename)) {
+            entry = &(*sorted_entries)[*position];
+          }
+        } else if (entries.has_value()) {
+          for (let const &candidate : *entries) {
+            if (candidate.child.name.view() != filename) continue;
+
+            entry = &candidate;
+            break;
+          }
+        }
+
+        if (entry != nullptr && entry->has_status) {
+          *BatchOperationAccess::get_status(operation) = entry->status;
         } else {
           execute_batched_syscall_direct(operation, result);
         }

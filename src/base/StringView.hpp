@@ -10,6 +10,7 @@
 
 #include "Allocator.hpp"
 #include "Common.hpp"
+#include "Debug.hpp"
 #include "Maybe.hpp"
 
 namespace koshka {

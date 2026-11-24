@@ -77,6 +77,24 @@ list_directory_typed(StringView dir) throws
   return list_directory_typed(dir, heap_allocator());
 }
 
+fn
+DirectoryCursor::collect(Allocator allocator) throws
+    -> Maybe<ArrayList<Path::DirectoryChild>>
+{
+  if (!is_open()) return None;
+
+  let  entries       = ArrayList<Path::DirectoryChild>{allocator};
+  bool did_fail_read = false;
+
+  while (let entry = next(allocator, &did_fail_read)) {
+    entries.push(entry.take());
+  }
+
+  if (did_fail_read) return None;
+
+  return entries;
+}
+
 pure fn
 TerminalEchoGuard::did_succeed() const wontthrow -> bool
 {
@@ -260,9 +278,9 @@ should_color_catastrophic_failure() wontthrow -> bool
 }
 
 static fn
-get_catastrophic_source_path(StringView file) wontthrow -> StringView
+get_catastrophic_source_position(StringView file) wontthrow -> Maybe<usize>
 {
-  usize source_position = 0;
+  let source_position = Maybe<usize>{};
 
   for (usize position = 0; position + 4 <= file.length; position++) {
     if ((position == 0 || file.data[position - 1] == '/' ||
@@ -274,7 +292,7 @@ get_catastrophic_source_path(StringView file) wontthrow -> StringView
     }
   }
 
-  return {file.data + source_position, file.length - source_position};
+  return source_position;
 }
 
 cold wontreturn fn
@@ -309,14 +327,13 @@ report_catastrophic_guarantee_failure(const char *file,
                 ? "kosh: \x1b[1;91mfatal\x1b[0m: "
                 : "kosh: fatal: ");
 
-  let const source = get_catastrophic_source_path({file, file_byte_count});
-  let const has_source_prefix =
-      source.length >= 4 && memcmp(source.data, "src", 3) == 0 &&
-      (source.data[3] == '/' || source.data[3] == '\\');
+  let const source_position =
+      get_catastrophic_source_position({file, file_byte_count});
+  let const offset = source_position.value_or(0);
 
-  if (!has_source_prefix) do_append("src/");
+  if (!source_position.has_value()) do_append("src/");
   let const source_buffer_position = used_byte_count;
-  do_append(source);
+  do_append({file + offset, file_byte_count - offset});
 
   for (usize position = source_buffer_position; position < used_byte_count;
        position++)
@@ -334,7 +351,12 @@ report_catastrophic_guarantee_failure(const char *file,
   memcpy(buffer + used_byte_count, footer.data, footer.length);
   used_byte_count += footer.length;
 
-  os::exit_process_after_catastrophic_failure(buffer, used_byte_count, 1);
+  os::write_catastrophic_failure(buffer, used_byte_count);
+#if !defined NDEBUG
+  t__debugtrap();
+#else
+  os::exit_process_immediately(1);
+#endif
 }
 
 } /* namespace koshka */

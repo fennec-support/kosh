@@ -40,8 +40,6 @@ decode_prompt(koshka::StringView         prompt,
               bool                       should_quote) throws -> koshka::String;
 fn
 get_default_prompt_template() -> koshka::String;
-fn
-get_default_right_prompt_template() -> koshka::String;
 
 enum class edit_mode : u8
 {
@@ -231,6 +229,9 @@ kosh_completion_preview(const char *,
                         size_t      *entry_count,
                         int         *is_file_description) -> const char *;
 
+static fn
+reset_preview_cache() -> void;
+
 struct CompletionSession
 {
   koshka::EvalContext                   *context{nullptr};
@@ -241,11 +242,11 @@ struct CompletionSession
       koshka::heap_allocator()};
   koshka::ArrayList<const char *> detail_key_pointers{koshka::heap_allocator()};
   koshka::completion::editor_path_search path_search;
-  bool                      is_highlight_color_enabled{false};
-  bool                      should_show_hints{true};
-  bool                      should_show_diagnostics{true};
-  bool                      has_pending_gather{false};
-  koshka::tab_selector_mode tab_selector{
+  bool                                   is_highlight_color_enabled{false};
+  bool                                   should_show_hints{true};
+  bool                                   should_show_diagnostics{true};
+  bool                                   has_pending_gather{false};
+  koshka::tab_selector_mode              tab_selector{
       koshka::tab_selector_mode::Interactive};
 
   fn
@@ -266,10 +267,7 @@ struct CompletionSession
     has_idle_settled_line = false;
     analyzed_line.clear();
     analysis_finding.clear();
-    preview_key.clear();
-    preview_text.clear();
-    preview_heading.clear();
-    preview_footer.clear();
+    reset_preview_cache();
     path_search = {};
   }
 
@@ -302,10 +300,10 @@ struct CompletionSession
   koshka::String     preview_heading{koshka::heap_allocator()};
   koshka::String     preview_footer{koshka::heap_allocator()};
   koshka::String     sibling_parent{koshka::heap_allocator()};
-  const char         *preview_marker{nullptr};
-  usize               preview_entry_row_count{0};
-  usize               preview_entry_count{0};
-  bool                is_preview_file_description{false};
+  const char        *preview_marker{nullptr};
+  usize              preview_entry_row_count{0};
+  usize              preview_entry_count{0};
+  bool               is_preview_file_description{false};
   koshka::String     syntax_checked_line{koshka::heap_allocator()};
   koshka::String     syntax_problem{koshka::heap_allocator()};
   koshka::mimic_mood syntax_checked_mood{koshka::mimic_mood::Default};
@@ -334,6 +332,65 @@ struct CompletionSession
 };
 
 CompletionSession COMPLETION_SESSION{};
+
+struct file_picker_session
+{
+  koshka::EvalContext                   *context;
+  koshka::Maybe<koshka::Path>            directory;
+  koshka::completion::editor_path_search search;
+  koshka::String                         parent{koshka::heap_allocator()};
+  koshka::String                         quoted{koshka::heap_allocator()};
+};
+
+file_picker_session *FILE_PICKER = nullptr;
+
+using path_search_provider = koshka::completion::editor_path_search &(*)();
+
+static fn
+get_session_path_search() -> koshka::completion::editor_path_search &
+{
+  return COMPLETION_SESSION.path_search;
+}
+
+static fn
+get_picker_path_search() -> koshka::completion::editor_path_search &
+{
+  return FILE_PICKER->search;
+}
+
+template <path_search_provider get_search>
+static fn
+get_path_row_id(size_t row) -> uint32_t
+{
+  return koshka::completion::editor_path_row_id(get_search(), row);
+}
+
+template <path_search_provider get_search>
+static fn
+get_path_row_of(uint32_t id, size_t previous_row) -> size_t
+{
+  return koshka::completion::editor_path_row_of(get_search(), id, previous_row);
+}
+
+template <path_search_provider get_search, bool should_return_empty>
+static fn
+get_path_row_name(size_t row) -> const char *
+{
+  try {
+    return koshka::completion::editor_path_row_name(get_search(), row);
+  } catch (...) {
+    return should_return_empty ? "" : nullptr;
+  }
+}
+
+template <path_search_provider get_search, bool should_return_empty>
+static fn
+set_path_row_callbacks(tl_completion *out) -> void
+{
+  out->path_row_id   = get_path_row_id<get_search>;
+  out->path_row_of   = get_path_row_of<get_search>;
+  out->path_row_name = get_path_row_name<get_search, should_return_empty>;
+}
 
 constexpr koshka::StringView SELECTOR_COMMAND_VARIABLE{
     "KOSH_FZF_COMPLETION_COMMAND"};
@@ -1367,18 +1424,16 @@ completion_directory_identity(const char *word, char *out, usize capacity)
 
   try {
     let const scratch = completion::ScopedCompletionScratch{};
-    let const decoded = utils::decode_shell_word(
-        StringView{word, strlen(word)}, completion_allocator());
-    let const path = resolve_listing_directory(
+    let const decoded = utils::decode_shell_word(StringView{word, strlen(word)},
+                                                 completion_allocator());
+    let const path    = resolve_listing_directory(
         decoded.text.view(), *COMPLETION_SESSION.base_directory,
         *COMPLETION_SESSION.context, decoded.leading);
-    let const text = path.view();
-    let const root = os::path_root_length(text);
-    let end = text.length;
-    while (end > root && os::is_directory_separator(text[end - 1])) --end;
-    if (end >= capacity) return false;
-    memcpy(out, text.data, end);
-    out[end] = '\0';
+    let const text    = path.view();
+    let const trimmed = trim_editor_path_root(text);
+    if (trimmed.length >= capacity) return false;
+    memcpy(out, trimmed.data, trimmed.length);
+    out[trimmed.length] = '\0';
 
     return true;
   } catch (...) {
@@ -1392,14 +1447,14 @@ completion_path_parent(const char *candidate) -> const char *
   using namespace koshka;
   using namespace completion::internal;
   try {
-    let const scratch = completion::ScopedCompletionScratch{};
+    let const scratch   = completion::ScopedCompletionScratch{};
     let const allocator = completion_allocator();
-    let const token = StringView{candidate, strlen(candidate)};
-    let const decoded = utils::decode_shell_word(token, allocator);
-    let const part = split_path_token(decoded.text.view()).directory_part;
+    let const token     = StringView{candidate, strlen(candidate)};
+    let const decoded   = utils::decode_shell_word(token, allocator);
+    let const part      = split_path_token(decoded.text.view()).directory_part;
     let parent = part.is_empty()
-                      ? String{allocator, "./"}
-                      : rebuild_shell_syntax_candidate(token, decoded, part);
+                     ? String{allocator, "./"}
+                     : rebuild_shell_syntax_candidate(token, decoded, part);
     if (!part.is_empty() && decoded.quote_character != 0)
       parent.push(decoded.quote_character);
     COMPLETION_SESSION.sibling_parent.clear();
@@ -1427,6 +1482,15 @@ CompletionSession::set_path_details(tl_completion *out) -> void
   out->path_parent = completion_path_parent;
 }
 
+static fn
+clear_completion_storage(koshka::completion::completion_result &storage) -> void
+{
+  storage.candidates.clear();
+  storage.descriptions.clear();
+  storage.preview_paths.clear();
+  storage.longest_common_prefix.clear();
+}
+
 fn
 CompletionSession::complete(const char    *buffer,
                             size_t         cursor,
@@ -1442,12 +1506,12 @@ CompletionSession::complete(const char    *buffer,
       let const byte_count = strlen(buffer);
       let const token_byte = toiletline::get_codepoint_byte_offset(
           buffer, byte_count, out->token_start);
-      let const cursor_byte = toiletline::get_codepoint_byte_offset(
-          buffer, byte_count, cursor);
+      let const cursor_byte =
+          toiletline::get_codepoint_byte_offset(buffer, byte_count, cursor);
       if (cursor_byte < token_byte) return 0;
 
-      let const token = koshka::StringView{buffer + token_byte,
-                                           cursor_byte - token_byte};
+      let const token =
+          koshka::StringView{buffer + token_byte, cursor_byte - token_byte};
       usize query_start = 0;
       if (out->path_query_start != 0) {
         let const query_byte = toiletline::get_codepoint_byte_offset(
@@ -1464,31 +1528,13 @@ CompletionSession::complete(const char    *buffer,
               out->token_start + ::tl_utf8_strnlen(token.data, query_start);
         }
         out->count = path_search.matches.count();
-        out->path_row_id = [](size_t row) -> uint32_t {
-          return koshka::completion::editor_path_row_id(
-              COMPLETION_SESSION.path_search, row);
-        };
-        out->path_row_of = [](uint32_t id, size_t previous_row) -> size_t {
-          return koshka::completion::editor_path_row_of(
-              COMPLETION_SESSION.path_search, id, previous_row);
-        };
-        out->path_row_name = [](size_t row) -> const char * {
-          try {
-            return koshka::completion::editor_path_row_name(
-                COMPLETION_SESSION.path_search, row);
-          } catch (...) {
-            return nullptr;
-          }
-        };
+        set_path_row_callbacks<get_session_path_search, false>(out);
 
         return 1;
       }
 
       candidate_pointers.clear();
-      result->candidates.clear();
-      result->descriptions.clear();
-      result->preview_paths.clear();
-      result->longest_common_prefix.clear();
+      clear_completion_storage(*result);
       result->candidates = koshka::completion::complete_editor_path_siblings(
           token, *context, *base_directory, result->preview_paths);
       candidate_pointers.reserve(result->candidates.count());
@@ -1542,16 +1588,13 @@ CompletionSession::complete(const char    *buffer,
     const usize byte_cursor =
         toiletline::get_codepoint_byte_offset(buffer, byte_count, cursor);
     using koshka::completion::completion_origin;
-    let const origin =
-        !is_explicit_completion ? completion_origin::Other
-        : ::itl_g_loading_is_menu_reload ? completion_origin::EditorMenu
-                                         : completion_origin::EditorTab;
+    let const origin = !is_explicit_completion ? completion_origin::Other
+                       : ::itl_g_loading_is_menu_reload
+                           ? completion_origin::EditorMenu
+                           : completion_origin::EditorTab;
 
     koshka::arm_message_leading_newline(true);
-    result->candidates.clear();
-    result->descriptions.clear();
-    result->preview_paths.clear();
-    result->longest_common_prefix.clear();
+    clear_completion_storage(*result);
     *result = koshka::completion::complete(
         line, byte_cursor, *context, *base_directory, nullptr, false,
         is_for_listing != 0 ? koshka::completion::completion_mode::Listing
@@ -1575,17 +1618,18 @@ CompletionSession::complete(const char    *buffer,
     if (completions.can_search_paths && completions.candidate_count == 0 &&
         tab_selector == koshka::tab_selector_mode::Interactive)
     {
-      let const end = completions.token_end < byte_cursor
-                          ? completions.token_end
-                          : byte_cursor;
-      let const token = line.substring_of_length(
-          completions.token_start, end - completions.token_start);
+      let const end   = completions.token_end < byte_cursor
+                            ? completions.token_end
+                            : byte_cursor;
+      let const token = line.substring_of_length(completions.token_start,
+                                                 end - completions.token_start);
       out->can_search_paths = koshka::completion::editor_path_search_start(
-                                 token, *context, *base_directory) != 0;
+                                  token, *context, *base_directory) != 0;
     }
     let const token_codepoint_count =
-        completions.is_initial_insert ? 0
-                                      : token_end_codepoint - token_start_codepoint;
+        completions.is_initial_insert
+            ? 0
+            : token_end_codepoint - token_start_codepoint;
     if (is_explicit_completion &&
         run_selector(*result, token_codepoint_count) ==
             selector_outcome::Dismissed)
@@ -1626,14 +1670,14 @@ CompletionSession::complete(const char    *buffer,
         is_for_listing != 0 ? candidate_pointers.begin() : nullptr;
     out->count                 = completions.candidate_count;
     out->longest_common_prefix = completions.longest_common_prefix.c_str();
-    out->is_tier_ranked = completions.is_tier_ranked ? 1 : 0;
+    out->is_tier_ranked        = completions.is_tier_ranked ? 1 : 0;
     out->is_space_suppressed =
         completions.is_space_suppressed ||
         (origin == completion_origin::EditorTab &&
          ::itl_g_completion_menu_enabled && completions.candidate_count == 1 &&
          completions.is_path_completion);
-    out->is_spec_completion  = completions.is_spec_completion ? 1 : 0;
-    out->is_initial_insert   = completions.is_initial_insert ? 1 : 0;
+    out->is_spec_completion = completions.is_spec_completion ? 1 : 0;
+    out->is_initial_insert  = completions.is_initial_insert ? 1 : 0;
 
     return 1;
   } catch (koshka::completion::documentation_pending &) {
@@ -1667,6 +1711,133 @@ kosh_completion_callback(const char    *buffer,
 }
 
 static fn
+reset_preview_cache() -> void
+{
+  let &session = COMPLETION_SESSION;
+
+  session.preview_text.clear();
+  session.preview_heading.clear();
+  session.preview_footer.clear();
+  session.preview_key.clear();
+  session.is_preview_file_description = false;
+  session.preview_marker              = nullptr;
+  session.preview_entry_row_count     = 0;
+  session.preview_entry_count         = 0;
+}
+
+static fn
+format_preview_status(const koshka::os::file_status &status,
+                      koshka::Allocator              allocator,
+                      koshka::String                &stats) throws -> void
+{
+  using namespace koshka;
+
+  let const mode = os::format_mode_string(status.mode);
+  let const modified =
+      os::format_local_time("%Y-%m-%d %H:%M", status.modification_time);
+
+  stats.append(mode.view());
+  stats.append(", modified ");
+  stats.append(modified.is_empty() ? StringView{"unknown"} : modified.view());
+  let const now_seconds =
+      static_cast<i64>(os::realtime_microseconds() / 1000000);
+  if (!modified.is_empty() && now_seconds != 0) {
+    let const is_future = status.modification_time > now_seconds;
+    let const age_seconds =
+        is_future ? static_cast<u64>(status.modification_time) - now_seconds
+                  : static_cast<u64>(now_seconds) - status.modification_time;
+    let const unit_seconds = age_seconds >= 86400  ? 86400u
+                             : age_seconds >= 3600 ? 3600u
+                                                   : 60u;
+
+    stats.append(" (");
+    if (is_future) stats.append("in ");
+    stats.append(String::from(age_seconds / unit_seconds, allocator).view());
+    stats.push(unit_seconds == 86400 ? 'd' : unit_seconds == 3600 ? 'h' : 'm');
+    stats.append(is_future ? ")" : " ago)");
+  }
+}
+
+static fn
+append_preview_directory(const koshka::Path &path,
+                         koshka::Allocator   allocator,
+                         koshka::String     &text,
+                         usize              &row_count,
+                         usize              &entry_count,
+                         const char        *&marker) throws -> void
+{
+  using namespace koshka;
+
+  struct preview_entry
+  {
+    StringView name;
+    String     sort_key;
+    bool       is_directory;
+  };
+
+  struct preview_before
+  {
+    fn
+    operator()(const preview_entry &left, const preview_entry &right) const
+        -> bool
+    {
+      if (left.is_directory != right.is_directory) return left.is_directory;
+
+      return left.sort_key < right.sort_key;
+    }
+  };
+
+  let const *entries =
+      utils::read_directory_cached(path, utils::directory_validation::Cached,
+                                   utils::directory_listing_order::Unsorted);
+
+  if (entries == nullptr) {
+    text.append("(unavailable)");
+
+    return;
+  }
+
+  constexpr usize MAX_PREVIEW_ENTRIES = 15;
+  let             ordered = SortedArrayList<preview_entry, preview_before>{
+      allocator, preview_before{}};
+
+  ordered.reserve(MAX_PREVIEW_ENTRIES + 1);
+
+  for (let const &entry : *entries) {
+    let const name = entry.name.view();
+
+    if (name == "." || name == "..") continue;
+
+    ++entry_count;
+
+    let const is_directory = entry.kind == Path::EntryKind::Directory;
+    let sort_key = completion::internal::path_candidate_needs_quoting(name)
+                       ? completion::internal::quote_path_candidate(name)
+                       : String{allocator, name};
+
+    if (is_directory) sort_key.push('/');
+
+    let preview_item = preview_entry{name, steal(sort_key), is_directory};
+    let position     = ordered.upper_bound(preview_item);
+    if (position >= MAX_PREVIEW_ENTRIES) continue;
+
+    ordered.insert_at(position, steal(preview_item));
+    if (ordered.count() > MAX_PREVIEW_ENTRIES) ordered.pop_back();
+  }
+
+  row_count = ordered.count();
+
+  for (usize index = 0; index < row_count; ++index) {
+    let const &entry = ordered[index];
+
+    if (!text.is_empty()) text.push('\n');
+    completion::internal::append_with_quoted_controls(text, entry.name);
+    if (entry.is_directory) text.push('/');
+  }
+  if (ordered.is_empty()) marker = "<empty>";
+}
+
+static fn
 kosh_completion_preview(const char *,
                         const char  *detail_key,
                         const char **heading,
@@ -1689,185 +1860,92 @@ kosh_completion_preview(const char *,
   let &count     = COMPLETION_SESSION.preview_entry_count;
 
   if (key.view() == detail_key) {
-    *heading         = title.is_empty() ? nullptr : title.c_str();
-    *footer          = stats.is_empty() ? nullptr : stats.c_str();
-    *marker          = suffix;
-    *entry_row_count = row_count;
-    *entry_count     = count;
+    *heading             = title.is_empty() ? nullptr : title.c_str();
+    *footer              = stats.is_empty() ? nullptr : stats.c_str();
+    *marker              = suffix;
+    *entry_row_count     = row_count;
+    *entry_count         = count;
     *is_file_description = COMPLETION_SESSION.is_preview_file_description;
     return text.is_empty() ? nullptr : text.c_str();
   }
 
-  text.clear();
-  title.clear();
-  stats.clear();
-  key.clear();
-  COMPLETION_SESSION.is_preview_file_description = false;
-  suffix    = nullptr;
-  row_count = 0;
-  count     = 0;
+  reset_preview_cache();
 
   try {
-    key.append(detail_key);
+    let const do_build = [&]() throws -> const char * {
+      key.append(detail_key);
 
-    let const       scratch   = completion::ScopedCompletionScratch{};
-    let const       allocator = completion::internal::completion_allocator();
-    let const       path      = Path{key.view(), allocator};
-    os::file_status status{};
+      let const       scratch   = completion::ScopedCompletionScratch{};
+      let const       allocator = completion::internal::completion_allocator();
+      let const       path      = Path{key.view(), allocator};
+      os::file_status status{};
 
-    let const has_status = os::stat_path(path.view(), status);
-    let const is_link = has_status ? os::file_type_letter(status.mode) == 'l'
-                                   : os::path_is_symbolic_link(path.view());
-    if (is_link) {
-      let const target = os::read_symlink(path.view(), allocator);
-      title.append("symbolic link -> ");
-      if (target.has_value()) {
-        completion::internal::append_with_quoted_controls(title, target->view());
-      } else {
-        title.append("(unavailable)");
-      }
-      *heading = title.c_str();
+      let const has_status = os::stat_path(path.view(), status);
+      let const is_link = has_status ? os::file_type_letter(status.mode) == 'l'
+                                     : os::path_is_symbolic_link(path.view());
+      if (is_link) {
+        let const target = os::read_symlink(path.view(), allocator);
 
-      let const has_target = os::stat_path_following(path.view(), status);
-      if (!has_target || os::file_type_letter(status.mode) == 'l') {
-        text.append(!has_target && os::last_system_error_is_missing_file()
-                        ? "dangling target"
-                        : "target unavailable");
-        return text.c_str();
-      }
-    } else if (!has_status) {
-      return nullptr;
-    }
+        title.append("symbolic link -> ");
+        if (target.has_value()) {
+          completion::internal::append_with_quoted_controls(title,
+                                                            target->view());
+        } else {
+          title.append("(unavailable)");
+        }
 
-    let const mode = os::format_mode_string(status.mode);
-    let const modified =
-        os::format_local_time("%Y-%m-%d %H:%M", status.modification_time);
+        let const has_target = os::stat_path_following(path.view(), status);
 
-    stats.append(mode.view());
-    stats.append(", modified ");
-    stats.append(modified.is_empty() ? StringView{"unknown"} : modified.view());
-    let const now_seconds =
-        static_cast<i64>(os::realtime_microseconds() / 1000000);
-    if (!modified.is_empty() && now_seconds != 0) {
-      let const is_future = status.modification_time > now_seconds;
-      let const age_seconds =
-          is_future ? static_cast<u64>(status.modification_time) - now_seconds
-                    : static_cast<u64>(now_seconds) - status.modification_time;
-      let const unit_seconds = age_seconds >= 86400  ? 86400u
-                               : age_seconds >= 3600 ? 3600u
-                                                     : 60u;
-
-      stats.append(" (");
-      if (is_future) stats.append("in ");
-      stats.append(String::from(age_seconds / unit_seconds, allocator).view());
-      stats.push(unit_seconds == 86400  ? 'd'
-                 : unit_seconds == 3600 ? 'h'
-                                        : 'm');
-      stats.append(is_future ? ")" : " ago)");
-    }
-    *footer = stats.c_str();
-
-    let const type_letter = os::file_type_letter(status.mode);
-    if (type_letter != 'd') {
-      COMPLETION_SESSION.is_preview_file_description = true;
-      *is_file_description = true;
-#if !defined KOSH_NO_KOSHKIT
-      if (type_letter == '-') {
-        let const description =
-            koshkit::describe_file_type(path.view(), status, allocator, true);
-
-        if (description.has_value()) {
-          text.append(description->view());
+        if (!has_target || os::file_type_letter(status.mode) == 'l') {
+          text.append(!has_target && os::last_system_error_is_missing_file()
+                          ? "dangling target"
+                          : "target unavailable");
           return text.c_str();
         }
+      } else if (!has_status) {
+        return nullptr;
       }
+
+      format_preview_status(status, allocator, stats);
+
+      let const type_letter = os::file_type_letter(status.mode);
+
+      if (type_letter != 'd') {
+        COMPLETION_SESSION.is_preview_file_description = true;
+#if !defined KOSH_NO_KOSHKIT
+        if (type_letter == '-') {
+          let const description =
+              koshkit::describe_file_type(path.view(), status, allocator, true);
+
+          if (description.has_value()) {
+            text.append(description->view());
+            return text.c_str();
+          }
+        }
 #endif
-      text.append(koshkit::file_type_name(status));
+        text.append(koshkit::file_type_name(status));
+        return text.c_str();
+      }
+
+      append_preview_directory(path, allocator, text, row_count, count, suffix);
       return text.c_str();
-    }
-
-    let const *entries =
-        utils::read_directory_cached(path, utils::directory_validation::Cached,
-                                     utils::directory_listing_order::Unsorted);
-
-    if (entries == nullptr) {
-      text.append("(unavailable)");
-      return text.c_str();
-    }
-
-    struct preview_entry
-    {
-      StringView name;
-      String     sort_key;
-      bool       is_directory;
     };
 
-    constexpr usize MAX_PREVIEW_ENTRIES = 15;
-    let             ordered             = ArrayList<preview_entry>{allocator};
+    let const *preview_text = do_build();
 
-    ordered.reserve(MAX_PREVIEW_ENTRIES);
-
-    for (let const &entry : *entries) {
-      let const name = entry.name.view();
-
-      if (name == "." || name == "..") continue;
-
-      ++count;
-
-      let const is_directory = entry.kind == Path::EntryKind::Directory;
-      let sort_key = completion::internal::path_candidate_needs_quoting(name)
-                         ? completion::internal::quote_path_candidate(name)
-                         : String{allocator, name};
-
-      if (is_directory) sort_key.push('/');
-
-      usize position = ordered.count();
-      while (position > 0) {
-        let const &previous = ordered[position - 1];
-
-        if (is_directory == previous.is_directory
-                ? !(sort_key < previous.sort_key)
-                : !is_directory)
-        {
-          break;
-        }
-        --position;
-      }
-
-      if (position == MAX_PREVIEW_ENTRIES) continue;
-      if (ordered.count() < MAX_PREVIEW_ENTRIES)
-        ordered.push({{}, String{allocator}, false});
-      for (usize index = ordered.count() - 1; index > position; --index) {
-        ordered[index] = steal(ordered[index - 1]);
-      }
-      ordered[position] = {name, steal(sort_key), is_directory};
-    }
-
-    row_count = ordered.count();
-
-    for (usize index = 0; index < row_count; ++index) {
-      let const &entry = ordered[index];
-
-      if (!text.is_empty()) text.push('\n');
-      completion::internal::append_with_quoted_controls(text, entry.name);
-      if (entry.is_directory) text.push('/');
-    }
-    if (ordered.is_empty()) suffix = "<empty>";
-    *marker          = suffix;
-    *entry_count     = count;
-    *entry_row_count = row_count;
-    return text.c_str();
+    *heading             = title.is_empty() ? nullptr : title.c_str();
+    *footer              = stats.is_empty() ? nullptr : stats.c_str();
+    *marker              = suffix;
+    *entry_row_count     = row_count;
+    *entry_count         = count;
+    *is_file_description = COMPLETION_SESSION.is_preview_file_description;
+    return preview_text;
   } catch (...) {
-    text.clear();
-    title.clear();
-    stats.clear();
+    reset_preview_cache();
     *heading         = nullptr;
     *footer          = nullptr;
-    suffix           = nullptr;
     *marker          = nullptr;
-    row_count        = 0;
     *entry_row_count = 0;
-    count            = 0;
     *entry_count     = 0;
     return nullptr;
   }
@@ -1948,10 +2026,10 @@ CompletionSession::highlight(const char *buffer, tl_highlight *out) -> int
       }
       highlighted_restarts.truncate(kept_restart_count);
 
-      let const *restart         = kept_restart_count > 0
-                                       ? &highlighted_restarts[kept_restart_count - 1]
-                                       : nullptr;
-      let const  begin           = restart != nullptr ? restart->position : 0;
+      let const *restart = kept_restart_count > 0
+                               ? &highlighted_restarts[kept_restart_count - 1]
+                               : nullptr;
+      let const  begin   = restart != nullptr ? restart->position : 0;
       usize      kept_span_count = 0;
 
       while (kept_span_count < highlighted_spans.count() &&
@@ -3268,7 +3346,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::ok>
   /* at this point: the process lock is held, the history has at least
      one record, and the read buffer is valid. */
   let const buffered  = StringView{::itl_g_history_read_buffer->data,
-                                  ::itl_g_history_read_buffer->size};
+                                   ::itl_g_history_read_buffer->size};
   let       payload   = String{koshka::heap_allocator()};
   let unwritten_slots = koshka::ArrayList<usize>{koshka::heap_allocator()};
   let unwritten_byte_offsets =
@@ -4060,10 +4138,11 @@ enable_completion(koshka::EvalContext &context) -> void
 {
   COMPLETION_SESSION.context = &context;
   ::tl_set_complete_callback(kosh_completion_callback);
-  ::itl_g_close_path_search = [] { COMPLETION_SESSION.path_search = {}; };
+  ::itl_g_close_path_search  = [] { COMPLETION_SESSION.path_search = {}; };
   ::itl_g_directory_identity = completion_directory_identity;
   if constexpr (!koshka::os::IS_FILESYSTEM_CASE_SENSITIVE) {
-    ::itl_g_same_directory_identity = [](const char *first, const char *second) {
+    ::itl_g_same_directory_identity = [](const char *first,
+                                         const char *second) {
       return koshka::os::paths_are_same_file(first, second);
     };
   }
@@ -4088,8 +4167,8 @@ disable_shell_completion() -> void
 {
   COMPLETION_SESSION.context = nullptr;
   ::tl_set_complete_callback(nullptr);
-  ::itl_g_close_path_search = nullptr;
-  ::itl_g_directory_identity = nullptr;
+  ::itl_g_close_path_search       = nullptr;
+  ::itl_g_directory_identity      = nullptr;
   ::itl_g_same_directory_identity = nullptr;
   ::tl_set_highlight_callback(nullptr);
   ::tl_set_highlight_follows_cursor(0);
@@ -4327,30 +4406,21 @@ exit(usize history_size_limit) -> void
 
 namespace {
 
-struct file_picker_session
-{
-  koshka::EvalContext *context;
-  koshka::Maybe<Path> directory;
-  koshka::completion::editor_path_search search;
-  String parent{koshka::heap_allocator()};
-  String quoted{koshka::heap_allocator()};
-};
-
-file_picker_session *FILE_PICKER = nullptr;
-
 fn
 picker_path_parent(const char *text) -> const char *
 {
   using namespace koshka;
   try {
-    let const directory = completion::internal::split_path_token(
-        StringView{text, strlen(text)}).directory_part;
+    let const directory =
+        completion::internal::split_path_token(StringView{text, strlen(text)})
+            .directory_part;
     let const root_length = os::path_root_length(directory);
-    let end = directory.length;
+    let       end         = directory.length;
 
     for (;;) {
-      while (end > root_length && os::is_directory_separator(directory[end - 1]))
-        --end;
+      end = completion::internal::trim_editor_path_root(
+                directory.substring_of_length(0, end))
+                .length;
       if (end == root_length ||
           Path::filename(directory.substring_of_length(0, end)) != ".")
         break;
@@ -4367,7 +4437,8 @@ picker_path_parent(const char *text) -> const char *
       parent.append(directory);
       parent.append("../");
     } else {
-      let const prefix = completion::internal::split_path_token(trimmed).directory_part;
+      let const prefix =
+          completion::internal::split_path_token(trimmed).directory_part;
       parent.append(prefix.is_empty() ? StringView{"./"} : prefix);
     }
     return parent.c_str();
@@ -4384,25 +4455,14 @@ gather_picker_paths(const char *text, size_t root_length, tl_completion *out)
   using namespace completion;
   try {
     let &picker = *FILE_PICKER;
-    if (!picker.directory.has_value()) picker.directory = os::read_current_directory();
-    out->path_parent = picker_path_parent;
+    if (!picker.directory.has_value())
+      picker.directory = os::read_current_directory();
+    out->path_parent    = picker_path_parent;
     out->has_more_paths = search_raw_editor_paths(
         StringView{text, strlen(text)}, root_length, *picker.context,
         *picker.directory, picker.search);
     out->count = picker.search.matches.count();
-    out->path_row_name = [](size_t row) -> const char * {
-      try {
-        return editor_path_row_name(FILE_PICKER->search, row);
-      } catch (const Error &) {
-        return "";
-      }
-    };
-    out->path_row_id = [](size_t row) {
-      return editor_path_row_id(FILE_PICKER->search, row);
-    };
-    out->path_row_of = [](uint32_t id, size_t row) {
-      return editor_path_row_of(FILE_PICKER->search, id, row);
-    };
+    set_path_row_callbacks<get_picker_path_search, true>(out);
     return 1;
   } catch (const Error &) {
     *out = {};
@@ -4411,67 +4471,75 @@ gather_picker_paths(const char *text, size_t root_length, tl_completion *out)
 }
 
 fn
-seed_picker_path(const char *buffer, size_t cursor, char *text, size_t capacity,
-                 size_t *root_length, size_t *start, size_t *end) -> bool
+seed_picker_path(const char *buffer,
+                 size_t      cursor,
+                 char       *text,
+                 size_t      capacity,
+                 size_t     *root_length,
+                 size_t     *start,
+                 size_t     *end) -> bool
 {
   using namespace koshka;
   using namespace completion::internal;
   try {
     let const scratch = completion::ScopedCompletionScratch{};
-    let const line = StringView{buffer, strlen(buffer)};
+    let const line    = StringView{buffer, strlen(buffer)};
     let const cursor_byte =
         get_codepoint_byte_offset(buffer, line.length, cursor);
     let const statement = statement_line_start(line, cursor_byte);
-    let const command = command_substitution_range(
-        line.substring(statement), cursor_byte - statement);
+    let const command   = command_substitution_range(line.substring(statement),
+                                                     cursor_byte - statement);
     let const command_start = statement + command.start;
-    let const command_line = line.substring_of_length(
-        command_start, command.end - command.start);
-    let const segment = command_segment_start(command_line,
-                                              cursor_byte - command_start);
+    let const command_line =
+        line.substring_of_length(command_start, command.end - command.start);
+    let const segment =
+        command_segment_start(command_line, cursor_byte - command_start);
     let const offset = command_start + segment;
     let const bounds = find_token_bounds(command_line.substring(segment),
-                                        cursor_byte - offset, true);
-    let const first = offset + bounds.start;
-    let const last  = offset + bounds.end;
+                                         cursor_byte - offset, true);
+    let const first  = offset + bounds.start;
+    let const last   = offset + bounds.end;
     if (first >= cursor_byte) return true;
 
     let const token_end = ::tl_utf8_strnlen(buffer, last);
-    let const arena = completion_allocator();
-    let const decoded = utils::decode_shell_word(
+    let const arena     = completion_allocator();
+    let const decoded   = utils::decode_shell_word(
         line.substring_of_length(first, cursor_byte - first), arena);
-    let const raw = decoded.text.view();
-    let has_safe_boundary = decoded.quote_character == 0;
+    let const raw               = decoded.text.view();
+    let       has_safe_boundary = decoded.quote_character == 0;
     if (cursor_byte < last) {
       let const word = line.substring_of_length(first, last - first);
-      has_safe_boundary = utils::decode_shell_word(word, arena).quote_character == 0;
+      has_safe_boundary =
+          utils::decode_shell_word(word, arena).quote_character == 0;
     }
     if (has_safe_boundary) *start = *end = token_end;
     if (raw.is_empty()) return has_safe_boundary;
 
     let &picker = *FILE_PICKER;
-    if (!picker.directory.has_value()) picker.directory = os::read_current_directory();
+    if (!picker.directory.has_value())
+      picker.directory = os::read_current_directory();
     for (usize length = raw.length; length != 0;) {
-      let const part = raw.substring_of_length(0, length);
-      let const directory = resolve_listing_directory(part, *picker.directory,
-                                                       *picker.context, decoded.leading);
+      let const part      = raw.substring_of_length(0, length);
+      let const directory = resolve_listing_directory(
+          part, *picker.directory, *picker.context, decoded.leading);
       if (directory.is_directory()) {
         let const prefix = decoded.leading.is_tilde_active ||
                                    decoded.leading.is_variable_active
-                               ? directory.view() : part;
-        let const needs_separator = !os::is_directory_separator(prefix[prefix.length - 1]);
-        let const suffix = raw.substring(length);
+                               ? directory.view()
+                               : part;
+        let const needs_separator =
+            !os::is_directory_separator(prefix[prefix.length - 1]);
+        let const suffix        = raw.substring(length);
         let const prefix_length = prefix.length + needs_separator;
-        if (prefix_length + suffix.length >= capacity)
-          return has_safe_boundary;
+        if (prefix_length + suffix.length >= capacity) return has_safe_boundary;
 
         memcpy(text, prefix.data, prefix.length);
         if (needs_separator) text[prefix.length] = '/';
         *root_length = prefix_length;
         memcpy(text + *root_length, suffix.data, suffix.length);
         text[*root_length + suffix.length] = '\0';
-        *start = ::tl_utf8_strnlen(buffer, first);
-        *end = token_end;
+        *start                             = ::tl_utf8_strnlen(buffer, first);
+        *end                               = token_end;
         return true;
       }
       length = split_path_token(part.substring_of_length(0, length - 1))
@@ -4489,15 +4557,19 @@ quote_picker_path(const char *path) -> const char *
 {
   using namespace koshka;
   try {
-    let const raw = StringView{path, strlen(path)};
-    let &quoted = FILE_PICKER->quoted;
+    let const raw    = StringView{path, strlen(path)};
+    let      &quoted = FILE_PICKER->quoted;
     quoted.clear();
-    if (utils::append_ansi_c_quote_if_needed(quoted, raw,
-            FILE_PICKER->context->get_glob_charset_for(raw) == glob_charset::Utf8)) {
+    if (utils::append_ansi_c_quote_if_needed(
+            quoted, raw,
+            FILE_PICKER->context->get_glob_charset_for(raw) ==
+                glob_charset::Utf8))
+    {
       return quoted.c_str();
     }
     if (!completion::internal::path_candidate_needs_quoting(raw) &&
-        !raw.starts_with("~") && !lexer::word_looks_like_assignment(raw)) {
+        !raw.starts_with("~") && !lexer::word_looks_like_assignment(raw))
+    {
       return path;
     }
 
@@ -4566,24 +4638,26 @@ get_input(const String        &prompt,
 
   reserve_input_buffer();
 
-  let picker = file_picker_session{file_picker_context, {}, {},
-                                    String{koshka::heap_allocator()},
-                                    String{koshka::heap_allocator()}};
+  let picker = file_picker_session{file_picker_context,
+                                   {},
+                                   {},
+                                   String{koshka::heap_allocator()},
+                                   String{koshka::heap_allocator()}};
   if (file_picker_context != nullptr) {
-    FILE_PICKER = &picker;
+    FILE_PICKER                = &picker;
     ::itl_g_file_picker_gather = gather_picker_paths;
-    ::itl_g_file_picker_close = [] { FILE_PICKER->search = {}; };
-    ::itl_g_file_picker_quote = ::itl_g_open_file_callback == nullptr
-                                 ? quote_picker_path : nullptr;
-    ::itl_g_file_picker_seed = ::itl_g_file_picker_quote != nullptr
-                                ? seed_picker_path : nullptr;
+    ::itl_g_file_picker_close  = [] { FILE_PICKER->search = {}; };
+    ::itl_g_file_picker_quote =
+        ::itl_g_open_file_callback == nullptr ? quote_picker_path : nullptr;
+    ::itl_g_file_picker_seed =
+        ::itl_g_file_picker_quote != nullptr ? seed_picker_path : nullptr;
   }
   i32 code = ::tl_get_input(TL_BUFFER, ::itl_g_line_max + 1, prompt.c_str());
   ::itl_g_file_picker_gather = nullptr;
-  ::itl_g_file_picker_close = nullptr;
-  ::itl_g_file_picker_quote = nullptr;
-  ::itl_g_file_picker_seed = nullptr;
-  FILE_PICKER = nullptr;
+  ::itl_g_file_picker_close  = nullptr;
+  ::itl_g_file_picker_quote  = nullptr;
+  ::itl_g_file_picker_seed   = nullptr;
+  FILE_PICKER                = nullptr;
 
   try {
     koshka::completion::abandon_idle_documentation();

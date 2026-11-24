@@ -36,6 +36,13 @@ get_startup_random() wontthrow -> u64;
 namespace allocators {
 
 hot inline fn
+validate_alignment(usize alignment) wontthrow -> void
+{
+  GUARANTEE(alignment != 0 && (alignment & (alignment - 1)) == 0,
+            "allocation alignment must be a nonzero power of two");
+}
+
+hot inline fn
 uncached_heap_alloc(usize length, usize alignment) wontthrow -> opaque *
 {
   if (alignment > alignof(max_align_t)) {
@@ -129,19 +136,15 @@ public:
     let const class_limit =
         byte_limit < MAX_BLOCKS_PER_CLASS ? byte_limit : MAX_BLOCKS_PER_CLASS;
 
+    let const recycled = static_cast<pool_node *>(pointer);
+
+    GUARANTEE(recycled != m_bins[class_index],
+              "heap pool free received the current bin head");
     if (m_counts[class_index] >= class_limit) {
       free(pointer);
 
       return;
     }
-
-    /* at this point: pointer is non-null, class_index indexes m_bins, and
-       m_counts[class_index] is below class_limit. */
-    let const recycled = static_cast<pool_node *>(pointer);
-
-    /* a block that is already the bin head was freed twice. */
-    GUARANTEE(recycled != m_bins[class_index],
-              "heap pool block was freed twice");
 
     recycled->mangled_next = mangle(recycled, m_bins[class_index]);
     m_bins[class_index]    = recycled;
@@ -297,19 +300,9 @@ public:
   hot flatten fn
   raw_alloc(usize length, usize alignment) const throws -> opaque *
   {
-    GUARANTEE(alignment != 0 && (alignment & (alignment - 1)) == 0,
-              "allocation alignment must be a nonzero power of two");
+    allocators::validate_alignment(alignment);
 
-    switch (get_kind()) {
-    case Kind::Heap: return allocators::heap_alloc(length, alignment);
-    case Kind::Bump: return bump_arena_allocate(get_arena(), length, alignment);
-    case Kind::Fake:
-      unreachable("a container with the fake allocator attempted to allocate");
-    case Kind::UncachedHeap:
-      return allocators::uncached_heap_alloc(length, alignment);
-    }
-
-    unreachable("the allocator carries no known kind");
+    return allocate_with_valid_alignment(length, alignment);
   }
 
   hot fn
@@ -318,11 +311,11 @@ public:
               usize   new_length,
               usize   alignment) const throws -> opaque *
   {
-    GUARANTEE(alignment != 0 && (alignment & (alignment - 1)) == 0,
-              "allocation alignment must be a nonzero power of two");
+    allocators::validate_alignment(alignment);
 
     if (pointer == nullptr) {
-      let const replacement = raw_alloc(new_length, alignment);
+      let const replacement =
+          allocate_with_valid_alignment(new_length, alignment);
 
       if (replacement == nullptr && new_length != 0) {
         throw std::bad_alloc{};
@@ -332,7 +325,7 @@ public:
     }
 
     if (new_length == 0) {
-      raw_free(pointer, old_length, alignment);
+      free_with_valid_alignment(pointer, old_length, alignment);
 
       return nullptr;
     }
@@ -358,12 +351,13 @@ public:
 
     /* at this point: pointer is non-null, new_length is nonzero, and either
        alignment exceeds alignof(max_align_t) or the kind is Bump or Fake. */
-    let const replacement = raw_alloc(new_length, alignment);
+    let const replacement =
+        allocate_with_valid_alignment(new_length, alignment);
 
     if (replacement == nullptr) throw std::bad_alloc{};
     memcpy(replacement, pointer,
            old_length < new_length ? old_length : new_length);
-    raw_free(pointer, old_length, alignment);
+    free_with_valid_alignment(pointer, old_length, alignment);
 
     return replacement;
   }
@@ -371,18 +365,8 @@ public:
   flatten fn
   raw_free(opaque *pointer, usize length, usize alignment) const wontthrow -> void
   {
-    GUARANTEE(alignment != 0 && (alignment & (alignment - 1)) == 0,
-              "allocation alignment must be a nonzero power of two");
-
-    switch (get_kind()) {
-    case Kind::Heap: allocators::heap_free(pointer, length, alignment); return;
-    case Kind::UncachedHeap:
-      allocators::uncached_heap_free(pointer, alignment);
-
-      return;
-    case Kind::Bump:
-    case Kind::Fake: return;
-    }
+    allocators::validate_alignment(alignment);
+    free_with_valid_alignment(pointer, length, alignment);
   }
 
   template <class T>
@@ -416,6 +400,38 @@ public:
   }
 
 private:
+  hot flatten fn
+  allocate_with_valid_alignment(usize length, usize alignment) const throws
+      -> opaque *
+  {
+    switch (get_kind()) {
+    case Kind::Heap: return allocators::heap_alloc(length, alignment);
+    case Kind::Bump: return bump_arena_allocate(get_arena(), length, alignment);
+    case Kind::Fake:
+      unreachable("a container with the fake allocator attempted to allocate");
+    case Kind::UncachedHeap:
+      return allocators::uncached_heap_alloc(length, alignment);
+    }
+
+    unreachable("the allocator carries no known kind");
+  }
+
+  flatten fn
+  free_with_valid_alignment(opaque *pointer,
+                            usize   length,
+                            usize   alignment) const wontthrow -> void
+  {
+    switch (get_kind()) {
+    case Kind::Heap: allocators::heap_free(pointer, length, alignment); return;
+    case Kind::UncachedHeap:
+      allocators::uncached_heap_free(pointer, alignment);
+
+      return;
+    case Kind::Bump:
+    case Kind::Fake: return;
+    }
+  }
+
   pure fn
   get_arena() const wontthrow -> BumpArena *
   {

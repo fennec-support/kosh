@@ -384,10 +384,24 @@ DirectoryCursor::open(const Path &directory, bool should_follow_symlink) throws
 fn
 DirectoryCursor::next(Allocator allocator) throws -> Maybe<Path::DirectoryChild>
 {
+  return next(allocator, nullptr);
+}
+
+fn
+DirectoryCursor::next(Allocator allocator, bool *did_fail_read) throws
+    -> Maybe<Path::DirectoryChild>
+{
   while (m_handle != nullptr) {
+    if (did_fail_read != nullptr) errno = 0;
     let const *entry = ::readdir(m_handle);
     if (entry == nullptr) {
+      let const error_number = errno;
+
       close();
+      if (did_fail_read != nullptr) {
+        *did_fail_read = error_number != 0;
+        errno          = error_number;
+      }
       break;
     }
 
@@ -416,47 +430,15 @@ DirectoryCursor::is_open() const wontthrow -> bool
   return m_handle != nullptr;
 }
 
-static fn
-list_directory_typed_handle(DIR *handle, Allocator allocator) throws
-    -> Maybe<ArrayList<Path::DirectoryChild>>
-{
-  defer { ::closedir(handle); };
-
-  let entries = ArrayList<Path::DirectoryChild>{allocator};
-
-  loop {
-    errno = 0;
-
-    let const entry = ::readdir(handle);
-
-    if (entry == nullptr) {
-      if (errno != 0) return None;
-      break;
-    }
-
-    let const name = StringView{entry->d_name};
-
-    if (name == StringView{"."} || name == StringView{".."}) {
-      continue;
-    }
-
-    entries.push(Path::DirectoryChild{String{allocator, name},
-                                     directory_entry_kind(*entry)});
-  }
-
-  return entries;
-}
-
 cold fn
 list_directory_typed(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
 {
-  const String dir_string{allocator, dir};
-  let const    handle = ::opendir(dir_string.c_str());
+  let cursor = DirectoryCursor{};
 
-  if (handle == nullptr) return None;
+  cursor.open(Path{dir, allocator}, true);
 
-  return list_directory_typed_handle(handle, allocator);
+  return cursor.collect(allocator);
 }
 
 cold fn
@@ -500,15 +482,18 @@ list_directory_typed(descriptor directory, Allocator allocator) throws
 
   if (duplicate < 0) return None;
 
-  let const handle = ::fdopendir(duplicate);
+  let cursor = DirectoryCursor{};
 
-  if (handle == nullptr) {
+  cursor.m_handle = ::fdopendir(duplicate);
+  if (!cursor.is_open()) {
+    let const error_number = errno;
+
     ::close(duplicate);
-
+    errno = error_number;
     return None;
   }
 
-  return list_directory_typed_handle(handle, allocator);
+  return cursor.collect(allocator);
 }
 
 #endif

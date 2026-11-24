@@ -1036,7 +1036,14 @@ DirectoryCursor::open(const Path &directory, bool should_follow_symlink) throws
   let pattern = String{heap_allocator(), directory.view()};
   if (!directory.has_trailing_separator()) pattern.push(DIRECTORY_SEPARATOR);
   pattern.push('*');
-  let const wide_pattern = path_to_wide(pattern.view(), heap_allocator());
+  open_search_pattern(pattern.view(), heap_allocator());
+}
+
+fn
+DirectoryCursor::open_search_pattern(StringView pattern, Allocator allocator)
+    throws -> void
+{
+  let const wide_pattern = path_to_wide(pattern, allocator);
   if (!wide_pattern.has_value()) return;
 
   m_handle          = FindFirstFileW(wide_pattern->begin(), &m_entry);
@@ -1046,9 +1053,22 @@ DirectoryCursor::open(const Path &directory, bool should_follow_symlink) throws
 fn
 DirectoryCursor::next(Allocator allocator) throws -> Maybe<Path::DirectoryChild>
 {
+  return next(allocator, nullptr);
+}
+
+fn
+DirectoryCursor::next(Allocator allocator, bool *did_fail_read) throws
+    -> Maybe<Path::DirectoryChild>
+{
   while (is_open()) {
     if (!m_has_first_entry && FindNextFileW(m_handle, &m_entry) == 0) {
+      let const error = GetLastError();
+
       close();
+      if (did_fail_read != nullptr) {
+        *did_fail_read = error != ERROR_NO_MORE_FILES;
+        SetLastError(error);
+      }
       break;
     }
     m_has_first_entry = false;
@@ -1059,7 +1079,16 @@ DirectoryCursor::next(Allocator allocator) throws -> Maybe<Path::DirectoryChild>
       continue;
     }
     let text = wide_to_utf8(name, static_cast<usize>(lstrlenW(name)), allocator);
-    if (!text.has_value()) continue;
+    if (!text.has_value()) {
+      if (did_fail_read == nullptr) continue;
+
+      let const error = GetLastError();
+
+      *did_fail_read = true;
+      close();
+      SetLastError(error);
+      return None;
+    }
 
     return Path::DirectoryChild{text.take(),
                                 directory_entry_kind(m_entry.dwFileAttributes)};
@@ -1097,43 +1126,11 @@ list_directory_typed(StringView dir, Allocator allocator) throws
   pattern.push(DIRECTORY_SEPARATOR);
   pattern.push('*');
 
-  let const wide_pattern = path_to_wide(pattern.view(), allocator);
+  let cursor = DirectoryCursor{};
 
-  if (!wide_pattern.has_value()) return None;
+  cursor.open_search_pattern(pattern.view(), allocator);
 
-  WIN32_FIND_DATAW data{};
-  let const        handle = FindFirstFileW(wide_pattern->begin(), &data);
-
-  if (handle == INVALID_HANDLE_VALUE) return None;
-
-  defer {
-    let const error = GetLastError();
-
-    FindClose(handle);
-    SetLastError(error);
-  };
-
-  /* at this point: wide_pattern is valid, and handle is a find handle that
-     the defer closes on every return. */
-  let entries = ArrayList<Path::DirectoryChild>{allocator};
-
-  do {
-    let name =
-        wide_to_utf8(data.cFileName,
-                     static_cast<usize>(lstrlenW(data.cFileName)), allocator);
-
-    if (!name.has_value()) return None;
-    if (name->view() == StringView{"."} || name->view() == StringView{".."}) {
-      continue;
-    }
-
-    entries.push(Path::DirectoryChild{
-        name.take(), directory_entry_kind(data.dwFileAttributes)});
-  } while (FindNextFileW(handle, &data) != 0);
-
-  if (GetLastError() != ERROR_NO_MORE_FILES) return None;
-
-  return entries;
+  return cursor.collect(allocator);
 }
 
 cold fn

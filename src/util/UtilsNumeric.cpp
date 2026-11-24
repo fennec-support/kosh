@@ -391,7 +391,7 @@ private:
         let const newline   = remaining.find_character('\n');
 
         if (!newline.has_value()) break;
-        m_newline_offsets.ArrayList<u32>::push(
+        m_newline_offsets.push_in_order(
             static_cast<u32>(scan_position + *newline));
         scan_position += *newline + 1;
       }

@@ -580,8 +580,7 @@ internal::complete_from_tools_with_targets(StringView      line,
            os::program_exits_successfully(*argv, probe_timeout_nanos);
   };
 
-  let                      owned_targets = ArrayList<String>{heap_allocator()};
-  const ArrayList<String> *targets       = &owned_targets;
+  let owned_targets = ArrayList<String>{heap_allocator()};
   Maybe<const sorted_target_list *> cached_targets;
   let                               target_prefix = StringView{};
 
@@ -601,9 +600,9 @@ internal::complete_from_tools_with_targets(StringView      line,
 
   switch (tool_kind.value()) {
   case tool_with_targets_kind::make: {
-    let const directory = settled_option_value(line, "-C")
-                              .value_or(String{heap_allocator(), "."});
-    let makefile_name = settled_option_value(line, "-f");
+    let const directory     = settled_option_value(line, "-C")
+                                  .value_or(String{heap_allocator(), "."});
+    let       makefile_name = settled_option_value(line, "-f");
 
     if (!makefile_name.has_value()) {
       for (let const candidate :
@@ -811,7 +810,7 @@ internal::complete_from_tools_with_targets(StringView      line,
       do_push_target(target.view());
     }
   } else {
-    for (let const &target : *targets)
+    for (let const &target : owned_targets)
       if (target.view().starts_with(token)) do_push_target(target.view());
   }
 
@@ -997,8 +996,8 @@ internal::complete_from_builtin_flags(StringView      line,
     }
 
     let const command_start = static_cast<usize>(command.data - view.data);
-    let       rewritten     = String{completion_allocator(),
-                           view.substring_of_length(0, command_start)};
+    let       rewritten = String{completion_allocator(),
+                                 view.substring_of_length(0, command_start)};
 
     rewritten += *expansion;
     rewritten += view.substring(command_start + command.length);
@@ -2728,9 +2727,8 @@ internal::statement_line_start(StringView line, usize cursor) throws
    time:   O(line.length). each call to advance_shell_lexical_state() resumes
            at state.source_position, so each byte is scanned once. */
 fn
-internal::collect_case_pattern_ends(
-    StringView                                      line,
-    SortedArrayList<usize, OrderComparator<usize>> &positions) throws
+internal::collect_case_pattern_ends(StringView        line,
+                                    ArrayList<usize> &positions) throws
     -> void
 {
   let state = ShellLexicalState{heap_allocator()};
@@ -2753,7 +2751,7 @@ internal::collect_case_pattern_ends(
     if (frame_is_at_case_pattern_level(frame) &&
         !frame.is_case_pattern_parenthesized)
     {
-      positions.ArrayList<usize>::push(position);
+      positions.push(position);
     }
   }
 }

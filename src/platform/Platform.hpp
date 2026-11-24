@@ -2130,7 +2130,25 @@ public:
   is_open() const wontthrow -> bool;
 
 private:
+  friend fn
+  list_directory_typed(StringView dir, Allocator allocator) throws
+      -> Maybe<ArrayList<Path::DirectoryChild>>;
+#if K_PLATFORM_IS K_LINUX
+  friend fn
+  list_directory_typed(descriptor directory, Allocator allocator) throws
+      -> Maybe<ArrayList<Path::DirectoryChild>>;
+#endif
+
+  fn
+  next(Allocator allocator, bool *did_fail_read) throws
+      -> Maybe<Path::DirectoryChild>;
+  fn
+  collect(Allocator allocator) throws -> Maybe<ArrayList<Path::DirectoryChild>>;
+
 #if K_PLATFORM_IS K_WIN32
+  fn
+  open_search_pattern(StringView pattern, Allocator allocator) throws -> void;
+
   HANDLE           m_handle{INVALID_HANDLE_VALUE};
   WIN32_FIND_DATAW m_entry{};
   bool             m_has_first_entry{false};
@@ -3255,11 +3273,6 @@ take_subshell_bootstrap() wontthrow -> SubshellBootstrap;
 
 wontreturn fn
 exit_process_immediately(i32 status) wontthrow -> void;
-
-wontreturn fn
-exit_process_after_catastrophic_failure(const char *message,
-                                        usize       message_byte_count,
-                                        i32         status) wontthrow -> void;
 
 fn
 replace_process(ExecContext &&ec) throws -> void;

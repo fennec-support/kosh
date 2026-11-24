@@ -2611,23 +2611,15 @@ install_fatal_exit_hook(void (*hook)()) -> void
   FATAL_EXIT_HOOK = hook;
 }
 
-wontreturn fn
-exit_process_after_catastrophic_failure(const char *message,
-                                        usize       message_byte_count,
-                                        i32         status) wontthrow -> void
+static fn
+write_catastrophic_failure(const char *message,
+                           usize       message_byte_count) wontthrow -> void
 {
-  let const requested_byte_count = static_cast<DWORD>(
-      message_byte_count < 4096 ? message_byte_count : usize{4096});
-  DWORD written_byte_count = 0;
+  let const requested_byte_count = static_cast<DWORD>(message_byte_count);
+  DWORD     written_byte_count   = 0;
 
   unused(WriteFile(KOSH_STDERR, message, requested_byte_count,
                    &written_byte_count, nullptr));
-#if !defined NDEBUG
-  unused(status);
-  t__debugtrap();
-#else
-  exit_process_immediately(status);
-#endif
 }
 
 } /* namespace os */

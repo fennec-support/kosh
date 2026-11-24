@@ -129,11 +129,10 @@ byte_is_escaped(StringView line, usize position) wontthrow -> bool
 }
 
 static fn
-find_bracket_partner(
-    StringView                                            line,
-    const ArrayList<highlight_span>                      &spans,
-    const SortedArrayList<usize, OrderComparator<usize>> &case_pattern_ends,
-    usize position) throws -> Maybe<usize>
+find_bracket_partner(StringView                       line,
+                     const ArrayList<highlight_span> &spans,
+                     const ArrayList<usize>          &case_pattern_ends,
+                     usize                            position) throws -> Maybe<usize>
 {
   let const origin = classify_bracket(line[position]);
 
@@ -142,11 +141,9 @@ find_bracket_partner(
   usize depths[3] = {0, 0, 0};
 
   let const do_is_closing_partner =
-      [&](usize scan, bracket_byte bracket,
-          bool is_literal) throws -> bool {
-    if (is_literal || byte_is_escaped(line, scan) ||
-        case_pattern_ends.find(scan).has_value())
-    {
+      [&](usize scan, bracket_byte bracket, bool is_literal,
+          bool is_case_pattern_end) throws -> bool {
+    if (is_literal || byte_is_escaped(line, scan) || is_case_pattern_end) {
       return false;
     }
 
@@ -167,6 +164,7 @@ find_bracket_partner(
 
   if (origin->is_opening) {
     usize span_index = 0;
+    usize case_index = 0;
 
     for (usize scan = position + 1; scan < line.length; scan++) {
       let const bracket = classify_bracket(line[scan]);
@@ -177,17 +175,30 @@ find_bracket_partner(
         span_index++;
       }
 
-      let const is_literal = span_index < spans.count() &&
-                             spans[span_index].start <= scan &&
-                             role_is_literal(spans[span_index].role);
+      while (case_index < case_pattern_ends.count() &&
+             case_pattern_ends[case_index] < scan)
+      {
+        case_index++;
+      }
 
-      if (do_is_closing_partner(scan, *bracket, is_literal)) return scan;
+      let const is_literal          = span_index < spans.count() &&
+                                      spans[span_index].start <= scan &&
+                                      role_is_literal(spans[span_index].role);
+      let const is_case_pattern_end = case_index < case_pattern_ends.count() &&
+                                      case_pattern_ends[case_index] == scan;
+
+      if (do_is_closing_partner(scan, *bracket, is_literal,
+                                is_case_pattern_end))
+      {
+        return scan;
+      }
     }
 
     return None;
   }
 
   usize span_index = spans.count();
+  usize case_index = case_pattern_ends.count();
 
   for (usize scan = position; scan > 0; scan--) {
     let const at      = scan - 1;
@@ -199,13 +210,43 @@ find_bracket_partner(
       span_index--;
     }
 
+    while (case_index > 0 && case_pattern_ends[case_index - 1] > at) {
+      case_index--;
+    }
+
     let const is_literal = span_index > 0 && spans[span_index - 1].end > at &&
                            role_is_literal(spans[span_index - 1].role);
+    let const is_case_pattern_end =
+        case_index > 0 && case_pattern_ends[case_index - 1] == at;
 
-    if (do_is_closing_partner(at, *bracket, is_literal)) return at;
+    if (do_is_closing_partner(at, *bracket, is_literal, is_case_pattern_end)) {
+      return at;
+    }
   }
 
   return None;
+}
+
+static pure fn
+span_is_literal_at(const ArrayList<highlight_span> &spans,
+                   usize                            position) wontthrow -> bool
+{
+  usize low  = 0;
+  usize high = spans.count();
+
+  while (low < high) {
+    let const middle = low + (high - low) / 2;
+
+    if (spans[middle].start <= position)
+      low = middle + 1;
+    else
+      high = middle;
+  }
+  if (low == 0) return false;
+
+  let const &span = spans[low - 1];
+
+  return span.end > position && role_is_literal(span.role);
 }
 
 fn
@@ -238,11 +279,13 @@ find_matching_bracket(StringView                       line,
   /* at this point: candidates holds candidate_count indices into line, and
      each is a bracket byte. */
 
-  let case_pattern_ends = SortedArrayList<usize, OrderComparator<usize>>{
-      heap_allocator(), sort_order::ascending};
+  let collected_case_pattern_ends = ArrayList<usize>{heap_allocator()};
 
   if (line.find_substring("case").has_value())
-    collect_case_pattern_ends(line, case_pattern_ends);
+    collect_case_pattern_ends(line, collected_case_pattern_ends);
+
+  let case_pattern_ends = SortedArrayList<usize, OrderComparator<usize>>{
+      steal(collected_case_pattern_ends), sort_order::ascending};
 
   let const do_is_code_bracket = [&](usize position) throws -> bool {
     if (byte_is_escaped(line, position) ||
@@ -251,12 +294,7 @@ find_matching_bracket(StringView                       line,
       return false;
     }
 
-    for (let const &span : spans) {
-      if (span.start > position) break;
-      if (span.end > position) return !role_is_literal(span.role);
-    }
-
-    return true;
+    return !span_is_literal_at(spans, position);
   };
 
   let const do_pairs_with = [&](usize open,

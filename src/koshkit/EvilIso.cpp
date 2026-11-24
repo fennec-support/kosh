@@ -1296,12 +1296,14 @@ append_remote_report(String                                 &output,
     }
   }
 
+  using sorted_identities = SortedArrayList<u64, OrderComparator<u64>>;
+
   let const socket_identities =
       steal(socket_identities_unsorted).make_sorted(sort_order::ascending);
   let const remote_identities =
       steal(remote_identities_unsorted).make_sorted(sort_order::ascending);
 
-  let const do_count_unique = [](const ArrayList<u64> &identities) {
+  let const do_count_unique = [](const sorted_identities &identities) {
     usize unique_count = 0;
     u64   previous     = 0;
 

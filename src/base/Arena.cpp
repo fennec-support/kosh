@@ -70,7 +70,7 @@ bump_arena_allocate(BumpArena *arena,
                     usize      length,
                     usize      alignment) throws -> opaque *
 {
-  return arena->allocate(length, alignment);
+  return arena->allocate_with_valid_alignment(length, alignment);
 }
 
 fn
@@ -244,8 +244,15 @@ BumpArena::add_block(usize minimum_byte_count,
 hot fn
 BumpArena::allocate(usize size, usize alignment) throws -> opaque *
 {
-  GUARANTEE(alignment != 0 && (alignment & (alignment - 1)) == 0,
-            "arena alignment must be a nonzero power of two");
+  allocators::validate_alignment(alignment);
+
+  return allocate_with_valid_alignment(size, alignment);
+}
+
+hot fn
+BumpArena::allocate_with_valid_alignment(usize size, usize alignment) throws
+    -> opaque *
+{
 
   loop {
     while (m_current_index < m_blocks.count()) {
@@ -373,8 +380,7 @@ BumpArena::is_lifetime_valid(lifetime_identity identity) const wontthrow -> bool
 fn
 BumpArena::release(arena_mark saved) wontthrow -> void
 {
-  GUARANTEE(saved.block_index <= m_current_index &&
-                saved.block_index <= m_blocks.count(),
+  GUARANTEE(saved.block_index <= m_current_index,
             "release() mark refers to a block above the current one");
   GUARANTEE(saved.destructor_count <= m_destructor_count,
             "release() mark restores destructors that have already run");

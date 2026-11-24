@@ -447,7 +447,6 @@ private:
 
     let const result = probe(key, hash);
 
-    ASSERT(result.insertion != NO_INDEX);
     if (result.found != NO_INDEX ||
         m_slots[result.insertion].get_state() == Slot::Tombstone)
     {
@@ -489,8 +488,6 @@ private:
 
       return &m_slots[result.found].value;
     }
-
-    ASSERT(result.insertion != NO_INDEX);
 
     return place(result.insertion, key, hash, steal(value));
   }

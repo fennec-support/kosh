@@ -2108,13 +2108,20 @@ copy_pager_sources(const ExecContext       &ec,
 } /* namespace */
 
 fn
-escape_terminal_text(Allocator allocator, StringView text) throws
-    -> String
+escape_terminal_text(Allocator  allocator,
+                     StringView text,
+                     bool       should_preserve_line_feeds) throws -> String
 {
   String output{allocator};
   usize  position = 0;
 
   while (position < text.length) {
+    if (should_preserve_line_feeds && text[position] == '\n') {
+      output.push('\n');
+      position++;
+      continue;
+    }
+
     usize column_count = 0;
 
     position += append_shown_character(output, text, position, column_count);

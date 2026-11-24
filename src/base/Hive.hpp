@@ -107,8 +107,6 @@ public:
   fn
   erase(T *element) wontthrow -> void
   {
-    GUARANTEE(element != nullptr, "erase() received a null hive element");
-
     erase_at(index_of(element));
   }
 
@@ -184,7 +182,7 @@ public:
       }
     }
 
-    GUARANTEE(false, "index_of() pointer belongs to another hive");
+    GUARANTEE(false, "index_of() pointer does not belong to this hive");
   }
 
   mustuse pure fn

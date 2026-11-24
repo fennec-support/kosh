@@ -262,14 +262,6 @@ Lexer::peek_shell_token() throws -> Token *
 {
   if (peek_cache_is_live()) return m_peek_cache;
 
-  skip_whitespace();
-
-  if (os::is_stack_nearly_exhausted()) {
-    throw ErrorWithLocationAndDetails{
-        here(m_cursor_position, 1), "Shell syntax is nested too deeply",
-        "Move the inner commands into a function"};
-  }
-
   Token *const token = lex_shell_token();
 
   m_peek_cache = token;
@@ -283,17 +275,7 @@ Lexer::peek_shell_token() throws -> Token *
 hot fn
 Lexer::next_shell_token() throws -> Token *
 {
-  let const is_peek_cache_live = peek_cache_is_live();
-
-  if (!is_peek_cache_live) skip_whitespace();
-
-  if (!is_peek_cache_live && os::is_stack_nearly_exhausted()) {
-    throw ErrorWithLocationAndDetails{
-        here(m_cursor_position, 1), "Shell syntax is nested too deeply",
-        "Move the inner commands into a function"};
-  }
-
-  Token *const token = is_peek_cache_live ? m_peek_cache : lex_shell_token();
+  Token *const token = peek_cache_is_live() ? m_peek_cache : lex_shell_token();
 
   ASSERT(token != nullptr);
 
@@ -619,6 +601,14 @@ Lexer::collect_pending_heredocs() throws -> void
 hot flatten fn
 Lexer::lex_shell_token() throws -> Token *
 {
+  skip_whitespace();
+
+  if (os::is_stack_nearly_exhausted()) {
+    throw ErrorWithLocationAndDetails{
+        here(m_cursor_position, 1), "Shell syntax is nested too deeply",
+        "Move the inner commands into a function"};
+  }
+
   Token    *token{};
   let const ch = chop_character();
 

@@ -1417,8 +1417,6 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         expanded_child_source.view());
   }
 
-  let       did_resolution_fail       = false;
-  i64       resolution_failure_status = 0;
   let const is_program_word_a_path =
       program_args[0].view().find_character('/').has_value();
 
@@ -1472,36 +1470,32 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
             cxt, program_args, source_location(), assignments.view());
 
         if (handled.has_value()) {
-          did_resolution_fail       = true;
-          resolution_failure_status = *handled;
-
           return ExecContext::make_from_unresolved(source_location(), *handled,
                                                    StringView{});
         }
       }
 
       report_command_resolution_error(cxt, e);
-      did_resolution_fail       = true;
-      resolution_failure_status = e.command_status();
 
       return ExecContext::make_from_unresolved(
-          source_location(), static_cast<i32>(resolution_failure_status),
+          source_location(), static_cast<i32>(e.command_status()),
           StringView{});
     }
   };
 
   let ec = do_resolve_context();
 
-  if (did_resolution_fail) {
+  if (ec.is_unresolved()) {
     if (is_program_word_a_path ||
         cxt.runtime_state().get_mood() != mimic_mood::Posix)
     {
       cxt.job_table_store().forget_waited_jobs();
     }
 
-    cxt.execution_store().set_last_exit_status(
-        static_cast<i32>(resolution_failure_status));
-    cxt.publish_single_pipe_status(static_cast<i32>(resolution_failure_status));
+    let const resolution_failure_status = ec.get_unresolved_status();
+
+    cxt.execution_store().set_last_exit_status(resolution_failure_status);
+    cxt.publish_single_pipe_status(resolution_failure_status);
 
     return resolution_failure_status;
   }

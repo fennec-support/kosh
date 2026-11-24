@@ -1082,6 +1082,40 @@ public:
     Base::insert_at(index, steal(value));
   }
 
+  template <class Wanted>
+  fn
+  upper_bound(const Wanted &wanted) const throws -> usize
+  {
+    usize low  = 0;
+    usize high = Base::count();
+
+    while (low < high) {
+      let const middle = low + ((high - low) / 2);
+
+      if (!m_compare(wanted, Base::operator[](middle)))
+        low = middle + 1;
+      else
+        high = middle;
+    }
+
+    return low;
+  }
+
+  fn
+  insert_at(usize index, T value) throws -> void
+  {
+    Base::insert_at(index, steal(value));
+  }
+
+  hot fn
+  push_in_order(T value) throws -> void
+  {
+    GUARANTEE(Base::is_empty() || !m_compare(value, Base::back()),
+              "push_in_order() value precedes the last sorted entry");
+
+    Base::push(steal(value));
+  }
+
   template <typename... Args>
   hot fn
   push_managed(Args &&...args) throws -> void
@@ -1218,7 +1252,7 @@ public:
   hot mustuse fn
   operator[](usize i) const wontthrow -> const T &
   {
-    GUARANTEE(m_list != nullptr, "array index out of bounds");
+    GUARANTEE(m_list != nullptr, "access to an unallocated sparse list");
 
     return (*m_list)[i];
   }

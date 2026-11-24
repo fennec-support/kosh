@@ -350,8 +350,10 @@ get_context_pointing_to(StringView                         source,
 
       if (context[position] == '\t')
         expanded_line.append_repeated(' ', TAB_WIDTH);
+      else if (should_quote)
+        utils::append_ansi_c_quoted(expanded_line, piece, true, true);
       else
-        append_diagnostic_text(expanded_line, piece);
+        expanded_line.append(piece);
 
       for (usize index = 0; index < byte_count; index++) {
         expanded_positions.push(expanded_start + (should_quote ? 0 : index));
