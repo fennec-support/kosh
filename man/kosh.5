@@ -821,6 +821,14 @@ startup files execute without errors, but they do not alter shell
 behavior.
 \f[CR]shopt\f[R] accepts \f[CR]array_expand_once\f[R] as the Bash 5.3
 alias for \f[CR]assoc_expand_once\f[R].
+.IP \(bu 2
+\f[CR]completion.*\f[R] and \f[CR]editor.hints.*\f[R] affect the shell
+prompt and the minibuffers; a \f[CR]slurp\f[R] document completes
+nothing, shows no hint rows, and takes \f[CR]Tab\f[R] as literal text in
+Emacs and Vi insert mode.
+\f[CR]editor.wrap_width\f[R] and
+\f[CR]editor.auto_close_brackets_and_quotes\f[R] still apply in
+\f[CR]slurp\f[R].
 .SS Settings mutability constraints
 .PP
 .TS
@@ -983,7 +991,7 @@ T}@T{
 \f[CR]completion.add_space_after_completed_word\f[R]
 T}@T{
 T}@T{
-\f[CR]on\f[R] (default), \f[CR]off\f[R], or
+\f[CR]off\f[R] (default), \f[CR]on\f[R], or
 \f[CR]on\-excluding\-trailing\-slash\f[R].
 T}
 T{

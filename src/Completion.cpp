@@ -2194,7 +2194,6 @@ struct completion_preparation
   bool                     is_leading_variable_active;
   bool                     is_leading_tilde_active;
   bool                     has_path_separator;
-  bool                     is_inline_glob;
   bool                     is_directory_change_command;
   filesystem_entry_filter  filesystem_filter;
   Maybe<StringView>        extension_hint;
@@ -2349,9 +2348,6 @@ prepare_completion(StringView        line,
                                      : token.data,
       is_command ? 1 : 0);
 
-  let const is_inline_glob =
-      is_glob_token && (should_match_whole_token || cursor == token_end);
-
   let const command_word =
       is_command ? StringView{}
                  : command_word_of(line.substring_of_length(0, cursor));
@@ -2386,7 +2382,6 @@ prepare_completion(StringView        line,
       .is_leading_variable_active  = is_leading_variable_active,
       .is_leading_tilde_active     = is_leading_tilde_active,
       .has_path_separator          = has_path_separator,
-      .is_inline_glob              = is_inline_glob,
       .is_directory_change_command = is_directory_change_command,
       .filesystem_filter           = filesystem_filter,
       .extension_hint              = extension_hint,
@@ -2449,7 +2444,6 @@ complete(StringView                   source_line,
       preparation.is_leading_variable_active;
   let const &is_leading_tilde_active = preparation.is_leading_tilde_active;
   let const &has_path_separator      = preparation.has_path_separator;
-  let const &is_inline_glob          = preparation.is_inline_glob;
   let const &is_directory_change_command =
       preparation.is_directory_change_command;
   let const &filesystem_filter        = preparation.filesystem_filter;
@@ -2506,7 +2500,7 @@ complete(StringView                   source_line,
   {
     candidates         = complete_tilde_user(stage_token);
     is_path_completion = true;
-  } else if (is_inline_glob) {
+  } else if (is_glob_token) {
     candidates = complete_glob(token, base_directory, context, decoded_token,
                                filesystem_filter);
     if (!candidates.is_empty()) {
@@ -2556,21 +2550,16 @@ complete(StringView                   source_line,
     } else if (!stage_token.is_empty() || is_for_listing) {
       if (is_for_listing) {
         should_ignore_common_prefix_case =
-            !stage_token.is_empty() && !is_glob_token &&
-            !utils::token_has_uppercase(stage_token);
-        is_tier_ranked = !is_glob_token;
+            !stage_token.is_empty() && !utils::token_has_uppercase(stage_token);
+        is_tier_ranked = true;
         candidates =
             complete_command_names(stage_token, context, extra_command_names,
-                                   is_glob_token ? command_match_mode::Glob
-                                                 : command_match_mode::Prefix,
-                                   is_builtin_only);
+                                   command_match_mode::Prefix, is_builtin_only);
       } else {
         let collector = GhostPrefixCollector{};
 
         collect_command_names(stage_token, context, collector,
-                              extra_command_names,
-                              is_glob_token ? command_match_mode::Glob
-                                            : command_match_mode::Prefix,
+                              extra_command_names, command_match_mode::Prefix,
                               is_builtin_only);
 
         ghost_candidate_count        = collector.count();
@@ -2581,10 +2570,6 @@ complete(StringView                   source_line,
 
       should_rebuild_shell_syntax_candidates = true;
     }
-  } else if (is_glob_token) {
-    candidates = complete_glob(token, base_directory, context, decoded_token,
-                               filesystem_filter, paths);
-    is_path_completion = true;
   } else {
     Maybe<ArrayList<String>> from_stage = None;
 

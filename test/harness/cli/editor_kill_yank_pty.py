@@ -31,8 +31,12 @@
 # saves and leaves on :wq, leaves the file on :q!, rewrites a file in a shared
 # directory in place and removes its backup, refuses to write over a file
 # that another file replaced while it was open and keeps editing, and refuses
-# a binary file. Tab inserts a tab while only blanks come before the caret,
-# and a tab draws as blank columns. A colon command opened from a vi visual
+# a binary file. The Slurp buffer has no completion, ghost text, or hint rows:
+# Tab inserts a literal tab in Emacs and Vi insert mode, does nothing in Vi
+# normal mode, and Shift-Tab and Ctrl-Space trigger no completion, whichever
+# the file type and completion.on_tab, and a tab draws as blank columns. The
+# M-x, :set, and fuzzy picker minibuffers keep Tab completion and their hint
+# rows. A colon command opened from a vi visual
 # selection acts on the selected lines only, and o, j, J, and } edit the lines
 # of a file. Ctrl-X s does nothing at the shell prompt. Alt-U, Alt-C, and Alt-L
 # change the case of the next word, also from a kitty report, and Alt-\ deletes
@@ -40,20 +44,19 @@
 # cannot write its replacement beside the file leaves the original unchanged. A
 # file taller than the terminal shows a window of rows that follows the caret,
 # Up on its first line recalls no shell history, and saving keeps every line.
-# The completion menu in slurp covers the rows under the caret and gives them
-# back when it closes, and in a file larger than 64 KiB Tab opens it and
-# Ctrl-G puts the line back. Ctrl-I and Ctrl-K Ctrl-I in vi normal mode show
-# the hint of the word under the caret, also on the command word. M-x get-option in slurp on a text file
+# In a file larger than 64 KiB Tab inserts a tab and Ctrl-G keeps the line,
+# and Ctrl-X i shows no word hint. M-x get-option in slurp on a text file
 # shows the option,
-# and M-x format-buffer leaves the text file as it is, also with tab completion
-# off. Ctrl-R and Ctrl-S find text backward and forward, Alt-< and Ctrl-End
+# and M-x format-buffer leaves the text file as it is. Ctrl-R and Ctrl-S find
+# text backward and forward, Alt-< and Ctrl-End
 # go to the start and the end of the file, vi / and n find it, a closed ? find
 # keeps the direction of n, and gqq wraps a long line at 80 columns or at the
 # width that editor.wrap_width sets, and . repeats a visual gq. :set turns an
 # option off with a no prefix, shows it with a question mark, and completes the
 # option with Tab, and M-x set-option lists the matching options, completes the
-# option with Tab, and sets it. :format formats the row, and M-x format leaves
-# a source that does not parse and reports it. A pasted script longer than 16
+# option with Tab, and sets it. :format
+# formats the row, and M-x format leaves a source that does not parse and
+# reports it. A pasted script longer than 16
 # kilobytes runs whole. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
 # the external editor, and the option turns the request off. Every editing Ctrl
@@ -121,8 +124,8 @@ KITTY_ENTER = b"\x1b[13u"
 KITTY_ESCAPE = b"\x1b[27u"
 VI_COMMAND_CURSOR = b"\x1b[2 q"
 BRACKETED_PASTE_OFF = b"\x1b[?2004l"
-PICKER_HELP = "fuzzy file search, tab or enter to open, right to descend"
 SHELL_PICKER_HELP = "fuzzy file search, tab or enter to insert, right to descend"
+PICKER_HELP = "search to open another file"
 PICKER_BLUE = ((5, 26), (2, 40, 102, 206))
 PICKER_DIRECTORY = "./a-browser/"
 PICKER_CHILD = "./a-browser/child.txt"
@@ -910,6 +913,14 @@ def has_row(text):
                               for line in screen.get_lines())
 
 
+def has_selection(screen):
+    return any(cell[2] for row in screen.rows for cell in row)
+
+
+def has_slurp_picker(screen):
+    return has_text(PICKER_HELP)(screen)
+
+
 def find_row(session, text):
     """Waits for a row that holds text and gives its 1-based screen row."""
     found = []
@@ -984,7 +995,7 @@ def has_picker_row(screen, text, is_selected, is_shell=False, query="./"):
     else:
         if PICKER_HELP not in lines:
             return False
-        first_entry, column = lines.index(PICKER_HELP) + 1, 0
+        first_entry, column = lines.index(PICKER_HELP) + 2, 0
     for entry_row in range(first_entry, len(lines)):
         if lines[entry_row] != " " * column + text:
             continue
@@ -1000,7 +1011,7 @@ def has_picker_row(screen, text, is_selected, is_shell=False, query="./"):
 def picker_window(screen):
     lines = screen.get_lines()
     if PICKER_HELP in lines:
-        body = [line.strip() for line in lines]
+        body = [line.strip() for line in lines[lines.index(PICKER_HELP) + 2:]]
         return [line for line in body if line.startswith("./zzwindow-")], body
     position = get_picker_query(screen, "./zzwindow")
     if position is None:
@@ -1022,17 +1033,53 @@ def has_picker_ghost(screen, query, ghost):
 
 
 def get_slurp_picker_query(screen, query, caret=None):
-    if PICKER_HELP not in screen.get_lines():
-        return None
-    row = screen.row
-    column = screen.column - (len(query) if caret is None else caret)
-    if column < 0:
+    lines = screen.get_lines()
+    row, column = screen.row, 0
+    if (row == 0 or row >= len(lines) or lines[row - 1] != PICKER_HELP
+            or screen.column != (len(query) if caret is None else caret)):
         return None
     cells = screen.rows[row][column:column + len(query)]
     if ("".join(cell[0] for cell in cells) == query
             and not any(cell[1] for cell in cells)):
         return row, column
     return None
+
+
+def record_fixed_picker_window(session, report, label, matches):
+    is_slurp = label == "slurp"
+    get_query = get_slurp_picker_query if is_slurp else get_picker_query
+    query = "./zzwindow"
+    position = get_query(session.screen, query)
+    query_row = session.screen.row - session.screen.get_top_row()
+    candidate_offset = 1 if is_slurp else 2
+
+    def has_fixed_window(screen, suffix, body, footer):
+        current = get_query(screen, query + suffix)
+        top = screen.get_top_row()
+        if (position is None or current is None or current[1] != position[1]
+                or current[0] - top != query_row):
+            return False
+        first = current[0] + candidate_offset
+        lines = screen.get_lines()
+        footer_row = first + 16
+        return (footer_row < top + screen.height
+                and (not is_slurp or footer_row == top + screen.height - 1)
+                and [line.strip() for line in lines[first:first + len(body)]]
+                == body and all(not line.strip() for line in
+                                lines[first + len(body):first + 16])
+                and (lines[footer_row].strip() if footer_row < len(lines)
+                     else "") == footer)
+
+    session.send(b"-00")
+    report.record(label + "-fuzzy-keeps-viewport-with-one-match", session,
+                  lambda screen: has_fixed_window(screen, "-00", matches[:1], ""))
+    session.send(b"q")
+    report.record(label + "-fuzzy-keeps-viewport-with-no-matches", session,
+                  lambda screen: has_fixed_window(screen, "-00q", ["no matches"], ""))
+    session.send(BACKSPACE * 4)
+    report.record(label + "-fuzzy-refills-the-same-viewport", session,
+                  lambda screen: has_fixed_window(screen, "", matches[:16],
+                                                  "showing 1-16 of 20"))
 
 
 def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
@@ -1060,7 +1107,9 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
         colon_session.wait_until(has_row("starting buffer"))
         colon_session.send(b":")
         colon_session.wait_until(lambda screen: has_text("fzf")(screen))
-        report.record("slurp-colon-help-lists-fzf", colon_session, has_text("fzf"))
+        report.record("slurp-colon-help-lists-fzf", colon_session,
+                      lambda screen: has_text("fzf")(screen)
+                      and not has_text("pressed ctrl-x")(screen))
         colon_session.send(KITTY_ESCAPE)
         colon_session.wait_until(is_line(""))
     finally:
@@ -1071,14 +1120,16 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
         session.wait_until(is_line(""))
         session.send(b"slurp start.txt\r")
         session.wait_until(has_row("starting buffer"))
+        original_caret = (session.screen.row, session.screen.column)
         session.send(CTRL_X_CTRL_F)
-        session.wait_until(has_text(PICKER_HELP))
+        session.wait_until(has_slurp_picker)
 
         def has_picker_at_bottom(screen):
             lines = screen.get_lines()
-            last = max((index for index, line in enumerate(lines) if line.strip()),
-                       default=-1)
-            return last == screen.height - 1 and PICKER_HELP in lines
+            return (screen.row == screen.height - 18 and has_slurp_picker(screen)
+                    and get_slurp_picker_query(screen, "./") is not None
+                    and screen.row > original_caret[0]
+                    and has_row("starting buffer")(screen))
 
         report.record("slurp-picker-sits-on-the-bottom-row", session,
                       has_picker_at_bottom)
@@ -1086,16 +1137,19 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
         report.record("slurp-deleting-root-slash-keeps-the-dot", session,
                       lambda screen: get_slurp_picker_query(screen, ".") is not None)
         session.send(KITTY_ESCAPE)
-        session.wait_until(lambda screen: not has_text(PICKER_HELP)(screen))
+        report.record("slurp-fuzzy-cancel-restores-file-caret", session,
+                      lambda screen: not has_slurp_picker(screen)
+                           and has_row("starting buffer")(screen)
+                           and (screen.row, screen.column) == original_caret)
         session.send(CTRL_X_CTRL_F)
-        session.wait_until(has_text(PICKER_HELP))
+        session.wait_until(has_slurp_picker)
         session.send(b"a-browser/child")
         session.wait_until(lambda screen: get_slurp_picker_query(
             screen, "./a-browser/child") is not None)
         session.send(CTRL_W)
         report.record("slurp-fuzzy-ctrl-backspace-drops-a-word", session,
                       lambda screen: get_slurp_picker_query(screen, "./a-browser/")
-                      is not None and has_text(PICKER_HELP)(screen))
+                      is not None and has_slurp_picker(screen))
         session.send(b"child")
         session.wait_until(lambda screen: get_slurp_picker_query(
             screen, "./a-browser/child") is not None)
@@ -1106,10 +1160,10 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
         report.record("slurp-fuzzy-ctrl-k-kills-to-the-end", session,
                       lambda screen: moved and get_slurp_picker_query(
                           screen, "./a-browser/chi")
-                      is not None and has_text(PICKER_HELP)(screen))
+                      is not None and has_slurp_picker(screen))
         session.send(KITTY_ESCAPE)
         session.wait_until(lambda screen: has_row("starting buffer")(screen)
-                           and not has_text(PICKER_HELP)(screen))
+                           and not has_slurp_picker(screen))
         session.send(CTRL_X_CTRL_F)
         report.record("slurp-ctrl-x-ctrl-f-opens-the-fuzzy-picker", session,
                       has_initial_rows)
@@ -1153,14 +1207,14 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
                       lambda screen: get_slurp_picker_query(
                           screen, "./xa-browser/", caret=3) is not None)
         session.send(KITTY_ESCAPE)
-        session.wait_until(lambda screen: not has_text(PICKER_HELP)(screen))
+        session.wait_until(lambda screen: not has_slurp_picker(screen))
         session.send(CTRL_X_CTRL_F)
         session.wait_until(has_initial_rows)
         session.send(b"\r")
         report.record("slurp-fuzzy-enter-validates-directory-without-descending",
                       session, lambda screen: has_text("it is a directory")(screen)
                       and has_row("starting buffer")(screen)
-                      and not has_text(PICKER_HELP)(screen))
+                      and not has_slurp_picker(screen))
         session.send(CTRL_X_CTRL_F)
         session.wait_until(has_initial_rows)
         session.send(b"pddq")
@@ -1175,7 +1229,8 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
                       and not has_text("picker data done.txt")(screen))
         session.send(b"\r")
         report.record("slurp-fuzzy-enter-opens-the-selected-file", session,
-                      has_row("draft buffer"))
+                      lambda screen: has_row("draft buffer")(screen)
+                      and not has_slurp_picker(screen))
 
         session.send(b"\x05!" + ALT_X + b"find-file\r")
         report.record("slurp-m-x-find-file-opens-the-fuzzy-picker", session,
@@ -1189,7 +1244,7 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
         draft = os.path.join(directory, "picker data draft.txt")
         report.record("slurp-fuzzy-escape-preserves-the-unsaved-buffer", session,
                       lambda screen: has_row("draft buffer!")(screen)
-                      and not has_text(PICKER_HELP)(screen)
+                      and not has_slurp_picker(screen)
                       and read_bytes(draft) == b"draft buffer\n")
         do_discard(session)
 
@@ -1207,8 +1262,9 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
                                          query="./zzwindow"))
         report.record("slurp-fuzzy-previews-the-selected-literal-suffix", session,
                       lambda screen: has_picker_ghost(screen, "./zzwindow", "-00"))
+        record_fixed_picker_window(session, report, "slurp", matches)
         session.send(KITTY_ESCAPE)
-        session.wait_until(lambda screen: not has_text(PICKER_HELP)(screen))
+        session.wait_until(lambda screen: not has_slurp_picker(screen))
         session.send(b"0:fzf\r")
         report.record("slurp-vi-fzf-opens-the-fuzzy-picker", session,
                       has_initial_rows)
@@ -1351,6 +1407,7 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
                                          is_shell=True, query="./zzwindow"))
         report.record("shell-fuzzy-previews-the-selected-literal-suffix", session,
                       lambda screen: has_picker_ghost(screen, "./zzwindow", "-00"))
+        record_fixed_picker_window(session, report, "shell", matches)
         session.send(DOWN * 16)
         report.record("shell-fuzzy-scrolls-past-sixteen-candidates", session,
                       lambda screen: picker_window(screen)[0] == matches[1:17]
@@ -1534,6 +1591,104 @@ def run_shell_picker_checks(session, report):
     session.wait_until(is_line(""))
 
 
+DIRTY_PROMPT = "there are unsaved changes. save (s), discard (d), cancel (c):"
+
+
+def has_green_minibuffer(prompt, typed):
+    def do_check(screen):
+        row = screen.row
+        if row >= len(screen.rows):
+            return False
+        line = screen.get_lines()[row]
+        if line.strip() != prompt + typed or screen.column != len(line):
+            return False
+        start = len(line) - len(typed)
+        return all(cell[3] == (92,) for cell in screen.rows[row][start:len(line)])
+    return do_check
+
+
+def run_slurp_minibuffer_checks(session, directory, report):
+    switched = os.path.join(directory, "slurp-switch.txt")
+    completed = os.path.join(directory, "slurp-open space.txt")
+    with open(switched, "w") as handle:
+        handle.write("one\n  two\nthree\n")
+    with open(completed, "w") as handle:
+        handle.write("target\n")
+
+    session.send(ALT_X + b"goto-line")
+    report.record("shell-m-x-types-in-green", session,
+                  has_green_minibuffer("M-x ", "goto-line"))
+    session.send(CTRL_C)
+    session.wait_until(lambda screen: is_line("")(screen)
+                       and not has_minibuffer("M-x goto-line")(screen))
+
+    session.send(b"slurp slurp-switch.txt\r")
+    session.wait_until(has_row("three"))
+    session.send(ALT_X + b"goto-li")
+    report.record("slurp-m-x-types-in-green", session,
+                  has_green_minibuffer("M-x ", "goto-li"))
+    session.send(b"\t")
+    session.wait_until(has_minibuffer("M-x goto-line"))
+    report.record("slurp-m-x-tab-completes", session,
+                  has_minibuffer("M-x goto-line"))
+    session.send(b"\r")
+    session.wait_until(has_minibuffer("Goto line:"))
+    session.send(b"2")
+    report.record("slurp-goto-line-types-in-green", session,
+                  has_green_minibuffer("Goto line: ", "2"))
+    session.send(b"\rX" + CTRL_X + b"s")
+    report.record("slurp-goto-line-preserves-indentation", session,
+                  lambda screen: read_bytes(switched) == b"one\nX  two\nthree\n")
+    session.send(ALT_X + b"edit\r")
+    session.wait_until(has_slurp_picker)
+    session.send(b"slurp-open\t")
+    report.record("slurp-find-file-completes-raw-spaced-path", session,
+                  has_row("target"))
+
+    def edit_target():
+        session.send(b"\x1b[1;5H" + CTRL_E + b"!")
+        session.wait_until(has_row("target!"))
+
+    def switch_to_other_file():
+        session.send(ALT_X + b"find-file\r")
+        session.wait_until(has_slurp_picker)
+        session.send(b"slurp-switch.txt\r")
+        return session.wait_until(has_minibuffer(DIRTY_PROMPT))
+
+    edit_target()
+    opened = switch_to_other_file()
+    session.send(b"c")
+    report.record("slurp-unsaved-prompt-types-in-green", session,
+                  lambda screen: opened
+                  and has_green_minibuffer(DIRTY_PROMPT + " ", "c")(screen))
+    session.send(b"\r")
+    report.record("slurp-find-file-cancel-preserves-draft", session,
+                  lambda screen: not has_text(DIRTY_PROMPT)(screen)
+                  and has_row("target!")(screen)
+                  and read_bytes(completed) == b"target\n")
+
+    for reply in (b"d", b"discard"):
+        opened = switch_to_other_file()
+        session.send(reply + b"\r")
+        report.record("slurp-find-file-%s-discards-draft" % reply.decode(),
+                      session, lambda screen: opened
+                      and has_row("X  two")(screen)
+                      and read_bytes(completed) == b"target\n")
+        session.send(ALT_X + b"find-file\r")
+        session.wait_until(has_slurp_picker)
+        session.send(b"slurp-open space.txt\r")
+        session.wait_until(has_row("target"))
+        edit_target()
+
+    opened = switch_to_other_file()
+    session.send(b"s\r")
+    report.record("slurp-find-file-save-precedes-switch", session,
+                  lambda screen: opened and has_row("X  two")(screen)
+                  and read_bytes(completed) == b"target!\n")
+    session.send(CTRL_X + CTRL_C)
+    session.wait_until(is_line(""))
+
+
 def run_slurp_checks(binary, directory, command_directory, report):
     script = os.path.join(directory, "slurp-script.sh")
     notes = os.path.join(directory, "slurp-notes.txt")
@@ -1562,43 +1717,8 @@ def run_slurp_checks(binary, directory, command_directory, report):
     session = Session(binary, directory, command_directory)
     try:
         session.wait_until(is_line(""))
-        switched = os.path.join(directory, "slurp-switch.txt")
-        completed = os.path.join(directory, "slurp-open space.txt")
+        run_slurp_minibuffer_checks(session, directory, report)
         filtered = os.path.join(directory, "slurp-filter.out")
-        with open(switched, "w") as handle:
-            handle.write("one\n  two\nthree\n")
-        with open(completed, "w") as handle:
-            handle.write("target\n")
-        session.send(b"slurp slurp-switch.txt\r")
-        session.wait_until(has_row("three"))
-        session.send(ALT_X + b"goto-line\r")
-        session.wait_until(has_text("Goto line:"))
-        session.send(b"2\rX" + CTRL_X + b"s")
-        report.record("slurp-goto-line-preserves-indentation", session,
-                      lambda screen: read_bytes(switched) == b"one\nX  two\nthree\n")
-        session.send(ALT_X + b"edit\r")
-        session.wait_until(has_text(PICKER_HELP))
-        session.send(b"slurp-open\t\r")
-        report.record("slurp-find-file-completes-raw-spaced-path", session,
-                      has_row("target"))
-        session.send(CTRL_E + b"!" + ALT_X + b"find-file\r")
-        session.wait_until(has_text(PICKER_HELP))
-        session.send(b"slurp-switch.txt\r")
-        session.wait_until(has_text("Unsaved changes:"))
-        session.send(b"cancel\r")
-        report.record("slurp-find-file-cancel-preserves-draft", session,
-                      lambda screen: has_row("target!")(screen)
-                      and read_bytes(completed) == b"target\n")
-        session.send(ALT_X + b"find-file\r")
-        session.wait_until(has_text(PICKER_HELP))
-        session.send(b"slurp-switch.txt\r")
-        session.wait_until(has_text("Unsaved changes:"))
-        session.send(b"save\r")
-        report.record("slurp-find-file-save-precedes-switch", session,
-                      lambda screen: has_row("X  two")(screen)
-                      and read_bytes(completed) == b"target!\n")
-        session.send(CTRL_X + CTRL_C)
-        session.wait_until(is_line(""))
 
         vi_completed = os.path.join(
             directory,
@@ -1616,13 +1736,13 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(KITTY_ESCAPE)
         session.wait_until(has_text("emulating vi normal"))
         session.send(b":e slurp-switch.txt\r")
-        session.wait_until(has_text("Unsaved changes:"))
+        session.wait_until(has_minibuffer(DIRTY_PROMPT))
         session.send(b"cancel\r")
         report.record("slurp-vi-edit-cancel-preserves-draft", session,
                       lambda screen: has_row("vi target?")(screen)
                       and read_bytes(vi_completed) == b"vi target\n")
         session.send(b":edit slurp-switch.txt\r")
-        session.wait_until(has_text("Unsaved changes:"))
+        session.wait_until(has_minibuffer(DIRTY_PROMPT))
         session.send(b"save\r")
         report.record("slurp-vi-edit-save-precedes-switch", session,
                       lambda screen: has_row("X  two")(screen)
@@ -1670,10 +1790,12 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       and read_bytes(filtered) == b"vi\n")
         session.send(b"printf 'switch\\n' | slurp - >slurp-filter.out\r")
         session.wait_until(has_row("switch"))
-        session.send(CTRL_E + b"!" + ALT_X + b"find-file\r")
-        session.wait_until(has_text(PICKER_HELP))
+        session.send(b"\x1b[1;5H" + CTRL_E + b"!")
+        session.wait_until(has_row("switch!"))
+        session.send(ALT_X + b"find-file\r")
+        session.wait_until(has_slurp_picker)
         session.send(b"slurp-open space.txt\r")
-        session.wait_until(has_text("Unsaved changes:"))
+        session.wait_until(has_minibuffer(DIRTY_PROMPT))
         session.send(b"save\r")
         report.record("slurp-filter-save-on-switch-emits-once", session,
                       lambda screen: has_row("target!")(screen)
@@ -1692,7 +1814,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       "printf '<repeat-session-done>\\n'\r" % binary).encode())
         session.wait_until(has_row("X  two"))
         session.send(ALT_X + b"find-file\r")
-        session.wait_until(has_text(PICKER_HELP))
+        session.wait_until(has_slurp_picker)
         session.send(b"slurp-open space.txt\r")
         session.wait_until(has_row("target!"))
         session.send(CTRL_X + CTRL_C)
@@ -1718,8 +1840,21 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("slurp-tab-on-a-blank-line-inserts-a-tab", session,
                       lambda screen: has_text("line 4 of 4, column 2")(screen)
                       and not has_text("selecting completions")(screen))
-        session.send(BACKSPACE)
-        session.wait_until(has_text("line 4 of 4, column 1"))
+        session.send(b"echo")
+        settle(session, 0.2)
+        report.record("slurp-script-command-shows-no-ghost-or-hint", session,
+                      lambda screen: has_text("line 4 of 4, column 6")(screen)
+                      and not any(cell[1] for cell in screen.rows[screen.row])
+                      and not has_text("selecting completions")(screen))
+        session.send(b"\t")
+        report.record("slurp-tab-past-the-line-start-inserts-a-tab", session,
+                      lambda screen: has_text("line 4 of 4, column 7")(screen)
+                      and not has_text("selecting completions")(screen))
+        session.send(CTRL_X + b"s")
+        report.record("slurp-tab-inserts-literal-tabs-in-a-script", session,
+                      lambda screen: has_text("wrote 44 bytes")(screen)
+                      and read_slurped(script).endswith(
+                          "echo two # edited\n\techo\t\n"))
         session.send(CTRL_X + CTRL_C)
         report.record("slurp-leaves-a-saved-buffer-at-once", session,
                       is_line(""))
@@ -1734,7 +1869,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(b":wq\r")
         report.record("slurp-vi-write-quit-saves", session,
                       lambda screen: is_line("")(screen)
-                      and read_slurped(script).endswith("# edited\n!\n"))
+                      and read_slurped(script).endswith("\techo\t!\n"))
         report.record("slurp-save-keeps-the-file-mode", session,
                       lambda screen: os.stat(script).st_mode & 0o7777 == 0o751)
 
@@ -1774,6 +1909,23 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       has_row("second note;x!"))
         do_discard(session)
 
+        session.send(b"slurp -v slurp-notes.txt\r")
+        session.wait_until(has_row("second note"))
+        session.send(KITTY_ESCAPE)
+        session.wait_until(has_text("emulating vi normal"))
+        session.send(b":set editor.auto_cl\t")
+        report.record("slurp-vi-set-tab-completes-the-option", session,
+                      has_minibuffer(
+                          ":set editor.auto_close_brackets_and_quotes"))
+        session.send(b"?\r")
+        report.record("slurp-vi-set-enter-queries-the-option", session,
+                      has_minibuffer(
+                          "editor.auto_close_brackets_and_quotes=off"))
+        session.send(KITTY_ESCAPE)
+        session.wait_until(has_text("emulating vi normal"))
+        session.send(b":q\r")
+        session.wait_until(is_line(""))
+
         session.send(b"koshconf set completion.on_tab off\r")
         session.wait_until(is_line(""))
         session.send(b"slurp slurp-notes.txt\r")
@@ -1793,10 +1945,27 @@ def run_slurp_checks(binary, directory, command_directory, report):
                 "word%02d" % index for index in range(16)) + "\n")
         session.send(b"slurp slurp-find.txt\r")
         session.wait_until(has_text("line 3 of 3"))
-        session.send(b"\x12alpha\r")
+        session.send(b"\x12alpha")
+        session.wait_until(has_text("Find backward: alpha"))
+        report.record("slurp-ctrl-r-shows-the-find-backward-label", session,
+                      lambda screen: has_text("match 1 of 1")(screen)
+                      and has_text("ctrl-s for the next match")(screen))
+        session.send(b"\r")
         report.record("slurp-ctrl-r-finds-backward", session,
                       has_text("line 1 of 3, column 1,"))
-        session.send(b"\x13beta\x13\r")
+        session.send(b"\x13beta")
+        session.wait_until(has_text("match 1 of 2"))
+        report.record("slurp-ctrl-s-shows-the-find-label-and-count", session,
+                      lambda screen: has_text("Find: beta")(screen)
+                      and has_text("enter to stay there")(screen))
+        session.send(b"zzq")
+        session.wait_until(has_text("no match"))
+        report.record("slurp-ctrl-s-shows-no-match", session,
+                      lambda screen: has_text(
+                          "backspace to change the text")(screen))
+        session.send(BACKSPACE * 3)
+        session.wait_until(has_text("match 1 of 2"))
+        session.send(b"\x13\r")
         report.record("slurp-ctrl-s-steps-to-the-next-match", session,
                       has_text("line 2 of 3, column 7,"))
         session.send(b"\x1b<")
@@ -1812,7 +1981,14 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(has_text("line 3 of 3"))
         session.send(KITTY_ESCAPE)
         settle(session, 0.2)
-        session.send(b"gg/beta\r")
+        session.send(b"gg/beta")
+        session.wait_until(has_text("match 1 of 2"))
+        report.record("slurp-vi-slash-shows-the-match-count", session,
+                      lambda screen: has_text("/beta")(screen)
+                      and has_text("enter to go to the match")(screen)
+                      and not has_text(
+                          "ctrl-s for the next match")(screen))
+        session.send(b"\r")
         report.record("slurp-vi-slash-finds-forward", session,
                       has_text("line 1 of 3, column 7,"))
         session.send(b"n")
@@ -2161,17 +2337,17 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(has_row("second line"))
         session.send(b"\x1b[1;5H" + b"\x1b[1;2C" * 6)
         report.record("slurp-emacs-shift-right-selects", session,
-                      has_text("ctrl-w to cut"))
+                      has_selection)
         session.send(BACKSPACE)
         report.record("slurp-emacs-backspace-erases-the-selection", session,
                       lambda screen: has_row("beta gamma")(screen)
-                      and not has_text("ctrl-w to cut")(screen))
+                      and not has_selection(screen))
         session.send(b"\x1b[1;6C")
         report.record("slurp-emacs-ctrl-shift-right-selects", session,
-                      has_text("ctrl-w to cut"))
+                      has_selection)
         session.send(b"\x07" + kitty_key(101, CTRL_SHIFT))
         report.record("slurp-emacs-ctrl-shift-e-selects-to-the-line-end",
-                      session, has_text("ctrl-w to cut"))
+                      session, has_selection)
         session.send(BACKSPACE)
         report.record("slurp-emacs-ctrl-shift-e-selection-erases", session,
                       lambda screen: not has_text("gamma")(screen)
@@ -2183,7 +2359,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(mouse(0, 1, row) + mouse(32, 4, row) + mouse(32, 7, row)
                      + mouse(0, 7, row, True))
         report.record("slurp-emacs-drag-selects", session,
-                      has_text("ctrl-w to cut"))
+                      has_selection)
         session.send(b"\x17\x05\x19")
         report.record("slurp-emacs-ctrl-w-kills-the-selection", session,
                       has_row(" linesecond"))
@@ -2282,33 +2458,40 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
                     if line.endswith("; read -")]
             return (lines, rows[0]) if rows else (lines, None)
 
-        def is_menu_over_next_row(screen):
+        def is_tab_inserted_without_a_menu(screen):
             lines, row = do_find_caret_row(screen)
-            return (row is not None and row + 1 < len(lines)
-                    and "selecting completions" in lines[row + 1]
-                    and "echo line43" in lines)
+            return (row is not None
+                    and "selecting completions" not in screen.get_lines()
+                    and has_text("line 29 of 60, column 21,")(screen))
 
-        report.record("slurp-menu-covers-the-rows-under-the-caret", session,
-                      is_menu_over_next_row)
-        session.send(ESCAPE)
+        report.record("slurp-tab-inserts-a-tab-without-a-menu", session,
+                      is_tab_inserted_without_a_menu)
 
-        def is_next_row_restored(screen):
+        def is_next_row_kept(screen):
             lines, row = do_find_caret_row(screen)
             return (row is not None and row + 1 < len(lines)
                     and lines[row + 1] == "echo line30X")
 
-        report.record("slurp-closed-menu-restores-the-rows", session,
-                      is_next_row_restored)
+        report.record("slurp-tab-keeps-the-rows-under-the-caret", session,
+                      is_next_row_kept)
         report.record("slurp-top-row-shows-the-command", session,
                       lambda screen: screen.get_lines()[0].endswith(
                           "slurp slurp-tall.sh"))
         report.record("slurp-status-rows-show-the-caret-line", session,
-                      lambda screen: has_text("line 29 of 60, column 20,")(screen)
+                      lambda screen: has_text("line 29 of 60, column 21,")(screen)
                       and has_text("emulating emacs")(screen))
+        report.record("slurp-status-row-shows-key-coaching", session,
+                      lambda screen: screen.get_lines()[-1].startswith(
+                          "emulating emacs")
+                      and screen.get_lines()[-1].endswith(
+                          "emacs. ctrl-x to see the menu, alt-x to run a command"))
         session.send(CTRL_X + b"i")
-        report.record("slurp-ctrl-x-i-shows-the-hint", session,
-                      lambda screen: has_text("synopsis")(screen)
-                      and not has_text("line 29 of 60")(screen))
+        settle(session, 0.2)
+        report.record("slurp-ctrl-x-i-shows-no-hint", session,
+                      lambda screen: screen.get_lines()[1]
+                      == "echo line29; read -"
+                      and not has_text("synopsis")(screen)
+                      and has_text("line 29 of 60")(screen))
         session.send(b"\x1bx")
         report.record("slurp-command-line-keeps-the-view", session,
                       lambda screen: screen.get_lines()[1]
@@ -2346,49 +2529,66 @@ def run_long_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(lambda screen: any(line.rstrip() == "read -"
                                               for line in screen.get_lines()))
         session.send(b"\t")
-        report.record("slurp-long-file-tab-opens-the-menu", session,
-                      has_text("selecting completions"))
+        report.record("slurp-long-file-tab-inserts-a-tab", session,
+                      lambda screen: has_text("line 6001 of 6001, column 8,")(
+                          screen)
+                      and not has_text("selecting completions")(screen))
         session.send(b"zz")
         session.wait_until(lambda screen: any("read -" in line and "zz" in line
                                               for line in screen.get_lines()))
         session.send(b"\x07")
-        report.record("slurp-long-file-ctrl-g-restores-the-line", session,
-                      lambda screen: not has_text("zz")(screen)
-                      and any(line.startswith("read -")
-                              for line in screen.get_lines())
+        report.record("slurp-long-file-ctrl-g-keeps-the-line", session,
+                      lambda screen: any(line.startswith("read -")
+                                         and line.endswith("zz")
+                                         for line in screen.get_lines())
+                      and has_text("line 6001 of 6001, column 10,")(screen)
                       and not has_text("selecting completions")(screen))
-        session.send(KITTY_CTRL_C)
-        session.wait_until(has_text("ctrl-c again"))
+        session.send(CTRL_X + b"s")
+        report.record("slurp-long-file-saves-the-tab-and-text-at-the-caret",
+                      session,
+                      lambda screen: has_text("wrote")(screen)
+                      and read_slurped(script).endswith("read -\tzz\n"))
         session.send(KITTY_CTRL_C)
         session.wait_until(is_line(""))
     finally:
         session.close()
 
 
-def run_vi_hover_checks(binary, directory, command_directory, report):
-    script = os.path.join(directory, "slurp-hover.sh")
+def run_vi_tab_checks(binary, directory, command_directory, report):
+    script = os.path.join(directory, "slurp-vi-tab.sh")
     with open(script, "w") as handle:
         handle.write("echo hello\n")
     session = Session(binary, directory, command_directory, rows=20)
     try:
         session.wait_until(is_line(""))
-        session.send(b"slurp -V slurp-hover.sh\r")
+        session.send(b"slurp -V slurp-vi-tab.sh\r")
         session.wait_until(has_text("emulating vi normal"))
-        session.send(b"$\t")
-        report.record("slurp-vi-ctrl-i-shows-the-hint", session,
-                      has_text("synopsis"))
-        session.send(b"0")
-        session.wait_until(lambda screen: not has_text("synopsis")(screen))
-        session.send(b"$\x0b\t")
-        report.record("slurp-vi-ctrl-k-ctrl-i-shows-the-hint", session,
-                      has_text("synopsis"))
-        session.send(b"0")
-        session.wait_until(lambda screen: not has_text("synopsis")(screen))
+        session.send(b"$")
+        session.wait_until(has_text("line 1 of 1, column 10,"))
         session.send(b"\t")
-        report.record("slurp-vi-ctrl-i-on-the-command-word-shows-the-hint",
-                      session, has_text("synopsis"))
-        session.send(b":q\r")
-        session.wait_until(is_line(""))
+        settle(session, 0.2)
+        report.record("slurp-vi-normal-tab-does-nothing", session,
+                      lambda screen: has_text("line 1 of 1, column 10,")(screen)
+                      and has_row("echo hello")(screen)
+                      and not has_text("selecting completions")(screen))
+        session.send(b"A")
+        session.wait_until(has_text("emulating vi insert"))
+        session.send(b"\t")
+        report.record("slurp-vi-insert-tab-inserts-a-tab", session,
+                      lambda screen: has_text("line 1 of 1, column 12,")(screen)
+                      and not has_text("selecting completions")(screen))
+        session.send(b"\x1b[Z\x00")
+        settle(session, 0.2)
+        report.record("slurp-insert-shift-tab-and-ctrl-space-do-no-completion",
+                      session,
+                      lambda screen: not has_text("selecting completions")(screen)
+                      and not has_text("synopsis")(screen))
+        session.send(KITTY_ESCAPE)
+        session.wait_until(has_text("emulating vi normal"))
+        session.send(b":wq\r")
+        report.record("slurp-vi-insert-tab-is-saved", session,
+                      lambda screen: is_line("")(screen)
+                      and read_slurped(script).startswith("echo hello\t"))
     finally:
         session.close()
 
@@ -2412,7 +2612,8 @@ def run_fatal_signal_checks(binary, directory, command_directory, report):
 
 def main():
     is_fuzzy_only = os.environ.get("KOSH_TEST_SLURP_FUZZY_ONLY") == "1"
-    if sys.platform != "linux" and not is_fuzzy_only:
+    is_minibuffer_only = os.environ.get("KOSH_TEST_SLURP_MINIBUFFER_ONLY") == "1"
+    if sys.platform != "linux" and not (is_fuzzy_only or is_minibuffer_only):
         print("editor kill and yank PTY probes: skipped (requires Linux)")
         return 0
     binary = os.environ.get("BIN")
@@ -2428,6 +2629,17 @@ def main():
         os.makedirs(command_directory)
         if is_fuzzy_only:
             run_slurp_fuzzy_checks(binary, directory, command_directory, report)
+            return 0 if report.is_ok else 1
+        if is_minibuffer_only:
+            session = Session(binary, directory, command_directory)
+            try:
+                if session.wait_until(is_line("")):
+                    run_slurp_minibuffer_checks(session, directory, report)
+                    session.send(b"printf 'slurp-minibuffer-done\\n'; exit\r")
+                report.record("slurp-minibuffer-session-exits", session,
+                              has_row("slurp-minibuffer-done"))
+            finally:
+                session.close()
             return 0 if report.is_ok else 1
         write_script(os.path.join(command_directory, "fake-visual"),
                      "IFS= read -r line < \"$1\"\n"
@@ -2452,7 +2664,7 @@ def main():
         run_slurp_fuzzy_checks(binary, directory, command_directory, report)
         run_tall_slurp_checks(binary, directory, command_directory, report)
         run_long_slurp_checks(binary, directory, command_directory, report)
-        run_vi_hover_checks(binary, directory, command_directory, report)
+        run_vi_tab_checks(binary, directory, command_directory, report)
         run_fatal_signal_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)

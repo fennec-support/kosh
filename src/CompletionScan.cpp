@@ -2727,9 +2727,9 @@ internal::statement_line_start(StringView line, usize cursor) throws
    time:   O(line.length). each call to advance_shell_lexical_state() resumes
            at state.source_position, so each byte is scanned once. */
 fn
-internal::collect_case_pattern_ends(StringView        line,
-                                    ArrayList<usize> &positions) throws
-    -> void
+internal::collect_case_pattern_ends(
+    StringView                                    line,
+    SortedArrayList<usize, OrderComparator<usize>> &positions) throws -> void
 {
   let state = ShellLexicalState{heap_allocator()};
 
@@ -2751,7 +2751,7 @@ internal::collect_case_pattern_ends(StringView        line,
     if (frame_is_at_case_pattern_level(frame) &&
         !frame.is_case_pattern_parenthesized)
     {
-      positions.push(position);
+      positions.push_in_order(position);
     }
   }
 }

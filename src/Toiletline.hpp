@@ -137,7 +137,7 @@ fn
 get_last_prompt() -> koshka::StringView;
 
 /* lays the editor out over the whole terminal for editing a file, with the
-   status and hints on the last rows and the menu over the input. */
+   status, key coaching and command prompts on the last rows. */
 fn
 set_full_screen(bool is_enabled) -> void;
 
@@ -326,6 +326,9 @@ get_input(const String                &prompt,
           const koshka::Maybe<String> &transient_prompt,
           const koshka::Maybe<String> &transient_right_prompt,
           koshka::EvalContext         *file_picker_context) -> input_result;
+fn
+get_document_input(koshka::EvalContext &context, bool is_shell_script)
+    -> input_result;
 
 fn
 set_input(const String &input) -> void;

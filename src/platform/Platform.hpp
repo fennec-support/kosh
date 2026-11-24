@@ -2098,9 +2098,6 @@ cold fn
 list_directory(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<String>>;
 cold fn
-list_directory_typed(StringView dir) throws
-    -> Maybe<ArrayList<Path::DirectoryChild>>;
-cold fn
 list_directory_typed(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>;
 

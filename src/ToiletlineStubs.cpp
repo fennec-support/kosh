@@ -1294,6 +1294,15 @@ get_input(const String                &prompt,
 }
 
 fn
+get_document_input(koshka::EvalContext &context, bool is_shell_script)
+    -> input_result
+{
+  unused(context);
+  unused(is_shell_script);
+  throw koshka::Error{"This build has no line editor"};
+}
+
+fn
 set_input(const String &input) -> void
 {
   unused(input);

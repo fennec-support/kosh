@@ -279,13 +279,11 @@ find_matching_bracket(StringView                       line,
   /* at this point: candidates holds candidate_count indices into line, and
      each is a bracket byte. */
 
-  let collected_case_pattern_ends = ArrayList<usize>{heap_allocator()};
+  let case_pattern_ends = SortedArrayList<usize, OrderComparator<usize>>{
+      heap_allocator(), sort_order::ascending};
 
   if (line.find_substring("case").has_value())
-    collect_case_pattern_ends(line, collected_case_pattern_ends);
-
-  let case_pattern_ends = SortedArrayList<usize, OrderComparator<usize>>{
-      steal(collected_case_pattern_ends), sort_order::ascending};
+    collect_case_pattern_ends(line, case_pattern_ends);
 
   let const do_is_code_bracket = [&](usize position) throws -> bool {
     if (byte_is_escaped(line, position) ||

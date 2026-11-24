@@ -275,7 +275,7 @@ make_status(const slurp_session &session,
 }
 
 /* writes text to the file of the active session with the line endings it was
-   loaded with, and leaves a line for the hint rows in out_message.
+   loaded with, and leaves a save report in out_message.
    memory: the converted text and the message String on heap_allocator().
    time:   O(text length) plus one save_file() call. */
 fn
@@ -537,7 +537,6 @@ edit_file(EvalContext                 &cxt,
     title.append(command.view());
   }
 
-  let const was_completion_enabled = toiletline::is_completion_enabled();
   let const was_vi = cxt.runtime_state().option_is_enabled(shell_option_id::Vi);
 
   toiletline::enter_raw_mode();
@@ -552,35 +551,11 @@ edit_file(EvalContext                 &cxt,
   toiletline::set_full_screen(true);
   toiletline::set_line_max(SLURP_MAX_BYTE_COUNT);
   toiletline::set_wrap_width(cxt.runtime_state().get_wrap_width());
-  if (!is_shell_script) toiletline::disable_shell_completion();
-  /* a shell script gets completion and the command hints even when no
-     interactive session set them up, as for an editor started by a script. */
-  let const should_enable_completion =
-      is_shell_script && !was_completion_enabled;
-
-  if (should_enable_completion) {
-    toiletline::enable_completion(cxt);
-    toiletline::set_hint_row(cxt.runtime_state().option_is_enabled(
-                                 shell_option_id::InteractiveHints),
-                             cxt.runtime_state().option_is_enabled(
-                                 shell_option_id::InteractiveDiagnostics));
-  }
   if (mode.has_value()) toiletline::set_edit_mode(*mode);
 
   defer {
     toiletline::set_edit_mode(was_vi ? toiletline::edit_mode::Vi
                                      : toiletline::edit_mode::Emacs);
-    if (!is_shell_script) {
-      if (was_completion_enabled) {
-        toiletline::enable_completion(cxt);
-      } else {
-        toiletline::enable_editor_commands(cxt);
-      }
-    }
-    if (should_enable_completion) {
-      toiletline::disable_completion();
-      toiletline::set_hint_row(false, false);
-    }
     toiletline::set_save_callback(nullptr);
     toiletline::set_open_file_callback(nullptr);
     ACTIVE_SESSION        = nullptr;
@@ -630,7 +605,7 @@ edit_file(EvalContext                 &cxt,
                                                                  : start_line);
   toiletline::set_saved_text(session.saved_text.c_str());
 
-  let result = toiletline::get_input(String{heap_allocator()}, &cxt);
+  let result = toiletline::get_document_input(cxt, is_shell_script);
 
   if (result.code == TL_PRESSED_INTERRUPT) return 130;
   if (result.code == TL_PRESSED_OPEN_FILE) return TL_PRESSED_OPEN_FILE;

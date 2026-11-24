@@ -286,7 +286,9 @@ struct CompletionSession
            tl_completion *out,
            int            is_for_listing) -> int;
   fn
-  highlight(const char *buffer, tl_highlight *out) -> int;
+  highlight(const char         *buffer,
+            tl_highlight       *out,
+            koshka::EvalContext *highlight_context) -> int;
   fn
   validate_ghost(const char *entry) const -> int;
   fn
@@ -1508,6 +1510,7 @@ CompletionSession::complete(const char    *buffer,
           buffer, byte_count, out->token_start);
       let const cursor_byte =
           toiletline::get_codepoint_byte_offset(buffer, byte_count, cursor);
+
       if (cursor_byte < token_byte) return 0;
 
       let const token =
@@ -1559,10 +1562,7 @@ CompletionSession::complete(const char    *buffer,
         koshka::completion::ScopedDocumentationDeferral{is_explicit_completion};
 
     if (is_explicit_completion) {
-      preview_key.clear();
-      preview_text.clear();
-      preview_heading.clear();
-      preview_footer.clear();
+      reset_preview_cache();
 
       context->program_resolver().begin_explicit_completion(
           koshka::ProgramResolver::CompletionRefresh::Listings);
@@ -1834,6 +1834,7 @@ append_preview_directory(const koshka::Path &path,
     completion::internal::append_with_quoted_controls(text, entry.name);
     if (entry.is_directory) text.push('/');
   }
+
   if (ordered.is_empty()) marker = "<empty>";
 }
 
@@ -1859,103 +1860,102 @@ kosh_completion_preview(const char *,
   let &row_count = COMPLETION_SESSION.preview_entry_row_count;
   let &count     = COMPLETION_SESSION.preview_entry_count;
 
+  const char *preview_text = nullptr;
+
   if (key.view() == detail_key) {
-    *heading             = title.is_empty() ? nullptr : title.c_str();
-    *footer              = stats.is_empty() ? nullptr : stats.c_str();
-    *marker              = suffix;
-    *entry_row_count     = row_count;
-    *entry_count         = count;
-    *is_file_description = COMPLETION_SESSION.is_preview_file_description;
-    return text.is_empty() ? nullptr : text.c_str();
-  }
+    preview_text = text.is_empty() ? nullptr : text.c_str();
+  } else {
+    reset_preview_cache();
 
-  reset_preview_cache();
+    try {
+      let const do_build = [&]() throws -> const char * {
+        key.append(detail_key);
 
-  try {
-    let const do_build = [&]() throws -> const char * {
-      key.append(detail_key);
+        let const scratch   = completion::ScopedCompletionScratch{};
+        let const allocator = completion::internal::completion_allocator();
+        let const path      = Path{key.view(), allocator};
+        os::file_status status{};
 
-      let const       scratch   = completion::ScopedCompletionScratch{};
-      let const       allocator = completion::internal::completion_allocator();
-      let const       path      = Path{key.view(), allocator};
-      os::file_status status{};
+        let const has_status = os::stat_path(path.view(), status);
+        let const is_link    = has_status
+                                   ? os::file_type_letter(status.mode) == 'l'
+                                   : os::path_is_symbolic_link(path.view());
+        if (is_link) {
+          let const target = os::read_symlink(path.view(), allocator);
 
-      let const has_status = os::stat_path(path.view(), status);
-      let const is_link = has_status ? os::file_type_letter(status.mode) == 'l'
-                                     : os::path_is_symbolic_link(path.view());
-      if (is_link) {
-        let const target = os::read_symlink(path.view(), allocator);
+          title.append("symbolic link -> ");
+          if (target.has_value()) {
+            completion::internal::append_with_quoted_controls(title,
+                                                              target->view());
+          } else {
+            title.append("(unavailable)");
+          }
 
-        title.append("symbolic link -> ");
-        if (target.has_value()) {
-          completion::internal::append_with_quoted_controls(title,
-                                                            target->view());
-        } else {
-          title.append("(unavailable)");
-        }
+          let const has_target = os::stat_path_following(path.view(), status);
 
-        let const has_target = os::stat_path_following(path.view(), status);
-
-        if (!has_target || os::file_type_letter(status.mode) == 'l') {
-          text.append(!has_target && os::last_system_error_is_missing_file()
-                          ? "dangling target"
-                          : "target unavailable");
-          return text.c_str();
-        }
-      } else if (!has_status) {
-        return nullptr;
-      }
-
-      format_preview_status(status, allocator, stats);
-
-      let const type_letter = os::file_type_letter(status.mode);
-
-      if (type_letter != 'd') {
-        COMPLETION_SESSION.is_preview_file_description = true;
-#if !defined KOSH_NO_KOSHKIT
-        if (type_letter == '-') {
-          let const description =
-              koshkit::describe_file_type(path.view(), status, allocator, true);
-
-          if (description.has_value()) {
-            text.append(description->view());
+          if (!has_target || os::file_type_letter(status.mode) == 'l') {
+            text.append(!has_target && os::last_system_error_is_missing_file()
+                            ? "dangling target"
+                            : "target unavailable");
             return text.c_str();
           }
+        } else if (!has_status) {
+          return nullptr;
         }
+
+        format_preview_status(status, allocator, stats);
+
+        let const type_letter = os::file_type_letter(status.mode);
+
+        if (type_letter != 'd') {
+          COMPLETION_SESSION.is_preview_file_description = true;
+#if !defined KOSH_NO_KOSHKIT
+          if (type_letter == '-') {
+            let const description = koshkit::describe_file_type(
+                path.view(), status, allocator, true);
+
+            if (description.has_value()) {
+              text.append(description->view());
+
+              return text.c_str();
+            }
+          }
 #endif
-        text.append(koshkit::file_type_name(status));
+          text.append(koshkit::file_type_name(status));
+
+          return text.c_str();
+        }
+
+        append_preview_directory(path, allocator, text, row_count, count,
+                                 suffix);
+
         return text.c_str();
-      }
+      };
 
-      append_preview_directory(path, allocator, text, row_count, count, suffix);
-      return text.c_str();
-    };
-
-    let const *preview_text = do_build();
-
-    *heading             = title.is_empty() ? nullptr : title.c_str();
-    *footer              = stats.is_empty() ? nullptr : stats.c_str();
-    *marker              = suffix;
-    *entry_row_count     = row_count;
-    *entry_count         = count;
-    *is_file_description = COMPLETION_SESSION.is_preview_file_description;
-    return preview_text;
-  } catch (...) {
-    reset_preview_cache();
-    *heading         = nullptr;
-    *footer          = nullptr;
-    *marker          = nullptr;
-    *entry_row_count = 0;
-    *entry_count     = 0;
-    return nullptr;
+      preview_text = do_build();
+    } catch (...) {
+      reset_preview_cache();
+    }
   }
+
+  *heading             = title.is_empty() ? nullptr : title.c_str();
+  *footer              = stats.is_empty() ? nullptr : stats.c_str();
+  *marker              = suffix;
+  *entry_row_count     = row_count;
+  *entry_count         = count;
+  *is_file_description = COMPLETION_SESSION.is_preview_file_description;
+
+  return preview_text;
 }
 
 fn
-CompletionSession::highlight(const char *buffer, tl_highlight *out) -> int
+CompletionSession::highlight(const char         *buffer,
+                             tl_highlight       *out,
+                             koshka::EvalContext *highlight_context) -> int
 {
-  if (context == nullptr) return 0;
-  if (!is_highlight_color_enabled) return 0;
+  if (highlight_context == nullptr || !is_highlight_color_enabled) {
+    return 0;
+  }
 
   try {
     const usize byte_count = strlen(buffer);
@@ -2043,7 +2043,7 @@ CompletionSession::highlight(const char *buffer, tl_highlight *out) -> int
       has_highlighted_spans = false;
 
       let const result = koshka::completion::highlight_line_from(
-          scanned, restart, *context, highlighted_restarts);
+          scanned, restart, *highlight_context, highlighted_restarts);
 
       highlighted_line.clear();
       highlighted_line.append(scanned);
@@ -2238,7 +2238,7 @@ CompletionSession::highlight(const char *buffer, tl_highlight *out) -> int
 fn
 kosh_highlight_callback(const char *buffer, tl_highlight *out) -> int
 {
-  return COMPLETION_SESSION.highlight(buffer, out);
+  return COMPLETION_SESSION.highlight(buffer, out, COMPLETION_SESSION.context);
 }
 
 koshka::EvalContext *JOB_CONTEXT = nullptr;
@@ -4507,6 +4507,7 @@ seed_picker_path(const char *buffer,
         line.substring_of_length(first, cursor_byte - first), arena);
     let const raw               = decoded.text.view();
     let       has_safe_boundary = decoded.quote_character == 0;
+
     if (cursor_byte < last) {
       let const word = line.substring_of_length(first, last - first);
       has_safe_boundary =
@@ -4516,8 +4517,10 @@ seed_picker_path(const char *buffer,
     if (raw.is_empty()) return has_safe_boundary;
 
     let &picker = *FILE_PICKER;
+
     if (!picker.directory.has_value())
       picker.directory = os::read_current_directory();
+
     for (usize length = raw.length; length != 0;) {
       let const part      = raw.substring_of_length(0, length);
       let const directory = resolve_listing_directory(
@@ -4531,6 +4534,7 @@ seed_picker_path(const char *buffer,
             !os::is_directory_separator(prefix[prefix.length - 1]);
         let const suffix        = raw.substring(length);
         let const prefix_length = prefix.length + needs_separator;
+
         if (prefix_length + suffix.length >= capacity) return has_safe_boundary;
 
         memcpy(text, prefix.data, prefix.length);
@@ -4605,9 +4609,11 @@ get_input(const String        &prompt,
 
   ::tl_set_colors_enabled(should_use_color ? 1 : 0);
 
-  if (is_completion_enabled()) {
+  if (::itl_g_full_screen || is_completion_enabled()) {
     COMPLETION_SESSION.is_highlight_color_enabled = should_use_color;
-    completion_base_directory                     = Path::current_directory();
+  }
+  if (!::itl_g_full_screen && is_completion_enabled()) {
+    completion_base_directory = Path::current_directory();
     completion_storage = koshka::completion::completion_result{
         koshka::ArrayList<koshka::String>{koshka::heap_allocator()},
         koshka::StringMap<koshka::String>{koshka::heap_allocator()},
@@ -4700,6 +4706,48 @@ get_input(const String &prompt, koshka::EvalContext *file_picker_context)
 
   return get_input(prompt, no_prompt, koshka::None, koshka::None,
                    file_picker_context);
+}
+
+fn
+get_document_input(koshka::EvalContext &context, bool is_shell_script)
+    -> input_result
+{
+  let *const previous_context            = EDITOR_COMMAND_CONTEXT;
+  let const  previous_edit               = ::itl_g_edit_callback;
+  let const  previous_option             = ::itl_g_option_callback;
+  let const  previous_format             = ::itl_g_format_callback;
+  let const  previous_highlight          = ::itl_g_highlight_callback;
+  let const  did_highlight_follow_cursor = ::itl_g_highlight_follows_cursor;
+  let const  previous_completion         = ::itl_g_complete_callback;
+  let const  previous_idle               = ::itl_g_idle_callback;
+
+  defer {
+    EDITOR_COMMAND_CONTEXT = previous_context;
+    ::tl_set_edit_callback(previous_edit);
+    ::tl_set_option_callback(previous_option);
+    ::tl_set_format_callback(previous_format);
+    ::tl_set_highlight_callback(previous_highlight);
+    ::tl_set_highlight_follows_cursor(did_highlight_follow_cursor);
+    ::tl_set_complete_callback(previous_completion);
+    ::itl_g_idle_callback = previous_idle;
+    if (is_shell_script) COMPLETION_SESSION.has_highlighted_spans = false;
+  };
+
+  ::tl_set_complete_callback(nullptr);
+  ::itl_g_idle_callback = nullptr;
+  enable_editor_commands(context);
+  if (is_shell_script) {
+    COMPLETION_SESSION.has_highlighted_spans = false;
+    ::tl_set_highlight_callback([](const char *buffer, tl_highlight *out) {
+      return COMPLETION_SESSION.highlight(buffer, out, EDITOR_COMMAND_CONTEXT);
+    });
+  } else {
+    ::tl_set_format_callback(nullptr);
+    ::tl_set_highlight_callback(nullptr);
+  }
+  ::tl_set_highlight_follows_cursor(is_shell_script);
+
+  return get_input(String{koshka::heap_allocator()}, &context);
 }
 
 fn

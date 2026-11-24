@@ -296,6 +296,8 @@ class Screen:
                 self.column = 0
             elif byte == 10:
                 self.row += 1
+                # A line feed can scroll even if the destination is blank.
+                self.get_cells()
             elif byte >= 32:
                 length = 1 if byte < 0x80 else 2 if byte < 0xe0 else 3 if byte < 0xf0 else 4
                 if index + length > len(data):
@@ -1045,9 +1047,9 @@ def record_default_completion_space(session, report):
     session.wait_until(is_line(""))
     session.send(b"zzdefault z\t")
     completed = "zzdefault zzword"
-    report.record("tab-appends-a-space-by-default", session,
+    report.record("tab-adds-no-space-by-default", session,
                   lambda screen: is_typed_with_menu(completed)(screen)
-                  and has_caret_at(screen, len(completed) + 1))
+                  and has_caret_at(screen, len(completed)))
     clear_line(session)
     session.send(b"complete -r zzdefault\r")
     session.wait_until(is_line(""))
@@ -1522,7 +1524,36 @@ def run_streaming_fuzzy_checks(session, report, directory):
         return None
 
     ready = session.wait_until(lambda screen: not is_loading(screen)
-                               and selected_path(screen) is not None)
+                               and len(matching_rows(screen)) == 16
+                               and has_caret_at(screen, len(draft)))
+    query_row = session.screen.row - session.screen.get_top_row()
+
+    def has_fixed_menu(screen, query, body):
+        if (not ready or not is_typed_with_menu(query)(screen)
+                or not has_caret_at(screen, len(query))
+                or screen.row - screen.get_top_row() != query_row):
+            return False
+        first = screen.get_prompt_row() + 2
+        lines = screen.get_lines()
+        return ([line.strip().split("  ", 1)[0]
+                 for line in lines[first:first + len(body)]] == body
+                and all(not line.strip() for line in
+                        lines[first + len(body):first + 17]))
+
+    session.send(b"s")
+    report.record("fuzzy-path-keeps-viewport-with-one-match", session,
+                  lambda screen: has_fixed_menu(
+                      screen, draft + "s", ["./tree/wide/deep/needle-special.txt"]))
+    session.send(b"q")
+    report.record("fuzzy-path-keeps-viewport-with-no-matches", session,
+                  lambda screen: has_fixed_menu(screen, draft + "sq", [HISTORY_NO_MATCH]))
+    session.send(BACKSPACE * 2)
+    ready = report.record("fuzzy-path-refills-the-same-viewport", session,
+                          lambda screen: is_typed_with_menu(draft)(screen)
+                          and has_caret_at(screen, len(draft))
+                          and screen.row - screen.get_top_row() == query_row
+                          and len(matching_rows(screen)) == 16
+                          and not is_loading(screen))
     ordered = sorted(["./tree/wide/deep/needle-%04d.txt" % index
                       for index in range(0, 8192, 96)]
                      + ["./tree/wide/deep/needle-special.txt",

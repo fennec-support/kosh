@@ -284,8 +284,9 @@ fn
 statement_line_start(StringView line, usize cursor) throws -> usize;
 
 fn
-collect_case_pattern_ends(StringView        line,
-                          ArrayList<usize> &positions) throws -> void;
+collect_case_pattern_ends(
+    StringView                                    line,
+    SortedArrayList<usize, OrderComparator<usize>> &positions) throws -> void;
 
 } /* namespace completion::internal */
 

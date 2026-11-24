@@ -142,6 +142,7 @@ Shell settings are inspected and mutated via `set`, `shopt`, and `koshconf`, and
 * Error messages, `KOSHCONF`, `koshconf create`, and `koshconf list` emit only canonical names. Running `koshconf list --all` appends legacy aliases.
 * The Bash options `hashall` and `nolog` have no canonical `koshconf` name. They are accepted by `set` and `-o`, appear in `koshconf list --all` as `posix.legacy.hashall` and `posix.legacy.nolog`, and are rejected by `koshconf get`, `koshconf set`, and `kosh.conf`.
 * No-op `bash.legacy.*` `shopt` entries (such as `cdspell` or `histappend`) are accepted so legacy Bash startup files execute without errors, but they do not alter shell behavior. `shopt` accepts `array_expand_once` as the Bash 5.3 alias for `assoc_expand_once`.
+* `completion.*` and `editor.hints.*` affect the shell prompt and the minibuffers; a `slurp` document completes nothing, shows no hint rows, and takes `Tab` as literal text in Emacs and Vi insert mode. `editor.wrap_width` and `editor.auto_close_brackets_and_quotes` still apply in `slurp`.
 
 ### Settings mutability constraints
 
@@ -164,7 +165,7 @@ Shell settings are inspected and mutated via `set`, `shopt`, and `koshconf`, and
 | 8 | i | `editor.history.arrow_keys_search_by_typed_prefix` |  | Boolean (`on` or `off`). |
 | 9 | i | `editor.history.file_path` |  | UTF-8 path string; maps to `KOSH_HISTORY_FILE`. |
 | 10 | i | `editor.history.max_entries` |  | Integer `0` to `2147483647`; maps to `KOSH_HISTORY_SIZE`. |
-| 11 | i | `completion.add_space_after_completed_word` |  | `on` (default), `off`, or `on-excluding-trailing-slash`. |
+| 11 | i | `completion.add_space_after_completed_word` |  | `off` (default), `on`, or `on-excluding-trailing-slash`. |
 | 12 | i | `optimizer.warning_level` | `set -W` | Integer `0` to `3`. |
 | 13 | i | `optimizer.show_annoying_tier` |  | Boolean (`on` or `off`). |
 | 14 | s | `optimizer.analyze_before_running` |  | Boolean (`on` or `off`). |

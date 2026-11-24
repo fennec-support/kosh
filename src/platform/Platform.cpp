@@ -70,13 +70,6 @@ path_is_older_than(StringView first, StringView second) wontthrow -> bool
   return path_is_newer_than(second, first);
 }
 
-cold fn
-list_directory_typed(StringView dir) throws
-    -> Maybe<ArrayList<Path::DirectoryChild>>
-{
-  return list_directory_typed(dir, heap_allocator());
-}
-
 fn
 DirectoryCursor::collect(Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>

@@ -1,5 +1,5 @@
 startup-prompt PASS
-tab-appends-a-space-by-default PASS
+tab-adds-no-space-by-default PASS
 ghost-without-tab PASS
 ghost-right-accepts PASS
 ghost-right-runs PASS
@@ -121,6 +121,9 @@ ordinary-path-menu-enter-still-runs-the-line PASS
 fuzzy-path-streams-shallow-siblings-before-deep-matches PASS
 fuzzy-path-stream-keeps-edits-and-finishes-in-scope PASS
 fuzzy-path-escape-stops-a-loading-search PASS
+fuzzy-path-keeps-viewport-with-one-match PASS
+fuzzy-path-keeps-viewport-with-no-matches PASS
+fuzzy-path-refills-the-same-viewport PASS
 fuzzy-path-scrolls-in-final-order PASS
 fuzzy-path-ctrl-backspace-edits-the-query PASS
 fuzzy-path-ctrl-k-edits-the-query PASS

@@ -397,8 +397,8 @@ constexpr OptionDescriptor OPTION_REGISTRY[] = {
                                        "completion: off for never, on for "
                                        "always, or on-excluding-trailing-slash "
                                        "for all but a directory."},
-                   1,
-                   1),
+                   0,
+                   0),
         enum_values(SPACE_AFTER_COMPLETION_VALUE_NAMES)),
     with_enum(make_entry(12,
                          "optimizer.warning_level",
