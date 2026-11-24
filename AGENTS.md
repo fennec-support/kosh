@@ -224,10 +224,10 @@ The native path menu opens directories with Right, goes to the parent with
 Ctrl-Left, and previews details or up to 15 directory entries in a right pane.
 A preview follows a symlink for display, reports a dangling or unavailable
 target, and identifies special files without opening them. The fuzzy search
-walks with os::DirectoryCursor and does not follow directory symlinks. The file
-picker seeds its query from the shell token, recolors the unresolved query, and
-inserts the picked path instead of opening it when the host has no open
-callback.
+walks breadth-first with one resumable os::DirectoryCursor and does not follow
+directory symlinks. The file picker seeds its query from the shell token,
+recolors the unresolved query, and inserts the picked path instead of opening
+it when the host has no open callback.
 
 Inline hints use builtin and koshkit registrations, aliases, functions, manpage
 caches, and help caches. They do not search PATH or open files. The editor owns

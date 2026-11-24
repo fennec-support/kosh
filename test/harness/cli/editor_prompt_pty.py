@@ -306,6 +306,7 @@ def run_prompt_pad_checks(binary, directory, command_directory, report):
     try:
         session.wait_until(lambda screen: screen.get_prompt_row() >= 0)
         session.send(b"koshconf set completion.menu_style interactive\r")
+        session.send(b"zzpad1() { :; }; zzpad2() { :; }\r")
         session.send(b"PS1=$'top\\n\\\\. '; RPS1=\r")
         session.send(b"echo zq1")
         report.record("interactive-menu-leaves-a-wide-prompt-row", session,
@@ -321,7 +322,7 @@ def run_prompt_pad_checks(binary, directory, command_directory, report):
         report.record("interactive-menu-keeps-an-empty-prompt", session,
                       has_rows(["echo zq3"]))
         session.send(CTRL_C)
-        session.send(b"ech\t")
+        session.send(b"zzpad\t")
         report.record("empty-prompt-menu-starts-on-the-first-column", session,
                       is_menu_on_first_column())
         session.send(CTRL_C)

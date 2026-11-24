@@ -862,14 +862,19 @@ The preview identifies special files without opening them.
 .IP \(bu 2
 \f[B]Fuzzy path search\f[R] \- When the native path menu says
 \f[CR]no matches. tab to fuzzy search\f[R], press \f[CR]Tab\f[R] again
-to search recursively below the deepest existing directory in the path.
-The search does not follow directory symlinks within that directory
-tree.
-The unresolved text starts the query.
+to search below the deepest existing directory in the path.
+The search visits directories breadth\-first and does not follow
+directory symlinks.
+The unresolved text starts the light\-green query.
 Matches appear as the search finds them, with \f[CR]loading...\f[R] at
 the bottom until the search finishes.
-Type or press \f[CR]Backspace\f[R] to refine the light\-green query
-while the search runs.
+Use \f[CR]Left\f[R], \f[CR]Home\f[R], and \f[CR]End\f[R] to move in the
+query and \f[CR]Backspace\f[R], \f[CR]Delete\f[R],
+\f[CR]Ctrl\-Backspace\f[R] (or \f[CR]Ctrl\-W\f[R]), \f[CR]Ctrl\-K\f[R],
+and \f[CR]Ctrl\-U\f[R] to edit it.
+At the start of the query after \f[CR]./\f[R], \f[CR]Backspace\f[R]
+removes the slash, keeps the dot, and returns to ordinary completion.
+\f[CR]Up\f[R] and \f[CR]Down\f[R] select matches.
 \f[CR]Ctrl\-Enter\f[R] inserts the highlighted match as an argument and
 leaves the query and menu active for another selection.
 \f[CR]Enter\f[R] and \f[CR]Tab\f[R] accept the highlighted match and
@@ -1136,20 +1141,26 @@ T}
 .TE
 .PP
 \f[CR]Ctrl\-X Ctrl\-F\f[R], \f[CR]M\-x find\-file\f[R], and Vi
-\f[CR]:fzf\f[R] open the same recursive fuzzy file picker at the shell
-prompt and in \f[CR]slurp\f[R].
+\f[CR]:fzf\f[R] open the same fuzzy file picker at the shell prompt and
+in \f[CR]slurp\f[R].
 The picker starts in the working directory unless a path at the shell
 caret seeds the search.
 An existing directory seeds the search inside that directory, even
 without a trailing slash.
-The picker shows up to 16 matches at once as they arrive and does not
-follow directory symlinks.
+The picker searches breadth\-first without following directory symlinks
+and shows up to 16 matches at once as they arrive.
 The editable query after the resolved directory prefix is light green;
 the preview is dim.
 Use \f[CR]Up\f[R] and \f[CR]Down\f[R] to select and scroll,
-\f[CR]Ctrl\-A\f[R] and \f[CR]Ctrl\-E\f[R] to move to the start and end
-of the query, and \f[CR]Ctrl\-Left\f[R] and \f[CR]Ctrl\-Right\f[R] to
-move across path components without changing the search root.
+\f[CR]Home\f[R] or \f[CR]Ctrl\-A\f[R] and \f[CR]End\f[R] or
+\f[CR]Ctrl\-E\f[R] to move to the start and end, and
+\f[CR]Ctrl\-Left\f[R] and \f[CR]Ctrl\-Right\f[R] to move across path
+components.
+Use \f[CR]Backspace\f[R], \f[CR]Delete\f[R], \f[CR]Ctrl\-Backspace\f[R]
+(or \f[CR]Ctrl\-W\f[R]), \f[CR]Ctrl\-K\f[R], and \f[CR]Ctrl\-U\f[R] to
+edit the query.
+Deleting the initial slash in \f[CR]./\f[R] leaves \f[CR].\f[R] and
+clears the search root.
 \f[CR]Right\f[R] enters the selected directory without changing the
 working directory.
 At the shell prompt, \f[CR]Tab\f[R] or \f[CR]Enter\f[R] inserts the
@@ -2019,6 +2030,7 @@ failed one, and without a backup nothing is written.
 .IP \(bu 2
 \f[B]\f[CB]slurp\f[B] file switching\f[R] \- Use the same recursive
 fuzzy file picker as at the shell prompt.
+The picker fills the bottom rows from the first column.
 You can also enter a literal path; \f[CR]\-\f[R] names a file.
 A dirty buffer offers Save, Discard, or Cancel before switching.
 A failed save or open keeps the current buffer.

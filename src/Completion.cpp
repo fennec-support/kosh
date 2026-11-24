@@ -1562,10 +1562,13 @@ scan_editor_paths(editor_path_search &search,
       if (is_directory) search.directories.push(id);
       continue;
     }
-    if (search.directories.is_empty()) break;
+    if (search.next_directory_index == search.directories.count()) break;
 
-    search.directory_id = search.directories.back();
-    search.directories.pop_back();
+    search.directory_id = search.directories[search.next_directory_index++];
+    if (search.next_directory_index == search.directories.count()) {
+      search.directories.clear();
+      search.next_directory_index = 0;
+    }
     search.directory.clear();
     search.directory.append(search.root.view());
     append_editor_relative_path(search, search.directory_id, search.directory);
@@ -1610,7 +1613,8 @@ advance_editor_path_search(editor_path_search            &search,
       search, text.substring(search.directory_length), work_count);
 
   if (search.scanned_count < search.entries.count() ||
-      !search.directories.is_empty() || search.children.is_open())
+      search.next_directory_index < search.directories.count() ||
+      search.children.is_open())
   {
     return true;
   }
@@ -2324,8 +2328,6 @@ prepare_completion(StringView        line,
       has_open_quote ? decoded_token.text.view().substring(
                            decoded_token.open_quote_decoded_start)
                      : decoded_token.text.view();
-  let const stage_token =
-      decoded_token.has_shell_syntax ? decoded_token.text.view() : token;
   let const is_glob_token = !has_open_quote && decoded_token.glob_active.any();
   let const is_leading_variable_active =
       has_open_quote ? decoded_token.quote_character == '"' &&
@@ -2340,7 +2342,11 @@ prepare_completion(StringView        line,
 
   LOG(Debug, "complete line '%.*s' cursor %zu token '%.*s' command %d",
       static_cast<int>(line.length), line.data, cursor,
-      static_cast<int>(stage_token.length), stage_token.data,
+      static_cast<int>(decoded_token.has_shell_syntax
+                           ? decoded_token.text.length()
+                           : token.length),
+      decoded_token.has_shell_syntax ? decoded_token.text.view().data
+                                     : token.data,
       is_command ? 1 : 0);
 
   let const is_inline_glob =

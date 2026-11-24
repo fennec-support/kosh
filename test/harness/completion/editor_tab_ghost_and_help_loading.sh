@@ -402,13 +402,14 @@ send_quoted_input()
     wait_for_editor "$d/quoted-ready" || fail "$LINENO"
     printf "cd '%s'\n" "$d/quoted-completion"
     sleep 0.2
-    printf "printf '<%%s>\\\\n' 'spX'\033[D\033[D\t\n"
+    # Tab matches the whole token, including the bytes after the caret.
+    printf "printf '<%%s>\\\\n' 'spa'\033[D\033[D\t\n"
     sleep 0.2
-    printf "printf '<%%s>\\\\n' plaX\033[D\t\n"
+    printf "printf '<%%s>\\\\n' plai\033[D\t\n"
     sleep 0.2
     printf "COMPLETION_PROBE=variable-value\n"
     sleep 0.2
-    printf "printf '<%%s>\\\\n' \"\$COMPLETION_PROBX\"\033[D\033[D\t\n"
+    printf "printf '<%%s>\\\\n' \"\$COMPLETION_PROB\"\033[D\033[D\t\n"
     sleep 0.2
     printf "printf '<%%s>\\\\n' read\tone\n"
     sleep 0.2

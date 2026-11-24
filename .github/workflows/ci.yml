@@ -199,6 +199,27 @@ jobs:
           'C:\msys64\usr\bin' |
             Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Install LLVM 22 for MSVC
+        shell: pwsh
+        run: |
+          $version = '22.1.8'
+          $installer = Join-Path $env:RUNNER_TEMP "LLVM-$version-win64.exe"
+          $llvmDirectory = Join-Path $env:RUNNER_TEMP 'kosh-llvm'
+          $release = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$version"
+          Invoke-WebRequest "$release/LLVM-$version-win64.exe" -OutFile $installer
+          $expectedHash = '16e5709785fef73c854646241c4a92c5cd574318d1b33c63330dd7721903e55c'
+          if ((Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash -ne $expectedHash) {
+            throw 'Unexpected LLVM installer SHA-256'
+          }
+          $install = Start-Process -FilePath $installer `
+            -ArgumentList '/S', "/D=$llvmDirectory" -Wait -PassThru
+          if ($install.ExitCode -ne 0) {
+            throw "LLVM installation failed with exit code $($install.ExitCode)"
+          }
+          Join-Path $llvmDirectory 'bin' |
+            Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Remove-Item -LiteralPath $installer
+
       - name: Verify the test toolchain
         shell: pwsh
         run: |
@@ -247,7 +268,19 @@ jobs:
             }
           }
           Remove-Item -LiteralPath $symlinkProbeDirectory -Recurse -Force
-          Get-Command clang++.exe -ErrorAction Stop
+          $clangPath = (Get-Command clang++.exe -ErrorAction Stop).Source
+          $expectedClangPath = Join-Path $env:RUNNER_TEMP 'kosh-llvm\bin\clang++.exe'
+          if ($clangPath -ne $expectedClangPath) {
+            throw "Unexpected clang++ executable at $clangPath"
+          }
+          $clangTarget = clang++ -dumpmachine
+          if ($LASTEXITCODE -ne 0 -or $clangTarget -notlike 'x86_64-*-windows-msvc*') {
+            throw "Unexpected clang++ target: $clangTarget"
+          }
+          '#include <initializer_list>' | clang++ -std=c++23 -fsyntax-only -x c++ -
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Clang and the installed MSVC C++ headers are incompatible'
+          }
           Get-Command python3.exe -ErrorAction Stop
           clang++ --version | Select-Object -First 1
           sh --version | Select-Object -First 1

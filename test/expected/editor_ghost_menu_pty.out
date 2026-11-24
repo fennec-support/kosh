@@ -118,10 +118,13 @@ fuzzy-path-quote-at-root-refreshes-the-query PASS
 fuzzy-ctrl-enter-closes-only-the-accepted-quote PASS
 fuzzy-path-enter-accepts-without-running PASS
 ordinary-path-menu-enter-still-runs-the-line PASS
-fuzzy-path-streams-matches-above-the-loading-footer PASS
+fuzzy-path-streams-shallow-siblings-before-deep-matches PASS
 fuzzy-path-stream-keeps-edits-and-finishes-in-scope PASS
 fuzzy-path-escape-stops-a-loading-search PASS
 fuzzy-path-scrolls-in-final-order PASS
+fuzzy-path-ctrl-backspace-edits-the-query PASS
+fuzzy-path-ctrl-k-edits-the-query PASS
+fuzzy-path-backspace-at-initial-slash-keeps-dot PASS
 history-seed-alpha PASS
 history-seed-beta PASS
 history-seed-gamma PASS

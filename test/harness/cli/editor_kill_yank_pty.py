@@ -86,6 +86,7 @@ from editor_ghost_menu_pty import (BACKSPACE, DOWN, LEFT, RIGHT, WAIT_SECONDS,
 
 CTRL_A = b"\x01"
 CTRL_C = b"\x03"
+CTRL_E = b"\x05"
 CTRL_K = b"\x0b"
 CTRL_T = b"\x14"
 CTRL_W = b"\x17"
@@ -971,14 +972,20 @@ def has_picker_colors(screen, prefix, suffix):
 
 
 def has_picker_row(screen, text, is_selected, is_shell=False, query="./"):
-    position = get_picker_query(screen, query)
-    if position is None:
-        return False
-    row, column = position
-    if is_shell and (column == 0 or row != screen.get_prompt_row()):
-        return False
     lines = screen.get_lines()
-    for entry_row in range(row + 2, len(lines)):
+    if is_shell:
+        position = get_picker_query(screen, query, SHELL_PICKER_HELP)
+        if position is None:
+            return False
+        row, column = position
+        if column == 0 or row != screen.get_prompt_row():
+            return False
+        first_entry = row + 2
+    else:
+        if PICKER_HELP not in lines:
+            return False
+        first_entry, column = lines.index(PICKER_HELP) + 1, 0
+    for entry_row in range(first_entry, len(lines)):
         if lines[entry_row] != " " * column + text:
             continue
         cells = screen.rows[entry_row][column:column + len(text)]
@@ -991,20 +998,41 @@ def has_picker_row(screen, text, is_selected, is_shell=False, query="./"):
 
 
 def picker_window(screen):
+    lines = screen.get_lines()
+    if PICKER_HELP in lines:
+        body = [line.strip() for line in lines]
+        return [line for line in body if line.startswith("./zzwindow-")], body
     position = get_picker_query(screen, "./zzwindow")
     if position is None:
         return [], []
     row, _ = position
-    body = [line.strip() for line in screen.get_lines()[row + 1:]]
+    body = [line.strip() for line in lines[row + 1:]]
     return [line for line in body if line.startswith("./zzwindow-")], body
 
 
 def has_picker_ghost(screen, query, ghost):
-    if get_picker_query(screen, query) is None:
+    position = (get_slurp_picker_query(screen, query)
+                if PICKER_HELP in screen.get_lines()
+                else get_picker_query(screen, query))
+    if position is None:
         return False
     cells = screen.rows[screen.row][screen.column:screen.column + len(ghost)]
     return ("".join(cell[0] for cell in cells) == ghost
             and all(cell[1] and cell[3] == (90,) for cell in cells))
+
+
+def get_slurp_picker_query(screen, query, caret=None):
+    if PICKER_HELP not in screen.get_lines():
+        return None
+    row = screen.row
+    column = screen.column - (len(query) if caret is None else caret)
+    if column < 0:
+        return None
+    cells = screen.rows[row][column:column + len(query)]
+    if ("".join(cell[0] for cell in cells) == query
+            and not any(cell[1] for cell in cells)):
+        return row, column
+    return None
 
 
 def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
@@ -1024,11 +1052,64 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
         return (has_picker_row(screen, PICKER_DIRECTORY, True)
                 and has_picker_row(screen, PICKER_NESTED, False))
 
+    colon_session = Session(binary, directory, command_directory,
+                            rows=24, columns=180)
+    try:
+        colon_session.wait_until(is_line(""))
+        colon_session.send(b"slurp -V start.txt\r")
+        colon_session.wait_until(has_row("starting buffer"))
+        colon_session.send(b":")
+        colon_session.wait_until(lambda screen: has_text("fzf")(screen))
+        report.record("slurp-colon-help-lists-fzf", colon_session, has_text("fzf"))
+        colon_session.send(KITTY_ESCAPE)
+        colon_session.wait_until(is_line(""))
+    finally:
+        colon_session.close()
+
     session = Session(binary, directory, command_directory, rows=24, columns=180)
     try:
         session.wait_until(is_line(""))
         session.send(b"slurp start.txt\r")
         session.wait_until(has_row("starting buffer"))
+        session.send(CTRL_X_CTRL_F)
+        session.wait_until(has_text(PICKER_HELP))
+
+        def has_picker_at_bottom(screen):
+            lines = screen.get_lines()
+            last = max((index for index, line in enumerate(lines) if line.strip()),
+                       default=-1)
+            return last == screen.height - 1 and PICKER_HELP in lines
+
+        report.record("slurp-picker-sits-on-the-bottom-row", session,
+                      has_picker_at_bottom)
+        session.send(BACKSPACE)
+        report.record("slurp-deleting-root-slash-keeps-the-dot", session,
+                      lambda screen: get_slurp_picker_query(screen, ".") is not None)
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: not has_text(PICKER_HELP)(screen))
+        session.send(CTRL_X_CTRL_F)
+        session.wait_until(has_text(PICKER_HELP))
+        session.send(b"a-browser/child")
+        session.wait_until(lambda screen: get_slurp_picker_query(
+            screen, "./a-browser/child") is not None)
+        session.send(CTRL_W)
+        report.record("slurp-fuzzy-ctrl-backspace-drops-a-word", session,
+                      lambda screen: get_slurp_picker_query(screen, "./a-browser/")
+                      is not None and has_text(PICKER_HELP)(screen))
+        session.send(b"child")
+        session.wait_until(lambda screen: get_slurp_picker_query(
+            screen, "./a-browser/child") is not None)
+        session.send(LEFT * 2)
+        moved = session.wait_until(lambda screen: get_slurp_picker_query(
+            screen, "./a-browser/child", caret=len("./a-browser/chi")) is not None)
+        session.send(CTRL_K)
+        report.record("slurp-fuzzy-ctrl-k-kills-to-the-end", session,
+                      lambda screen: moved and get_slurp_picker_query(
+                          screen, "./a-browser/chi")
+                      is not None and has_text(PICKER_HELP)(screen))
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: has_row("starting buffer")(screen)
+                           and not has_text(PICKER_HELP)(screen))
         session.send(CTRL_X_CTRL_F)
         report.record("slurp-ctrl-x-ctrl-f-opens-the-fuzzy-picker", session,
                       has_initial_rows)
@@ -1041,29 +1122,35 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
         session.wait_until(has_initial_rows)
         session.send(RIGHT)
         report.record("slurp-fuzzy-right-browses-the-selected-directory", session,
-                      lambda screen: get_picker_query(screen, PICKER_DIRECTORY) is not None
+                      lambda screen: get_slurp_picker_query(screen, PICKER_DIRECTORY) is not None
                       and has_text("child.txt")(screen)
                       and not has_text("picker data done.txt")(screen))
         session.send(b"\x1b[1;5D")
         report.record("slurp-fuzzy-ctrl-left-moves-within-the-directory-query", session,
-                      lambda screen: get_picker_query(
+                      lambda screen: get_slurp_picker_query(
                           screen, PICKER_DIRECTORY, caret=2) is not None
                       and has_text(PICKER_CHILD)(screen))
         session.send(b"\x1b[1;5C")
         report.record("slurp-fuzzy-ctrl-right-moves-within-the-directory-query", session,
-                      lambda screen: get_picker_query(
+                      lambda screen: get_slurp_picker_query(
                           screen, PICKER_DIRECTORY, caret=len(PICKER_DIRECTORY) - 1)
                       is not None and has_text(PICKER_CHILD)(screen))
+        session.send(b"\x05ch")
+        rooted_query = PICKER_DIRECTORY + "ch"
+        session.wait_until(lambda screen: get_slurp_picker_query(
+            screen, rooted_query) is not None)
         session.send(CTRL_A)
         report.record("slurp-fuzzy-ctrl-a-moves-to-query-start", session,
-                      lambda screen: get_picker_query(
-                          screen, PICKER_DIRECTORY, caret=0) is not None)
+                      lambda screen: get_slurp_picker_query(
+                          screen, rooted_query, caret=len(PICKER_DIRECTORY))
+                      is not None)
         session.send(b"\x05")
         report.record("slurp-fuzzy-ctrl-e-moves-to-query-end", session,
-                      lambda screen: get_picker_query(screen, PICKER_DIRECTORY) is not None)
-        session.send(b"\x1b[1;5D" + b"x")
+                      lambda screen: get_slurp_picker_query(screen, rooted_query)
+                      is not None)
+        session.send(BACKSPACE * 2 + b"\x1b[1;5D" + b"x")
         report.record("slurp-fuzzy-inserts-at-the-moved-query-caret", session,
-                      lambda screen: get_picker_query(
+                      lambda screen: get_slurp_picker_query(
                           screen, "./xa-browser/", caret=3) is not None)
         session.send(KITTY_ESCAPE)
         session.wait_until(lambda screen: not has_text(PICKER_HELP)(screen))
@@ -1494,7 +1581,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(b"slurp-open\t\r")
         report.record("slurp-find-file-completes-raw-spaced-path", session,
                       has_row("target"))
-        session.send(b"!" + ALT_X + b"find-file\r")
+        session.send(CTRL_E + b"!" + ALT_X + b"find-file\r")
         session.wait_until(has_text(PICKER_HELP))
         session.send(b"slurp-switch.txt\r")
         session.wait_until(has_text("Unsaved changes:"))
@@ -1583,7 +1670,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       and read_bytes(filtered) == b"vi\n")
         session.send(b"printf 'switch\\n' | slurp - >slurp-filter.out\r")
         session.wait_until(has_row("switch"))
-        session.send(b"!" + ALT_X + b"find-file\r")
+        session.send(CTRL_E + b"!" + ALT_X + b"find-file\r")
         session.wait_until(has_text(PICKER_HELP))
         session.send(b"slurp-open space.txt\r")
         session.wait_until(has_text("Unsaved changes:"))

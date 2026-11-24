@@ -184,6 +184,11 @@ slurp-vi-drag-selection-deletes PASS
 slurp-refuses-a-binary-file PASS
 slurp-refuses-a-surrogate PASS
 slurp-refuses-a-special-file PASS
+slurp-colon-help-lists-fzf PASS
+slurp-picker-sits-on-the-bottom-row PASS
+slurp-deleting-root-slash-keeps-the-dot PASS
+slurp-fuzzy-ctrl-backspace-drops-a-word PASS
+slurp-fuzzy-ctrl-k-kills-to-the-end PASS
 slurp-ctrl-x-ctrl-f-opens-the-fuzzy-picker PASS
 slurp-fuzzy-down-moves-highlight-and-colors-directory PASS
 slurp-fuzzy-right-browses-the-selected-directory PASS

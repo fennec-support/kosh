@@ -8,15 +8,15 @@
 # terminal model replays the escape sequences the editor writes and tracks which
 # cells are drawn in the dim ghost color. The checks cover the ghost appearing
 # without Tab, its acceptance through Right, End, and Ctrl-E, a cd operand
-# found under CDPATH once a pause has indexed it, a file a background job
-# creates after the prompt reaching Tab, an empty Enter refreshing the
-# listings the ghost shows, menu narrowing and
-# widening on every keystroke, Ctrl-W and Alt-Backspace refreshing an open menu
-# down to an empty line, Escape and Ctrl-C afterwards, and session functions and
-# aliases in ghost and Tab completion. A complete -C command runs once while a
-# filter narrows and widens its menu, and again below the gathered token. A
-# -C reply the shell does not rank narrows to every row the token opens in
-# either case. complete -E serves only a line that holds nothing, runs once,
+# found under CDPATH once a pause has indexed it, Tab listing a file created
+# after the prompt, an empty Enter refreshing the listings the ghost shows,
+# menu narrowing and widening on every keystroke, Ctrl-W and Alt-Backspace
+# refreshing an open menu down to an empty line, Escape and Ctrl-C afterwards,
+# and session functions and aliases in ghost and Tab completion. A complete -C
+# command runs once while a filter narrows and widens its menu, and again below
+# the gathered token. A -C reply the shell does not rank narrows to every row
+# the token opens in either case. complete -E serves only a line that holds
+# nothing, runs once,
 # and keeps its own list after Tab inserts its common prefix. A fresh -I
 # completion at the start of a command inserts before it. Other explicit
 # completion matches text on both sides of the caret and replaces the whole
@@ -367,7 +367,8 @@ class Screen:
                     continue
             detail = re.search(r" {2,}\S", line[start:])
             if detail and (cells[start + detail.end() - 1][1]
-                           or text.startswith(("preview/", "dense/"))):
+                           or text.startswith(("preview/", "dense/"))
+                           or "/" in line[start:start + detail.start()]):
                 text = line[start:start + detail.start()].rstrip()
             if text.startswith(MENU_FOOTER):
                 match = re.match(r"showing \d+-\d+ of (\d+)(?= |$)", text)
@@ -1453,8 +1454,13 @@ def run_fuzzy_path_checks(session, report, directory):
 
 def run_streaming_fuzzy_checks(session, report, directory):
     tree = os.path.join(directory, "tree")
-    branch = os.path.join(tree, "wide")
+    branch = os.path.join(tree, "wide", "deep")
     os.makedirs(branch)
+    near = os.path.join(tree, "near", "deep")
+    os.makedirs(near)
+    for name in ("near/needle-near.txt", "wide/needle-wide.txt",
+                 "near/deep/needle-early.txt"):
+        open(os.path.join(tree, name), "w").close()
     for index in range(8192):
         name = ("needle-%04d.txt" if index % 96 == 0
                 else "ordinary-%04d.txt") % index
@@ -1474,22 +1480,28 @@ def run_streaming_fuzzy_checks(session, report, directory):
     def is_loading(screen):
         return fuzzy_rows(screen)[-1:] == ["loading..."]
 
+    def matching_rows(screen):
+        return [row.split()[0] for row in fuzzy_rows(screen)
+                if row.startswith("./")]
+
     def start_search():
         session.send(draft.encode() + b"\t")
         session.wait_until(has_typed_menu(draft, ["no matches. tab to fuzzy search"]))
         session.send(b"\t")
 
     start_search()
-    report.record("fuzzy-path-streams-matches-above-the-loading-footer", session,
-                  lambda screen: is_loading(screen)
-                  and any("needle-" in row for row in fuzzy_rows(screen)))
+    report.record("fuzzy-path-streams-shallow-siblings-before-deep-matches",
+                  session, lambda screen: is_loading(screen)
+                  and set(matching_rows(screen)[:2]) == {
+                      "./tree/near/needle-near.txt",
+                      "./tree/wide/needle-wide.txt",
+                  })
     session.send(b"s")
     report.record("fuzzy-path-stream-keeps-edits-and-finishes-in-scope", session,
                   lambda screen: get_state(screen)[0] == draft + "s"
                   and not is_loading(screen)
-                  and [row.split()[0] for row in fuzzy_rows(screen)
-                       if row.startswith("./")]
-                  == ["./tree/wide/needle-special.txt"])
+                  and matching_rows(screen)
+                  == ["./tree/wide/deep/needle-special.txt"])
     clear_line(session)
 
     start_search()
@@ -1504,16 +1516,19 @@ def run_streaming_fuzzy_checks(session, report, directory):
     start_search()
     def selected_path(screen):
         for row in screen.get_lines()[screen.get_prompt_row() + 1:]:
-            found = re.search(r"\xa0(\./tree/wide/needle-[^\s]+\.txt)", row)
+            found = re.search(r"\xa0(\./tree/\S+/needle-\S+\.txt)", row)
             if found:
                 return found[1]
         return None
 
     ready = session.wait_until(lambda screen: not is_loading(screen)
                                and selected_path(screen) is not None)
-    ordered = ["./tree/wide/needle-%04d.txt" % index
-               for index in range(0, 8192, 96)]
-    ordered.append("./tree/wide/needle-special.txt")
+    ordered = sorted(["./tree/wide/deep/needle-%04d.txt" % index
+                      for index in range(0, 8192, 96)]
+                     + ["./tree/wide/deep/needle-special.txt",
+                        "./tree/wide/needle-wide.txt",
+                        "./tree/near/deep/needle-early.txt",
+                        "./tree/near/needle-near.txt"])
     selected = selected_path(session.screen)
     expected = (ordered[(ordered.index(selected) + 20) % len(ordered)]
                 if selected in ordered else None)
@@ -1521,6 +1536,42 @@ def run_streaming_fuzzy_checks(session, report, directory):
     report.record("fuzzy-path-scrolls-in-final-order", session,
                   lambda screen: ready and expected is not None
                   and selected_path(screen) == expected)
+    clear_line(session)
+
+    start_search()
+    session.wait_until(lambda screen: bool(fuzzy_rows(screen)))
+    session.send(b"\x1b[127;5u")
+    prefix = "cat ./tree/"
+    report.record("fuzzy-path-ctrl-backspace-edits-the-query", session,
+                  lambda screen: get_state(screen)[0] == prefix
+                  and bool(fuzzy_rows(screen)))
+    clear_line(session)
+
+    start_search()
+    session.wait_until(lambda screen: bool(fuzzy_rows(screen)))
+    session.send(b"x" + LEFT)
+    moved = session.wait_until(lambda screen: get_state(screen)[0] == draft + "x"
+                               and has_caret_at(screen, len(draft))
+                               and bool(fuzzy_rows(screen)))
+    session.send(b"\x0b")
+    report.record("fuzzy-path-ctrl-k-edits-the-query", session,
+                  lambda screen: moved and get_state(screen)[0] == draft
+                  and bool(fuzzy_rows(screen)))
+    clear_line(session)
+
+    root_miss = "cat ./ndleq"
+    session.send(root_miss.encode() + b"\t")
+    session.wait_until(has_typed_menu(root_miss,
+                                     ["no matches. tab to fuzzy search"]))
+    session.send(b"\t")
+    session.wait_until(lambda screen: bool(fuzzy_rows(screen)))
+    session.send(CTRL_W)
+    at_root = session.wait_until(lambda screen: get_state(screen)[0] == "cat ./"
+                                and bool(fuzzy_rows(screen)))
+    session.send(BACKSPACE)
+    report.record("fuzzy-path-backspace-at-initial-slash-keeps-dot", session,
+                  lambda screen: at_root and get_state(screen)[0] == "cat ."
+                  and not fuzzy_rows(screen))
     clear_line(session)
 
 
@@ -1569,18 +1620,18 @@ def run_checks(binary, directory, command_directory, report):
         session.send(b"unset CDPATH\r")
         session.wait_until(is_line(""))
 
-        late_file = os.path.join(directory, "late", "late-file")
-        session.send(b"{ sleep 0.5; : > late/late-file; } &\r")
-        session.wait_until(is_line(""))
         session.send(b"cat late/la\t")
-        session.pump(0.1)
-        deadline = time.monotonic() + WAIT_SECONDS
-        while not os.path.exists(late_file) and time.monotonic() < deadline:
-            session.pump(0.05)
+        was_missing = session.wait_until(has_typed_menu(
+            "cat late/la", ["no matches. tab to fuzzy search"]))
+        # Tab on a still-open empty menu starts fuzzy search instead.
+        session.send(ESCAPE)
+        was_closed = session.wait_until(is_typed_without_menu("cat late/la"))
+        open(os.path.join(directory, "late", "late-file"), "w").close()
         session.send(b"\t")
+        has_late_file = has_typed_menu("cat late/late-file", ["late/late-file"])
         report.record("tab-lists-file-created-after-prompt", session,
-                      lambda screen: get_state(screen) is not None
-                      and get_state(screen)[0].startswith("cat late/late-file"))
+                      lambda screen: was_missing and was_closed
+                      and has_late_file(screen))
         clear_line(session)
 
         session.send(b"cat later/")

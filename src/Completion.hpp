@@ -164,6 +164,7 @@ struct editor_path_search
   os::DirectoryCursor          children;
   usize                        raw_directory_length{0};
   usize                        directory_length{0};
+  usize                        next_directory_index{0};
   usize                        scanned_count{0};
   usize                        heap_first{0};
   usize                        heap_count{0};
