@@ -1,5 +1,6 @@
 *.exe
 *.o
+*.d
 *.diff
 
 *.exp
