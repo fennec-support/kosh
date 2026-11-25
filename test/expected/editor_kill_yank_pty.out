@@ -243,9 +243,9 @@ slurp-m-x-find-file-filters-live-rows PASS
 slurp-fuzzy-escape-preserves-the-unsaved-buffer PASS
 slurp-fuzzy-shows-sixteen-candidates PASS
 slurp-fuzzy-previews-the-selected-literal-suffix PASS
-slurp-fuzzy-keeps-viewport-with-one-match PASS
-slurp-fuzzy-keeps-viewport-with-no-matches PASS
-slurp-fuzzy-refills-the-same-viewport PASS
+slurp-fuzzy-compacts-to-one-match PASS
+slurp-fuzzy-shows-no-matches-directly-under-the-query PASS
+slurp-fuzzy-refills-the-candidate-window PASS
 slurp-vi-fzf-opens-the-fuzzy-picker PASS
 slurp-vi-fzf-opens-a-nested-file-from-root PASS
 shell-ctrl-x-ctrl-f-shows-initial-picker-rows PASS
@@ -278,9 +278,9 @@ shell-fuzzy-spacing-on-excluding-trailing-slash-file PASS
 shell-fuzzy-spacing-on-excluding-trailing-slash-directory PASS
 shell-fuzzy-shows-sixteen-candidates PASS
 shell-fuzzy-previews-the-selected-literal-suffix PASS
-shell-fuzzy-keeps-viewport-with-one-match PASS
-shell-fuzzy-keeps-viewport-with-no-matches PASS
-shell-fuzzy-refills-the-same-viewport PASS
+shell-fuzzy-compacts-to-one-match PASS
+shell-fuzzy-shows-no-matches-directly-under-the-query PASS
+shell-fuzzy-refills-the-candidate-window PASS
 shell-fuzzy-scrolls-past-sixteen-candidates PASS
 shell-fuzzy-updates-ghost-after-scrolling PASS
 slurp-fuzzy-session-returns-to-the-shell PASS

@@ -1172,8 +1172,11 @@ caret seeds the search.
 An existing directory seeds the search inside that directory, even
 without a trailing slash.
 The picker searches breadth\-first without following directory symlinks.
-It reserves room for up to 16 matches as the terminal height allows, and
-the rows keep their positions as matches arrive or the query changes.
+It shows up to 16 matches as the terminal height allows.
+\f[CR]searching...\f[R] appears immediately after the visible matches,
+or directly below the query and help when no matches are visible.
+If the search finishes without a match, the picker shows
+\f[CR]no matches\f[R] there.
 The editable query after the resolved directory prefix is light green;
 the preview is dim.
 Use \f[CR]Up\f[R] and \f[CR]Down\f[R] to select and scroll,

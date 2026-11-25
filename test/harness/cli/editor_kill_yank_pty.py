@@ -1045,41 +1045,33 @@ def get_slurp_picker_query(screen, query, caret=None):
     return None
 
 
-def record_fixed_picker_window(session, report, label, matches):
+def record_compact_picker_window(session, report, label, matches):
     is_slurp = label == "slurp"
     get_query = get_slurp_picker_query if is_slurp else get_picker_query
     query = "./zzwindow"
-    position = get_query(session.screen, query)
-    query_row = session.screen.row - session.screen.get_top_row()
     candidate_offset = 1 if is_slurp else 2
 
-    def has_fixed_window(screen, suffix, body, footer):
+    def has_compact_window(screen, suffix, body):
         current = get_query(screen, query + suffix)
-        top = screen.get_top_row()
-        if (position is None or current is None or current[1] != position[1]
-                or current[0] - top != query_row):
+        if current is None:
             return False
         first = current[0] + candidate_offset
-        lines = screen.get_lines()
-        footer_row = first + 16
-        return (footer_row < top + screen.height
-                and (not is_slurp or footer_row == top + screen.height - 1)
-                and [line.strip() for line in lines[first:first + len(body)]]
-                == body and all(not line.strip() for line in
-                                lines[first + len(body):first + 16])
-                and (lines[footer_row].strip() if footer_row < len(lines)
-                     else "") == footer)
+        end = screen.get_top_row() + screen.height
+        lines = [line.strip() for line in screen.get_lines()[first:end]]
+        return (lines[:len(body)] == body
+                and (first + len(body) == end if is_slurp
+                     else not any(lines[len(body):])))
 
     session.send(b"-00")
-    report.record(label + "-fuzzy-keeps-viewport-with-one-match", session,
-                  lambda screen: has_fixed_window(screen, "-00", matches[:1], ""))
+    report.record(label + "-fuzzy-compacts-to-one-match", session,
+                  lambda screen: has_compact_window(screen, "-00", matches[:1]))
     session.send(b"q")
-    report.record(label + "-fuzzy-keeps-viewport-with-no-matches", session,
-                  lambda screen: has_fixed_window(screen, "-00q", ["no matches"], ""))
+    report.record(label + "-fuzzy-shows-no-matches-directly-under-the-query", session,
+                  lambda screen: has_compact_window(screen, "-00q", ["no matches"]))
     session.send(BACKSPACE * 4)
-    report.record(label + "-fuzzy-refills-the-same-viewport", session,
-                  lambda screen: has_fixed_window(screen, "", matches[:16],
-                                                  "showing 1-16 of 20"))
+    report.record(label + "-fuzzy-refills-the-candidate-window", session,
+                  lambda screen: has_compact_window(
+                      screen, "", matches[:16] + ["showing 1-16 of 20"]))
 
 
 def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
@@ -1126,10 +1118,11 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
 
         def has_picker_at_bottom(screen):
             lines = screen.get_lines()
-            return (screen.row == screen.height - 18 and has_slurp_picker(screen)
+            return (has_slurp_picker(screen)
                     and get_slurp_picker_query(screen, "./") is not None
                     and screen.row > original_caret[0]
-                    and has_row("starting buffer")(screen))
+                    and has_row("starting buffer")(screen)
+                    and len(lines) == screen.height and bool(lines[-1].strip()))
 
         report.record("slurp-picker-sits-on-the-bottom-row", session,
                       has_picker_at_bottom)
@@ -1262,7 +1255,7 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
                                          query="./zzwindow"))
         report.record("slurp-fuzzy-previews-the-selected-literal-suffix", session,
                       lambda screen: has_picker_ghost(screen, "./zzwindow", "-00"))
-        record_fixed_picker_window(session, report, "slurp", matches)
+        record_compact_picker_window(session, report, "slurp", matches)
         session.send(KITTY_ESCAPE)
         session.wait_until(lambda screen: not has_slurp_picker(screen))
         session.send(b"0:fzf\r")
@@ -1407,7 +1400,7 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
                                          is_shell=True, query="./zzwindow"))
         report.record("shell-fuzzy-previews-the-selected-literal-suffix", session,
                       lambda screen: has_picker_ghost(screen, "./zzwindow", "-00"))
-        record_fixed_picker_window(session, report, "shell", matches)
+        record_compact_picker_window(session, report, "shell", matches)
         session.send(DOWN * 16)
         report.record("shell-fuzzy-scrolls-past-sixteen-candidates", session,
                       lambda screen: picker_window(screen)[0] == matches[1:17]
