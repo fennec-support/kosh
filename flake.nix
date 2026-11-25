@@ -57,7 +57,7 @@
             git
           ];
 
-          buildInputs = nixpkgs.lib.optionals pkgs.stdenv.isLinux [
+          buildInputs = nixpkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
             pkgs.glibc.static
           ];
 
@@ -175,7 +175,7 @@
               clang-tools
               gnumake
               git
-            ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux (with pkgs; [
+            ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux (with pkgs; [
               mold
               lld
             ]);
