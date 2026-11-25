@@ -1,9 +1,3 @@
-== slurp:
--c:1:1: error: Builtin `slurp`: Not enough arguments.
-     1 |  slurp
-       |  ^~~~~
-note: Try `slurp --help` for more info.
-rc=2
 == slurp +3:
 -c:1:7: error: Builtin `slurp`: A line number needs a file after it.
      1 |  slurp +3
@@ -46,12 +40,6 @@ rc=2
        |  ^~~~~~~~~
 note: Run slurp with a controlling terminal for editor input and display.
 rc=1
-== koshkit slurp:
--c:1:1: error: Builtin `slurp`: Not enough arguments.
-     1 |  koshkit slurp
-       |  ^~~~~~~~~~~~~
-note: Try `slurp --help` for more info.
-rc=2
 == koshkit vi -e a:
 -c:1:9: error: Builtin `slurp`: Only one key set option can be given.
      1 |  koshkit vi -e a

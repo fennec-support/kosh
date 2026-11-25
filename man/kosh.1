@@ -1971,7 +1971,7 @@ utility per line; \f[CR]\-\-list\-flags\f[R] prints utilities and
 flags).
 T}
 T{
-\f[CR]slurp [\-e|\-v|\-V] [+LINE] FILE ...\f[R]
+\f[CR]slurp [\-e|\-v|\-V] [[+LINE] FILE ...]\f[R]
 T}@T{
 Opens each \f[CR]FILE\f[R] in turn in the full\-screen alternate\-buffer
 editor (\f[CR]\-e\f[R] Emacs mode, \f[CR]\-v\f[R] Vi insert mode,
@@ -1986,9 +1986,9 @@ rejected, and the next \f[CR]FILE\f[R] still opens.
 A restricted shell or an unavailable controlling terminal fails the run.
 Standard output must be a terminal for named\-file\-only editing.
 The status is \f[CR]1\f[R] on a rejection or failed run, \f[CR]2\f[R] on
-usage errors (a missing \f[CR]FILE\f[R], a \f[CR]+LINE\f[R] without a
-\f[CR]FILE\f[R], or more than one mode option), and \f[CR]130\f[R] on
-\f[CR]Ctrl\-C\f[R], which ends the run.
+usage errors (no \f[CR]FILE\f[R] with terminal input, a \f[CR]+LINE\f[R]
+without a \f[CR]FILE\f[R], or more than one mode option), and
+\f[CR]130\f[R] on \f[CR]Ctrl\-C\f[R], which ends the run.
 The bundled \f[CR]vi\f[R] and \f[CR]emacs\f[R] run \f[CR]slurp \-V\f[R]
 and \f[CR]slurp \-e\f[R].
 The editor has no completion, ghost text, or hint rows, and
@@ -2081,17 +2081,36 @@ The new file has its own undo history, and the original operand list
 resumes when it closes.
 .IP \(bu 2
 \f[B]\f[CB]slurp\f[B] filter input\f[R] \- A command\-line operand of
-\f[CR]\-\f[R] reads standard input, while the controlling terminal
-receives editor input and display.
-Each save stages the current text without writing standard output.
-\f[CR]M\-x save\-and\-quit\f[R] and the Vi write\-quit commands emit it
-once to the original standard output.
-A successful file switch emits it only after Save is explicitly
-selected.
-Discard, cancellation, interruption, and quit without writing emit
-nothing, even after a staging save.
+\f[CR]\-\f[R] reads standard input.
+With no file operands, \f[CR]slurp\f[R] does the same when standard
+input is redirected from a file or pipe; with terminal input it requires
+an operand.
+The editor reads keys and displays its screen on the controlling
+terminal.
+On quit or a successful file switch, it emits only the last explicitly
+saved text to the original standard output, once.
+Leaving the filter buffer without saving emits nothing and sets the
+command status to \f[CR]1\f[R].
+Saving an empty buffer succeeds and emits zero bytes.
+\f[CR]Ctrl\-C\f[R] interrupts with status \f[CR]130\f[R] and emits
+nothing.
 Repeated \f[CR]\-\f[R] operands continue reading the same stream, and
 \f[CR]./\-\f[R] names a file.
+.IP \(bu 2
+\f[B]Editing a privileged file\f[R] \- Prefer \f[CR]sudoedit FILE\f[R]
+with your chosen editor.
+To use the filter on a file you can read, run
+\f[CR]slurp < FILE > OUTPUT\f[R] with a separate private temporary file
+for \f[CR]OUTPUT\f[R].
+After a successful run, review that output and run
+\f[CR]sudo tee FILE < OUTPUT > /dev/null\f[R] only if you explicitly
+intend to replace \f[CR]FILE\f[R].
+Quitting without saving, interrupting the run, and saving an empty
+buffer all leave \f[CR]OUTPUT\f[R] empty, but return statuses
+\f[CR]1\f[R], \f[CR]130\f[R], and \f[CR]0\f[R], respectively.
+Do not run \f[CR]slurp < FILE | sudo tee FILE\f[R] (with or without
+\f[CR]\-\f[R]): \f[CR]tee\f[R] can truncate \f[CR]FILE\f[R] before
+\f[CR]slurp\f[R] reads it and can erase it even if you cancel.
 .IP \(bu 2
 \f[B]\f[CB]slurp\f[B] line endings\f[R] \- A file keeps CRLF endings
 only when every line ends in CRLF; a file that mixes endings keeps each
@@ -2368,8 +2387,8 @@ T}
 T{
 \f[CR]slurp\f[R], \f[CR]vi\f[R], \f[CR]emacs\f[R]
 T}@T{
-Edits text files as the \f[CR]slurp\f[R] builtin does, with the same
-options and \f[CR]+LINE\f[R] operand (\f[CR]vi\f[R] implies
+Edits text files or filters standard input as the \f[CR]slurp\f[R]
+builtin does, with the same options and operands (\f[CR]vi\f[R] implies
 \f[CR]\-V\f[R]; \f[CR]emacs\f[R] implies \f[CR]\-e\f[R]).
 T}
 .TE

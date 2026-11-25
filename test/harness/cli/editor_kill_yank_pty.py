@@ -83,8 +83,8 @@ import termios
 import time
 
 from editor_ghost_menu_pty import (BACKSPACE, DOWN, LEFT, RIGHT, WAIT_SECONDS,
-                                   Report, Session, clear_line, has_hint,
-                                   get_state, is_line, settle, UP, ESCAPE)
+                                   Report, Session, clear_line, did_exit_cleanly,
+                                   has_hint, get_state, is_line, settle, UP, ESCAPE)
 
 
 CTRL_A = b"\x01"
@@ -1689,6 +1689,149 @@ def run_slurp_minibuffer_checks(session, directory, report):
     session.wait_until(is_line(""))
 
 
+def run_slurp_filter_checks(binary, directory, command_directory, report):
+    source = os.path.join(directory, "slurp-filter-source")
+    output = os.path.join(directory, "slurp-filter-tee")
+    with open(source, "wb") as handle:
+        handle.write(b"filter input\n")
+
+    session = Session(binary, directory, command_directory)
+    try:
+        if not report.record("slurp-filter-prompt-ready", session, is_line("")):
+            return
+        session.send(b"slurp; printf '<slurp-tty:%s>\\n' \"$?\"\r")
+        if not report.record("slurp-with-tty-input-still-requires-an-operand",
+                             session, has_output("<slurp-tty:2>", 1)):
+            return
+        session.send(b"slurp - <slurp-filter-source\r")
+        if not report.record("slurp-filter-redirect-shows-initial-buffer", session,
+                             has_row("filter input")):
+            return
+        session.send(b"!")
+        if not report.record("slurp-filter-redirect-redraws-without-motion", session,
+                             has_row("filter input!")):
+            return
+        session.send(CTRL_X + b"s")
+        if not report.record("slurp-filter-redirect-shows-save-without-motion", session,
+                             has_text("staged 14 bytes")):
+            return
+        session.send(CTRL_X + CTRL_C)
+        if not session.wait_until(is_line("")):
+            report.record("slurp-filter-redirect-returns-to-prompt", session, is_line(""))
+            return
+
+        pipeline = b" <slurp-filter-source | koshkit tee slurp-filter-tee >/dev/null"
+        session.send(b"slurp" + pipeline + b"\r")
+        if not report.record("slurp-filter-implicit-file-input", session,
+                             has_row("filter input")):
+            return
+        session.send(b"?" + CTRL_X + b"s")
+        if not report.record("slurp-filter-tee-receives-nothing-on-stage", session,
+                             lambda screen: has_text("staged 14 bytes")(screen)
+                             and read_bytes(output) == b""):
+            return
+        session.send(ALT_X + b"save-and-quit\r")
+        if not report.record("slurp-filter-tee-receives-only-accepted-bytes", session,
+                             lambda screen: is_line("")(screen)
+                             and read_bytes(output) == b"filter input?\n"
+                             and read_bytes(source) == b"filter input\n"):
+            return
+
+        session.send(b"printf 'pipe input\\n' | koshkit slurp >slurp-filter-tee; "
+                     b"printf '<saved:%s>\\n' \"$?\"\r")
+        if not report.record("slurp-filter-implicit-pipe-input", session,
+                             has_row("pipe input")):
+            return
+        session.send(b"?" + CTRL_X + b"s" + b"!" + (CTRL_X + CTRL_C) * 2)
+        if not report.record("slurp-filter-quit-emits-only-the-last-save", session,
+                             lambda screen: has_output("<saved:0>", 1)(screen)
+                             and read_bytes(output) == b"pipe input?\n"):
+            return
+
+        cancelled = os.path.join(directory, "slurp-filter-cancel")
+        session.send(b"printf 'cancel input\\n' | koshkit slurp >slurp-filter-cancel; "
+                     b"printf '<interrupt:%s>\\n' \"$?\"\r")
+        if not report.record("slurp-filter-interrupt-shows-the-buffer", session,
+                             has_row("cancel input")):
+            return
+        session.send(b"?" + CTRL_C + CTRL_C)
+        if not report.record("slurp-filter-interrupt-emits-nothing", session,
+                             lambda screen: has_output("<interrupt:130>", 1)(screen)
+                             and read_bytes(cancelled) == b""):
+            return
+
+        for name, command, edit, quit_keys in (
+                ("vi", b"koshkit vi", b"", b":q\r"),
+                ("vi-normal", b"slurp -V", b"A!", b":q!\r"),
+                ("vi-insert", b"slurp -v", b"!", b":q!\r"),
+                ("emacs", b"koshkit emacs", b"!", (CTRL_X + CTRL_C) * 2)):
+            marker = ("<%s-quit:%%s>" % name).encode()
+            session.send(b"set -o pipefail; " + command + pipeline
+                         + b"; printf '" + marker + b"\\n' \"$?\"\r")
+            if not session.wait_until(has_row("filter input")):
+                report.record("slurp-filter-" + name + "-shows-the-buffer",
+                              session, has_row("filter input"))
+                return
+            if edit:
+                session.send(edit)
+                session.wait_until(has_row("filter input!"))
+            if name in ("vi-normal", "vi-insert"):
+                session.send(ESCAPE)
+                session.wait_until(has_text("emulating vi normal"))
+            session.send(quit_keys)
+            if not report.record("slurp-filter-" + name + "-unsaved-quit-fails",
+                                 session,
+                                 lambda screen: has_output(
+                                     (marker % b"1").decode(), 1)(screen)
+                                 and read_bytes(output) == b""):
+                return
+
+        session.send(b"slurp -V" + pipeline + b"; printf '<write:%s>\\n' \"$?\"\r")
+        session.wait_until(has_row("filter input"))
+        session.send(b":write\r")
+        if not report.record("slurp-filter-vi-write-stages-output", session,
+                             lambda screen: has_text("staged 13 bytes")(screen)
+                             and read_bytes(output) == b""):
+            return
+        session.send(b":q\r")
+        if not report.record("slurp-filter-vi-quit-emits-written-text", session,
+                             lambda screen: has_output("<write:0>", 1)(screen)
+                             and read_bytes(output) == b"filter input\n"):
+            return
+
+        session.send(b"slurp -e </dev/null >slurp-filter-tee; "
+                     b"printf '<empty-save:%s>\\n' \"$?\"\r")
+        session.wait_until(has_text("emulating emacs"))
+        session.send(ALT_X + b"save-and-quit\r")
+        if not report.record("slurp-filter-empty-save-succeeds", session,
+                             lambda screen: has_output("<empty-save:0>", 1)(screen)
+                             and read_bytes(output) == b""):
+            return
+        session.send(b"printf '<slurp-filter-done>\\n'; exit\r")
+        if (session.wait_until(has_row("<slurp-filter-done>"))
+                and did_exit_cleanly(session)):
+            print("slurp-filter-session-exits PASS")
+        else:
+            report.is_ok = False
+            print("slurp-filter-session-exits FAIL")
+    finally:
+        if not session.is_closed:
+            # Release the terminal first in case the child is draining output.
+            os.close(session.fd)
+            try:
+                os.kill(session.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            deadline = time.monotonic() + WAIT_SECONDS
+            while time.monotonic() < deadline:
+                if os.waitpid(session.pid, os.WNOHANG)[0]:
+                    break
+                time.sleep(0.02)
+            else:
+                report.is_ok = False
+                sys.stderr.write("slurp filter PTY child could not be reaped\n")
+
+
 def run_slurp_checks(binary, directory, command_directory, report):
     script = os.path.join(directory, "slurp-script.sh")
     notes = os.path.join(directory, "slurp-notes.txt")
@@ -1763,9 +1906,9 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(b"printf 'kept\\n' | koshkit slurp - >slurp-filter.out\r")
         session.wait_until(has_row("kept"))
         session.send(b"!" + CTRL_X + b"s" + CTRL_X + CTRL_C)
-        report.record("slurp-filter-staged-quit-emits-nothing", session,
+        report.record("slurp-filter-staged-quit-emits-the-buffer", session,
                       lambda screen: is_line("")(screen)
-                      and read_bytes(filtered) == b"")
+                      and read_bytes(filtered) == b"kept!\n")
         for name, payload, expected in (
                 ("empty", b"", b""), ("crlf", b"one\r\n", b"one\r\n"),
                 ("no-final-newline", b"one", b"one"),
@@ -2613,7 +2756,9 @@ def run_fatal_signal_checks(binary, directory, command_directory, report):
 def main():
     is_fuzzy_only = os.environ.get("KOSH_TEST_SLURP_FUZZY_ONLY") == "1"
     is_minibuffer_only = os.environ.get("KOSH_TEST_SLURP_MINIBUFFER_ONLY") == "1"
-    if sys.platform != "linux" and not (is_fuzzy_only or is_minibuffer_only):
+    is_filter_only = os.environ.get("KOSH_TEST_SLURP_FILTER_ONLY") == "1"
+    if sys.platform != "linux" and not (is_fuzzy_only or is_minibuffer_only
+                                        or (is_filter_only and sys.platform == "darwin")):
         print("editor kill and yank PTY probes: skipped (requires Linux)")
         return 0
     binary = os.environ.get("BIN")
@@ -2627,6 +2772,9 @@ def main():
     try:
         command_directory = os.path.join(directory, "bin")
         os.makedirs(command_directory)
+        if is_filter_only:
+            run_slurp_filter_checks(binary, directory, command_directory, report)
+            return 0 if report.is_ok else 1
         if is_fuzzy_only:
             run_slurp_fuzzy_checks(binary, directory, command_directory, report)
             return 0 if report.is_ok else 1
@@ -2661,6 +2809,7 @@ def main():
         run_ctrl_x_mode_checks(binary, directory, command_directory, report)
         run_selection_checks(binary, directory, command_directory, report)
         run_slurp_checks(binary, directory, command_directory, report)
+        run_slurp_filter_checks(binary, directory, command_directory, report)
         run_slurp_fuzzy_checks(binary, directory, command_directory, report)
         run_tall_slurp_checks(binary, directory, command_directory, report)
         run_long_slurp_checks(binary, directory, command_directory, report)

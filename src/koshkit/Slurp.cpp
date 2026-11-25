@@ -12,10 +12,10 @@
 #include "../ExecContext.hpp"
 #include "../Koshkit.hpp"
 
-KOSHKIT_UTIL_DECL("[-e|-v|-V] [+line] file ...",
-                  "The slurp utility edits text files in the line editor like "
-                  "the slurp builtin. Invoked as vi or emacs, it starts with "
-                  "the matching key set.");
+KOSHKIT_UTIL_DECL("[-e|-v|-V] [[+line] file ...]",
+                  "Edit text files or filter standard input. Use - to read "
+                  "standard input, or omit the file if input is redirected. "
+                  "Invoked as vi or emacs, start with the matching key set.");
 
 FLAG(SLURP_EMACS, Bool, 'e', "emacs", "Edit with the emacs key set.");
 FLAG(SLURP_VI, Bool, 'v', "vi", "Edit with the vi key set.");

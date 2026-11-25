@@ -1109,7 +1109,16 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
                                      ? static_cast<pid_t>(process_group_id)
                                      : 0;
 
-        check_syscall(setpgid(0, target_group));
+        /* Darwin can report EPERM if the parent concurrently sets the same
+           group. Continue only if the child is already in that group. */
+        let const result = setpgid(0, target_group);
+
+        if (result == -1 &&
+            (errno != EPERM ||
+             getpgrp() != (target_group == 0 ? getpid() : target_group)))
+        {
+          check_syscall(result);
+        }
       }
 
       /* a process group answers to its parent, so a command inside a forked

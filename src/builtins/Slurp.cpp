@@ -18,10 +18,11 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-e|-v|-V] [+line] file ...");
+HELP_SYNOPSIS_DECL("[-e|-v|-V] [[+line] file ...]");
 
-HELP_DESCRIPTION_DECL("This builtin edits text files in the line editor, one "
-                      "after another.");
+HELP_DESCRIPTION_DECL(
+    "Edit text files or filter standard input. Use - to read "
+    "standard input, or omit the file if input is redirected.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(SLURP_EMACS, Bool, 'e', "emacs", "Edit with the emacs key set.");
@@ -235,22 +236,21 @@ save_file(const Path                   &path,
 /* the file a slurp session edits and what a save needs to write it back. */
 struct slurp_session
 {
-  Path                    path;
-  Maybe<os::file_status>  opened;
-  bool                    is_stdin{false};
-  String                  staged_output{heap_allocator()};
-  bool                    has_crlf;
-  bool                    has_final_newline;
-  bool                    is_single_newline;
-  bool                    is_shell_script;
-  String                  saved_text{heap_allocator()};
-  String                  status{heap_allocator()};
-  String                  message{heap_allocator()};
+  Path                   path;
+  Maybe<os::file_status> opened;
+  bool                   is_stdin{false};
+  Maybe<String>          staged_output;
+  bool                   has_crlf;
+  bool                   has_final_newline;
+  bool                   is_single_newline;
+  bool                   is_shell_script;
+  String                 saved_text{heap_allocator()};
+  String                 status{heap_allocator()};
+  String                 message{heap_allocator()};
 };
 
-slurp_session        *ACTIVE_SESSION        = nullptr;
-Maybe<slurp_session> *PENDING_SESSION       = nullptr;
-bool                 *SHOULD_ACCEPT_CURRENT = nullptr;
+slurp_session        *ACTIVE_SESSION  = nullptr;
+Maybe<slurp_session> *PENDING_SESSION = nullptr;
 
 /* describes the kind of file, its line endings, and its size in byte_count,
    or a new file when byte_count is empty. */
@@ -274,6 +274,33 @@ make_status(const slurp_session &session,
   return status;
 }
 
+/* builds the text of buffer with the line endings of the session and its
+   final newline.
+   memory: the result on heap_allocator().
+   time:   O(buffer length). */
+fn
+build_saved_text(const slurp_session &session, StringView buffer) throws
+    -> String
+{
+  let saved = String{heap_allocator()};
+
+  for (usize i = 0; i < buffer.length; i++) {
+    if (buffer[i] == '\n' && session.has_crlf) {
+      saved.push('\r');
+    }
+    saved.push(buffer[i]);
+  }
+
+  if (session.has_final_newline &&
+      (!saved.is_empty() || session.is_single_newline))
+  {
+    if (session.has_crlf) saved.push('\r');
+    saved.push('\n');
+  }
+
+  return saved;
+}
+
 /* writes text to the file of the active session with the line endings it was
    loaded with, and leaves a save report in out_message.
    memory: the converted text and the message String on heap_allocator().
@@ -285,28 +312,14 @@ save_buffer(const char *text, const char **out_message) -> int
 
   try {
     let const buffer = StringView{text, strlen(text)};
-    let       saved  = String{heap_allocator()};
-
-    for (usize i = 0; i < buffer.length; i++) {
-      if (buffer[i] == '\n' && session.has_crlf) {
-        saved.push('\r');
-      }
-      saved.push(buffer[i]);
-    }
-
-    if (session.has_final_newline &&
-        (!saved.is_empty() || session.is_single_newline))
-    {
-      if (session.has_crlf) saved.push('\r');
-      saved.push('\n');
-    }
+    let       saved  = build_saved_text(session, buffer);
 
     let       kept_backup = Maybe<Path>{None};
     let       written     = Maybe<os::file_status>{None};
-    let const outcome     = session.is_stdin
-                                ? save_outcome::Saved
-                                : save_file(session.path, saved.view(),
-                                            session.opened, written, kept_backup);
+    let const outcome = session.is_stdin
+                            ? save_outcome::Saved
+                            : save_file(session.path, saved.view(),
+                                        session.opened, written, kept_backup);
 
     if (outcome == save_outcome::Saved) {
       let saved_text = String{heap_allocator(), buffer};
@@ -451,9 +464,7 @@ prepare_document(StringView     operand,
 }
 
 fn
-open_file(const char  *path,
-          bool         should_accept_current,
-          const char **out_message) -> int
+open_file(const char *path, bool, const char **out_message) -> int
 {
   try {
     let prepared = slurp_session{};
@@ -466,9 +477,8 @@ open_file(const char  *path,
 
       return 0;
     }
-    *PENDING_SESSION       = steal(prepared);
-    *SHOULD_ACCEPT_CURRENT = should_accept_current;
-    *out_message           = nullptr;
+    *PENDING_SESSION = steal(prepared);
+    *out_message     = nullptr;
 
     return 1;
   } catch (const Error &error) {
@@ -478,7 +488,6 @@ open_file(const char  *path,
     return 0;
   }
 }
-
 
 } /* namespace */
 
@@ -503,7 +512,6 @@ static fn
 edit_file(EvalContext                 &cxt,
           slurp_session               &session,
           Maybe<slurp_session>        &pending,
-          bool                        &should_accept_current,
           bool                        &did_cleanup_fail,
           usize                        start_line,
           Maybe<toiletline::edit_mode> mode) throws -> i32
@@ -541,9 +549,8 @@ edit_file(EvalContext                 &cxt,
 
   toiletline::enter_raw_mode();
   toiletline::enter_empty_history();
-  ACTIVE_SESSION        = &session;
-  PENDING_SESSION       = &pending;
-  SHOULD_ACCEPT_CURRENT = &should_accept_current;
+  ACTIVE_SESSION  = &session;
+  PENDING_SESSION = &pending;
   toiletline::set_save_callback(save_buffer);
   toiletline::set_open_file_callback(open_file);
   toiletline::set_editor_title(title.c_str());
@@ -558,9 +565,8 @@ edit_file(EvalContext                 &cxt,
                                      : toiletline::edit_mode::Emacs);
     toiletline::set_save_callback(nullptr);
     toiletline::set_open_file_callback(nullptr);
-    ACTIVE_SESSION        = nullptr;
-    PENDING_SESSION       = nullptr;
-    SHOULD_ACCEPT_CURRENT = nullptr;
+    ACTIVE_SESSION  = nullptr;
+    PENDING_SESSION = nullptr;
     toiletline::set_saved_text(nullptr);
     toiletline::set_full_screen(false);
     toiletline::set_line_max(0);
@@ -605,9 +611,11 @@ edit_file(EvalContext                 &cxt,
                                                                  : start_line);
   toiletline::set_saved_text(session.saved_text.c_str());
 
-  let result = toiletline::get_document_input(cxt, is_shell_script);
+  let const result = toiletline::get_document_input(cxt, is_shell_script);
 
   if (result.code == TL_PRESSED_INTERRUPT) return 130;
+  if (result.code == TL_PRESSED_QUIT) return TL_PRESSED_QUIT;
+  if (result.code == TL_PRESSED_EOF) return TL_PRESSED_EOF;
   if (result.code == TL_PRESSED_OPEN_FILE) return TL_PRESSED_OPEN_FILE;
   if (result.code == TL_PRESSED_WRITE_QUIT) return TL_PRESSED_WRITE_QUIT;
 
@@ -628,7 +636,13 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
-  if (args.count() < 2) return report_usage_error(ec, cxt, ec.program());
+  let const input_descriptor  = ec.in_fd.value_or(KOSH_STDIN);
+  let const is_input_terminal = os::is_fd_a_tty(input_descriptor);
+  let const is_implicit_stdin = args.count() == 1;
+
+  if (is_implicit_stdin && is_input_terminal) {
+    return report_usage_error(ec, cxt, ec.program());
+  }
 
   let const key_set_count = (FLAG_SLURP_EMACS.is_enabled() ? 1 : 0) +
                             (FLAG_SLURP_VI.is_enabled() ? 1 : 0) +
@@ -647,6 +661,9 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let targets    = ArrayList<slurp_target>{cxt.scratch_allocator()};
   let start_line = usize{0};
+
+  /* operand index zero denotes implicit standard input, not a file name. */
+  if (is_implicit_stdin) targets.push({0, 0});
 
   for (usize index = 1; index < args.count(); index++) {
     if (let const line = parse_start_line(args[index].view()); line.has_value())
@@ -675,17 +692,16 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
-  bool has_stdin_operand = false;
+  bool has_stdin_operand = is_implicit_stdin;
 
   for (let const &target : targets) {
     if (args[target.operand_index].view() == "-") has_stdin_operand = true;
   }
 
-  let const input_descriptor  = ec.in_fd.value_or(KOSH_STDIN);
   let const is_standard_input = os::descriptor_is_shell_fd(input_descriptor, 0);
   let       terminal_input    = Maybe<os::descriptor>{None};
   let       terminal_output   = Maybe<os::descriptor>{None};
-  if (has_stdin_operand || !os::is_fd_a_tty(input_descriptor))
+  if (has_stdin_operand || !is_input_terminal)
     terminal_input = os::open_terminal_input();
   if (has_stdin_operand) terminal_output = os::open_terminal_output();
   defer {
@@ -697,7 +713,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
        (!terminal_input.has_value() || !terminal_output.has_value())) ||
       (!has_stdin_operand &&
        (!os::is_fd_a_tty(KOSH_STDOUT) ||
-        (!os::is_fd_a_tty(input_descriptor) && !terminal_input.has_value()))))
+        (!is_input_terminal && !terminal_input.has_value()))))
   {
     report_soft_builtin_error(
         ec, cxt, ec.source_location(), "The line editor needs a terminal",
@@ -761,18 +777,19 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   i32 status = 0;
 
   for (let const &target : targets) {
-    let        current               = slurp_session{};
-    let        pending               = Maybe<slurp_session>{None};
-    bool       should_accept_current = false;
-    bool       did_cleanup_fail      = false;
-    let const &operand               = args[target.operand_index];
-    let const  source_location =
+    let       current          = slurp_session{};
+    let       pending          = Maybe<slurp_session>{None};
+    bool      did_cleanup_fail = false;
+    let const operand          = target.operand_index == 0
+                                          ? StringView{"-"}
+                                          : args[target.operand_index].view();
+    let const source_location =
         get_operand_location(ec, operand_locations, target.operand_index);
     let const input_fd = has_stdin_operand && is_standard_input
                              ? saved_input.saved
                              : input_descriptor;
-    if (let error = prepare_document(operand.view(), operand.view() == "-",
-                                     input_fd, current);
+    if (let error =
+            prepare_document(operand, operand == "-", input_fd, current);
         error.has_value())
     {
       if (os::INTERRUPT_REQUESTED != 0) return 130;
@@ -788,10 +805,9 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         toiletline::exit_raw_mode();
       }
 
-      should_accept_current = false;
       let const document_status =
-          edit_file(cxt, current, pending, should_accept_current,
-                    did_cleanup_fail, current_start_line, mode);
+          edit_file(cxt, current, pending, did_cleanup_fail, current_start_line,
+                    mode);
 
       try {
         if (did_initialize_editor) toiletline::exit();
@@ -807,12 +823,12 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         status = 1;
         break;
       }
-      if (current.is_stdin &&
-          (document_status == TL_PRESSED_WRITE_QUIT ||
-           (document_status == TL_PRESSED_OPEN_FILE && should_accept_current)))
-      {
-        if (!os::write_all(saved_output.saved, current.staged_output.data(),
-                           current.staged_output.count()))
+      if (current.is_stdin) {
+        if (!current.staged_output.has_value()) {
+          status = 1;
+        } else if (!os::write_all(saved_output.saved,
+                                  current.staged_output->data(),
+                                  current.staged_output->count()))
         {
           report_soft_builtin_error(
               ec, cxt, source_location,
