@@ -996,15 +996,18 @@ def has_picker_row(screen, text, is_selected, is_shell=False, query="./"):
         if PICKER_HELP not in lines:
             return False
         first_entry, column = lines.index(PICKER_HELP) + 2, 0
+    margin = "\u00a0" if is_selected else " "
     for entry_row in range(first_entry, len(lines)):
-        if lines[entry_row] != " " * column + text:
+        if lines[entry_row] != " " * column + margin + text:
             continue
-        cells = screen.rows[entry_row][column:column + len(text)]
+        cells = screen.rows[entry_row]
+        end = column + 1 + len(text)
         if is_selected:
-            return all(cell[4] in PICKER_BLUE for cell in cells)
+            return (len(cells) > end and cells[end][0] == margin
+                    and all(cell[4] in PICKER_BLUE for cell in cells[column:end + 1]))
         return all(cell[4] not in PICKER_BLUE and
                    (not text.endswith("/") or cell[3] in ((5, 110), (34,)))
-                   for cell in cells)
+                   for cell in cells[column + 1:end])
     return False
 
 
@@ -1433,13 +1436,15 @@ def run_slurp_fuzzy_checks(binary, directory, command_directory, report):
             if position is None:
                 return False
             row, column = position
-            prefix = " " * column + "./zzclip"
+            prefix = " " * column + "\u00a0./"
             for entry_row, entry in enumerate(screen.get_lines()[row + 2:], row + 2):
                 if entry.startswith(prefix):
-                    cells = screen.rows[entry_row][column:len(prefix)]
-                    return (column > 0 and len(entry) < columns
+                    cells = screen.rows[entry_row]
+                    return (column > 0 and len(entry) + 1 < columns
                             and entry.endswith("...")
-                            and all(cell[4] in PICKER_BLUE for cell in cells))
+                            and cells[len(entry)][0] == "\u00a0"
+                            and all(cell[4] in PICKER_BLUE
+                                    for cell in cells[column:len(entry) + 1]))
             return False
 
         report.record("shell-fuzzy-clips-styled-rows-at-narrow-width",

@@ -84,6 +84,10 @@ MENU_HEADER = "selecting completions"
 FUZZY_PATH_HEADER = "fuzzy path search"
 MENU_HELP = ("selecting completions, enter to run, tab to accept, esc to close, "
              "ctrl-g to restore")
+PATH_MENU_HELP = ("selecting completions, enter to run, tab to accept, "
+                  "esc to close, ctrl-left/right to navigate")
+FUZZY_PATH_HELP = ("fuzzy path search, tab or enter to accept, esc to close, "
+                   "ctrl-left/right to navigate")
 MENU_FOOTER = "showing "
 HISTORY_HEADER = "incremental history search"
 HISTORY_NO_MATCH = "no matches, backspace to widen the search"
@@ -347,13 +351,17 @@ class Screen:
                        if lines[0].strip().startswith(title)), None)
         if header is None:
             return None
-        expected_help = MENU_HELP.replace(MENU_HEADER, header, 1)
+        expected_help = ((FUZZY_PATH_HELP,) if header == FUZZY_PATH_HEADER
+                         else (MENU_HELP, PATH_MENU_HELP))
         help_text = lines[0].strip()
         first_entry = 1
-        while (first_entry < len(lines) and help_text != expected_help
-               and expected_help.startswith(
-                   help_text + " " + lines[first_entry].strip())):
-            help_text += " " + lines[first_entry].strip()
+        while first_entry < len(lines) and help_text not in expected_help:
+            next_line = lines[first_entry].strip()
+            joined = help_text + " " + next_line
+            if not next_line or not any(text.startswith(joined)
+                                        for text in expected_help):
+                break
+            help_text = joined
             first_entry += 1
         entries = []
         total = None
@@ -2587,7 +2595,9 @@ def run_path_preview_checks(binary, directory, report):
         session.wait_until(is_line(""))
         session.send(open_menu)
         report.record("preview-directory-beside-selection", session,
-                      has_directory_preview)
+                      lambda screen: has_directory_preview(screen)
+                      and screen.get_lines()[screen.get_prompt_row() + 1]
+                      .strip() == PATH_MENU_HELP)
         directory_color = b"\x1b[38;5;110msub/"
         report.record("preview-uses-menu-directory-color", session,
                       lambda screen: directory_color in session.raw)

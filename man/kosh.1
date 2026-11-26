@@ -864,6 +864,9 @@ The pane does not take keyboard focus.
 .PP
 When \f[CR]Ctrl\-Left\f[R] returns to the parent, the menu highlights
 the directory it just left.
+The path menu advertises \f[CR]ctrl\-left/right to navigate\f[R] in
+place of the general completion menu\(aqs \f[CR]ctrl\-g to restore\f[R]
+hint.
 .PP
 For a symbolic link, the preview shows the stored destination, then the
 target\(aqs type and details or its directory entries.
@@ -2075,7 +2078,8 @@ In \f[CR]slurp\f[R], \f[CR]search to open another file\f[R] and its
 editable query appear above the matches at the bottom of the screen, and
 the query, up to 16 matches, and a final count or status row take at
 most 19 rows.
-The matches start at the first column.
+The selected match has a space on either side when the terminal is wide
+enough.
 \f[CR]Tab\f[R] or \f[CR]Enter\f[R] opens the selected file.
 You can also enter a literal path; \f[CR]\-\f[R] names a file.
 A dirty buffer offers Save, Discard, or Cancel before switching.
