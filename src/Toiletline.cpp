@@ -4311,6 +4311,11 @@ initialize() -> void
         "The input is not a terminal, pass `-` to read stdin or `-c`/`-s`"};
   }
 
+  if (koshka::os::is_stdout_a_tty() && !::itl_tty_get_size(nullptr, nullptr)) {
+    koshka::show_warning(
+        "Could not determine the terminal size; using 80 columns and 24 rows.");
+  }
+
   ::tl_set_history_search_snapshot_callback(provide_history_search_snapshot);
 }
 
