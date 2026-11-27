@@ -38,10 +38,17 @@ function RawBlock(raw)
   if raw.format == "html" then return {} end
 end
 
+local function append_heading(blocks, heading)
+  blocks:insert(heading)
+  -- Mandoc can suppress .sp immediately after .SH or .SS.
+  blocks:insert(pandoc.RawBlock("man", ".nf\n\\&\n.fi"))
+end
+
 function Pandoc(doc)
   local program = pandoc.utils.stringify(doc.meta.name or "kosh")
   local blocks  = pandoc.Blocks({})
   local index   = 1
+  local follows_heading = false
 
   local first = doc.blocks[index]
   if first and first.t == "Header" and first.level == 1 then
@@ -54,8 +61,8 @@ function Pandoc(doc)
 
     summary = pandoc.text.lower(pandoc.text.sub(summary, 1, 1))
         .. pandoc.text.sub(summary, 2)
-    blocks:insert(pandoc.Header(1, "NAME"))
-    blocks:insert(pandoc.Para(program .. " - " .. summary))
+    append_heading(blocks, pandoc.Header(1, "NAME"))
+    blocks:insert(pandoc.Plain(program .. " - " .. summary))
     index = index + 1
   end
 
@@ -86,10 +93,16 @@ function Pandoc(doc)
 
       if level == 1 then content = upper_inlines(content) end
 
-      block = pandoc.Header(level, content, block.attr)
+      append_heading(blocks, pandoc.Header(level, content, block.attr))
+      follows_heading = true
+    else
+      -- The heading spacer already separates its first paragraph.
+      if follows_heading and block.t == "Para" then
+        block = pandoc.Plain(block.content)
+      end
+      follows_heading = false
+      blocks:insert(block)
     end
-
-    blocks:insert(block)
   end
 
   doc.blocks = blocks

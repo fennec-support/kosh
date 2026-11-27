@@ -3,6 +3,9 @@
 .\"
 .TH "KOSH\-SWITCHING" "5" "November 5, 2026" "kosh" "Koshka Manual"
 .SH NAME
+.nf
+\&
+.fi
 kosh\-switching \- migrate an interactive shell environment and login
 shell from Bash to Koshka
 .PP
@@ -20,6 +23,9 @@ Try Koshka in a new terminal before changing the login shell, and keep
 the current Bash session open in a separate terminal window while
 testing startup files to prevent terminal lockout.
 .SH CORE PRIMITIVES
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -52,6 +58,9 @@ Configuration utility used to persist startup settings
 T}
 .TE
 .SH LOAD EXISTING BASH STARTUP FILES IN KOSHKA
+.nf
+\&
+.fi
 Launch an interactive Koshka session with both the \f[CR]kosh\f[R] and
 \f[CR]bash\f[R] startup moods to retain existing Bash aliases,
 functions, and environment variables.
@@ -127,6 +136,9 @@ That preset already sources Bash startup files directly inside
 Enable only one loading mechanism so the Bash startup files are not
 executed twice.
 .SH EXECUTE BASH SCRIPTS THAT FAIL STRICT VALIDATION
+.nf
+\&
+.fi
 Run a Bash script under the \f[CR]bash\f[R] mood when the default
 \f[CR]kosh\f[R] mood rejects its syntax.
 .IP
@@ -136,11 +148,16 @@ kosh \-\-mood bash script.bash
 .PP
 The \f[CR]\-\-mood bash\f[R] flag selects the Bash compatibility mood
 for that execution.
-If the \f[CR]bash\f[R] binary remains installed on the host,
-\f[CR]bash script.bash\f[R] and a script started as a command with a
-\f[CR]#!/bin/bash\f[R] shebang run under the installed Bash, unless
-mimicry (\f[CR]\-I\f[R]) runs the script inside Koshka.
+\f[CR]bash script.bash\f[R] uses the first \f[CR]bash\f[R] in
+\f[CR]PATH\f[R]; use the original Bash executable\(aqs absolute path to
+bypass a Koshka link.
+A script with a \f[CR]#!/bin/bash\f[R] shebang still runs
+\f[CR]/bin/bash\f[R], unless mimicry (\f[CR]\-I\f[R]) runs the script
+inside Koshka.
 .SH RUN KOSHKA UNDER THE NAME BASH
+.nf
+\&
+.fi
 A link named \f[CR]bash\f[R] to the \f[CR]kosh\f[R] binary starts Koshka
 in the \f[CR]bash\f[R] mood with the Bash startup files.
 Place it in a directory that precedes the installed Bash in
@@ -156,7 +173,85 @@ A configured \f[CR]mood\f[R] does not override the link name, but
 \f[CR]bash \-\-version\f[R] prints the Koshka banner.
 A shebang with an absolute path, such as \f[CR]#!/bin/bash\f[R], still
 runs the installed Bash.
+.SH USE KOSHKA AS A BASH\-COMPATIBLE LOGIN SHELL
+.nf
+\&
+.fi
+On Unix, install Koshka under \f[CR]/usr/local/bin/kosh\f[R] and select
+\f[CR]/usr/local/bin/bash\f[R] as your login shell to start Koshka in
+the \f[CR]bash\f[R] mood.
+Leave the system Bash binary intact.
+Keep your current Bash session open, and record the absolute path of
+your current login shell
+(\f[CR]printf \(aq%s\(rsn\(aq \(dq$SHELL\(dq\f[R] in the original login
+session) for rollback.
+.PP
+\f[B]Safety prerequisite:\f[R] Before changing the login shell, verify
+that you can log in as \f[CR]root\f[R] with its password and restore
+your account\(aqs previous shell.
+If direct root login is disabled, as on a default macOS installation,
+verify that you can log in to a separate administrator account and use
+\f[CR]sudo\f[R] there.
+Do not proceed if your only recovery path depends on the account whose
+shell you are changing.
+.IP "1." 3
+Copy the verified executable into \f[CR]/usr/local/bin\f[R], or link to
+a stable executable in a directory managed by the system administrator.
+Create \f[CR]/usr/local/bin\f[R] first if it does not exist.
+If \f[CR]/usr/local/bin/kosh\f[R] is already a trusted Koshka
+installation, reuse it.
+Do not overwrite existing files or links at either destination.
+.IP
+.EX
+sudo mkdir \-p /usr/local/bin
+sudo install \-m 0755 /absolute/path/to/kosh /usr/local/bin/kosh
+.EE
+.PP
+To link instead of copying, use this command in place of
+\f[CR]install\f[R]:
+.IP
+.EX
+sudo ln \-s /absolute/path/to/kosh /usr/local/bin/kosh
+.EE
+.IP "2." 3
+Create the \f[CR]bash\f[R] link and check its version and interactive
+login startup before changing your account.
+.IP
+.EX
+sudo ln \-s /usr/local/bin/kosh /usr/local/bin/bash
+/usr/local/bin/bash \-\-version
+/usr/local/bin/bash \-l \-i
+.EE
+.PP
+At the trial shell prompt, run the following commands.
+The version must end in \f[CR]\-kosh\f[R].
+Exit the trial shell to continue.
+.IP
+.EX
+printf \(aq%s\(rsn\(aq \(dq$BASH_VERSION\(dq
+exit
+.EE
+.IP "3." 3
+Add the login shell path to \f[CR]/etc/shells\f[R] if it is not already
+listed, then change your own login shell.
+Open a new login session to verify that it starts Koshka before closing
+your original session.
+.IP
+.EX
+\f[B](\f[R]grep \-Fxq /usr/local/bin/bash /etc/shells \f[B]||\f[R]
+  printf \(aq%s\(rsn\(aq /usr/local/bin/bash \f[B]|\f[R] sudo tee \-a /etc/shells\f[B])\f[R] \f[B]&&\f[R]
+  chsh \-s /usr/local/bin/bash
+.EE
+.PP
+This changes the login shell for your account.
+If \f[CR]/usr/local/bin\f[R] also precedes the directory containing the
+original Bash in \f[CR]PATH\f[R], it changes what \f[CR]bash\f[R] and
+\f[CR]#!/usr/bin/env bash\f[R] resolve to.
+It does not change an absolute shebang such as \f[CR]#!/bin/bash\f[R].
 .SH SET KOSHKA AS THE DEFAULT LOGIN SHELL
+.nf
+\&
+.fi
 .IP "1." 3
 Verify that the \f[CR]kosh\f[R] binary is reachable in \f[CR]PATH\f[R]
 and executes cleanly from the current Bash session.
@@ -182,23 +277,45 @@ command, update the profile settings inside that terminal application.
 On Windows, \f[CR]/etc/shells\f[R] and \f[CR]chsh\f[R] are not used.
 Configure Koshka directly as a terminal profile on Windows.
 .SH REVERT THE LOGIN SHELL TO BASH
+.nf
+\&
+.fi
 .IP "1." 3
-Keep the \f[CR]bash\f[R] binary installed on the system until migration
-testing is complete.
-.IP "2." 3
-Confirm from an active Bash session that the absolute path of
-\f[CR]bash\f[R] is present in \f[CR]/etc/shells\f[R], then assign
-\f[CR]bash\f[R] as the login shell.
+Keep the original Bash executable installed.
+From an active session, confirm that the original shell\(aqs absolute
+path is present in \f[CR]/etc/shells\f[R], then use that path with
+\f[CR]chsh\f[R].
+Do not use \f[CR]command \-v bash\f[R] for rollback: it may return the
+Koshka link.
+The following example assumes that the original shell was
+\f[CR]/bin/bash\f[R].
 .IP
 .EX
-chsh \-s \(dq$(command \-v bash)\(dq
+chsh \-s /bin/bash
 .EE
+.PP
+If the new shell prevents you from logging in, log in as \f[CR]root\f[R]
+and restore the recorded shell for the affected account.
+From a separate administrator account, run the same command with
+\f[CR]sudo\f[R].
+Replace \f[CR]your_username\f[R] and \f[CR]/bin/bash\f[R] with the
+affected account name and the previous shell\(aqs absolute path.
+.IP
+.EX
+chsh \-s /bin/bash your_username
+.EE
+.IP "2." 3
+Open a new login session and verify that it starts the original Bash.
 .IP "3." 3
-Sign out and sign back in to restore Bash as the active login shell.
-.IP "4." 3
-Remove any direct Koshka startup commands from terminal emulator
-profiles before deleting the \f[CR]kosh\f[R] binary.
+If no account or terminal profile uses the Koshka link, remove
+\f[CR]/usr/local/bin/bash\f[R] and its \f[CR]/etc/shells\f[R] entry if
+you added them.
+Remove any direct Koshka startup commands from terminal profiles before
+deleting the \f[CR]kosh\f[R] binary.
 .SH UNINSTALL THE KOSHKA BINARY
+.nf
+\&
+.fi
 .IP "1." 3
 Revert the system login shell and terminal emulator profiles to another
 shell before removing Koshka.
@@ -258,6 +375,9 @@ T}
 Retain configuration and command history files if a future
 reinstallation is planned.
 .SH RELATED REFERENCE MANUALS
+.nf
+\&
+.fi
 .IP \(bu 2
 Read the kosh(1) shell reference for command\-line flags and invocation
 syntax.

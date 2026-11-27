@@ -49,7 +49,7 @@ Run a Bash script under the `bash` mood when the default `kosh` mood rejects its
 kosh --mood bash script.bash
 ```
 
-The `--mood bash` flag selects the Bash compatibility mood for that execution. If the `bash` binary remains installed on the host, `bash script.bash` and a script started as a command with a `#!/bin/bash` shebang run under the installed Bash, unless mimicry (`-I`) runs the script inside Koshka.
+The `--mood bash` flag selects the Bash compatibility mood for that execution. `bash script.bash` uses the first `bash` in `PATH`; use the original Bash executable's absolute path to bypass a Koshka link. A script with a `#!/bin/bash` shebang still runs `/bin/bash`, unless mimicry (`-I`) runs the script inside Koshka.
 
 ## Run Koshka under the name bash
 
@@ -60,6 +60,50 @@ ln -s "$(command -v kosh)" ~/.local/bin/bash
 ```
 
 A configured `mood` does not override the link name, but `init_moods=kosh,bash` also sources `rc.kosh`. `bash --version` prints the Koshka banner. A shebang with an absolute path, such as `#!/bin/bash`, still runs the installed Bash.
+
+## Use Koshka as a Bash-compatible login shell
+
+On Unix, install Koshka under `/usr/local/bin/kosh` and select `/usr/local/bin/bash` as your login shell to start Koshka in the `bash` mood. Leave the system Bash binary intact. Keep your current Bash session open, and record the absolute path of your current login shell (`printf '%s\n' "$SHELL"` in the original login session) for rollback.
+
+**Safety prerequisite:** Before changing the login shell, verify that you can log in as `root` with its password and restore your account's previous shell. If direct root login is disabled, as on a default macOS installation, verify that you can log in to a separate administrator account and use `sudo` there. Do not proceed if your only recovery path depends on the account whose shell you are changing.
+
+1. Copy the verified executable into `/usr/local/bin`, or link to a stable executable in a directory managed by the system administrator. Create `/usr/local/bin` first if it does not exist. If `/usr/local/bin/kosh` is already a trusted Koshka installation, reuse it. Do not overwrite existing files or links at either destination.
+
+```sh
+sudo mkdir -p /usr/local/bin
+sudo install -m 0755 /absolute/path/to/kosh /usr/local/bin/kosh
+```
+
+To link instead of copying, use this command in place of `install`:
+
+```sh
+sudo ln -s /absolute/path/to/kosh /usr/local/bin/kosh
+```
+
+2. Create the `bash` link and check its version and interactive login startup before changing your account.
+
+```sh
+sudo ln -s /usr/local/bin/kosh /usr/local/bin/bash
+/usr/local/bin/bash --version
+/usr/local/bin/bash -l -i
+```
+
+At the trial shell prompt, run the following commands. The version must end in `-kosh`. Exit the trial shell to continue.
+
+```sh
+printf '%s\n' "$BASH_VERSION"
+exit
+```
+
+3. Add the login shell path to `/etc/shells` if it is not already listed, then change your own login shell. Open a new login session to verify that it starts Koshka before closing your original session.
+
+```sh
+(grep -Fxq /usr/local/bin/bash /etc/shells ||
+  printf '%s\n' /usr/local/bin/bash | sudo tee -a /etc/shells) &&
+  chsh -s /usr/local/bin/bash
+```
+
+This changes the login shell for your account. If `/usr/local/bin` also precedes the directory containing the original Bash in `PATH`, it changes what `bash` and `#!/usr/bin/env bash` resolve to. It does not change an absolute shebang such as `#!/bin/bash`.
 
 ## Set Koshka as the default login shell
 
@@ -82,15 +126,20 @@ chsh -s "$(command -v kosh)"
 
 ## Revert the login shell to Bash
 
-1. Keep the `bash` binary installed on the system until migration testing is complete.
-2. Confirm from an active Bash session that the absolute path of `bash` is present in `/etc/shells`, then assign `bash` as the login shell.
+1. Keep the original Bash executable installed. From an active session, confirm that the original shell's absolute path is present in `/etc/shells`, then use that path with `chsh`. Do not use `command -v bash` for rollback: it may return the Koshka link. The following example assumes that the original shell was `/bin/bash`.
 
 ```sh
-chsh -s "$(command -v bash)"
+chsh -s /bin/bash
 ```
 
-3. Sign out and sign back in to restore Bash as the active login shell.
-4. Remove any direct Koshka startup commands from terminal emulator profiles before deleting the `kosh` binary.
+If the new shell prevents you from logging in, log in as `root` and restore the recorded shell for the affected account. From a separate administrator account, run the same command with `sudo`. Replace `your_username` and `/bin/bash` with the affected account name and the previous shell's absolute path.
+
+```sh
+chsh -s /bin/bash your_username
+```
+
+2. Open a new login session and verify that it starts the original Bash.
+3. If no account or terminal profile uses the Koshka link, remove `/usr/local/bin/bash` and its `/etc/shells` entry if you added them. Remove any direct Koshka startup commands from terminal profiles before deleting the `kosh` binary.
 
 ## Uninstall the Koshka binary
 

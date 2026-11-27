@@ -3,6 +3,9 @@
 .\"
 .TH "KOSH" "1" "October 26, 2026" "kosh" "Koshka Manual"
 .SH NAME
+.nf
+\&
+.fi
 kosh \- declarative and operational specification for the Koshka command
 shell, static analyzer, formatter, language server, interactive line
 editor, and bundled Koshkit utilities across Linux, macOS, and Windows
@@ -18,6 +21,9 @@ bundled POSIX and system utilities.
 The same grammar is available on Linux, macOS, and Windows, and platform
 differences are listed under Windows platform semantics.
 .SH CORE SYSTEM PRIMITIVES
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -63,6 +69,9 @@ or Vi normal key set.
 T}
 .TE
 .SH COMMAND EXECUTION LIFECYCLE
+.nf
+\&
+.fi
 .IP "1." 3
 \f[B]Invocation and input selection\f[R] \- The \f[CR]kosh\f[R] binary
 resolves \f[CR]KOSH_FLAGS\f[R] and command\-line flags, sets the initial
@@ -111,6 +120,9 @@ reachable.
 Interactive shells with \f[CR]autocd\f[R] enabled fall back to changing
 directories if the word matches a directory path.
 .SH INSTALL AND VERIFY KOSHKA RELEASES
+.nf
+\&
+.fi
 Download the release binary matching the target operating system and CPU
 architecture, replacing \f[CR]X.Y.Z\f[R] with the release version
 string.
@@ -160,6 +172,9 @@ The VS Code and Zed extensions automatically download \f[CR]kosh\f[R]
 when absent from \f[CR]PATH\f[R].
 The Neovim plugin is distributed as \f[CR]kosh.nvim\f[R].
 .SH EXECUTE COMMON WORKFLOWS
+.nf
+\&
+.fi
 Launch an interactive session, execute an inline command string, or run
 a script file with positional arguments.
 .IP
@@ -180,6 +195,9 @@ kosh \-\-format script.kosh
 kosh \-\-lint \-\-format \-\-apply script.kosh
 .EE
 .SH COMMAND\-LINE SYNOPSIS
+.nf
+\&
+.fi
 .IP
 .EX
 kosh [options] [script [argument ...]]
@@ -192,7 +210,13 @@ kosh [\-\-lint] [\-\-format] \-\-apply file ...
 kosh \-\-as\-language\-server
 .EE
 .SH KOSHKA ARCHITECTURE AND CORE FEATURES
+.nf
+\&
+.fi
 .SS Execution moods and option invariants
+.nf
+\&
+.fi
 Koshka partitions shell behavior into four moods.
 In this manual, \f[CR]bash\f[R] and \f[CR]bash\-posix\f[R] are referred
 to as the \f[B]Bash moods\f[R], \f[CR]bash\-posix\f[R] and \f[CR]sh\f[R]
@@ -256,6 +280,9 @@ Running \f[CR]set +o posix\f[R] switches to \f[CR]bash\f[R].
 T}
 .TE
 .SS Default option states across moods
+.nf
+\&
+.fi
 Every option not listed in the table below shares an identical default
 across all four moods.
 Mood differences in syntax, expansion, builtins, and error handling are
@@ -340,6 +367,9 @@ T}@T{
 T}
 .TE
 .SS Options and settings reference
+.nf
+\&
+.fi
 Command\-line flags override both settings files and
 \f[CR]KOSHCONF\f[R].
 Runtime settings are read and mutated through \f[CR]set\f[R],
@@ -348,6 +378,9 @@ See the kosh(5) configuration manual for the exhaustive list of
 command\-line flags, option IDs, namespaces, aliases, and mutability
 restrictions.
 .SS Static analysis and runtime diagnostics
+.nf
+\&
+.fi
 All diagnostics write to standard error in an identical format across
 every mood (with colored labels and codes on color\-capable terminals).
 .IP \(bu 2
@@ -443,6 +476,9 @@ paths report the first non\-existent path component when identifiable.
 Internal interpreter faults emit an \f[CR]error:\f[R] line and
 \f[CR]note:\f[R] lines with process and build metadata before aborting.
 .SS Offline linting and host extraction (\f[CR]\-\-lint\f[R])
+.nf
+\&
+.fi
 \f[CR]kosh \-\-lint\f[R] performs static analysis without executing
 code, enabling all three diagnostic tiers (\f[CR]strict\f[R],
 \f[CR]lenient\f[R], \f[CR]annoying\f[R]) at the severity rules of the
@@ -492,6 +528,9 @@ unmodified.
 Exits with status \f[CR]0\f[R] when only warnings remain, and status
 \f[CR]1\f[R] on remaining errors or I/O failures.
 .SS Source code formatting (\f[CR]\-\-format\f[R])
+.nf
+\&
+.fi
 \f[CR]kosh \-\-format\f[R] normalizes shell source code without
 executing it.
 .IP \(bu 2
@@ -518,6 +557,9 @@ symbolic links.
 Rejects non\-regular files and files modified externally during
 processing.
 .SS Language Server Protocol daemon (\f[CR]\-\-as\-language\-server\f[R])
+.nf
+\&
+.fi
 \f[CR]kosh \-\-as\-language\-server\f[R] serves the LSP specification
 over standard input and output.
 .IP \(bu 2
@@ -550,6 +592,9 @@ or fallback \f[CR]kosh\f[R].
 Skips startup/settings files and exits with status \f[CR]0\f[R] on clean
 LSP shutdown or \f[CR]1\f[R] otherwise.
 .SS Startup and configuration file loading
+.nf
+\&
+.fi
 Every shell instance loads declarative settings before sourcing startup
 scripts:
 .IP "1." 3
@@ -602,6 +647,9 @@ files.
 Compatibility moods use the files described under Bash and POSIX startup
 files.
 .SS Startup bypass and post\-startup enforcement (\f[CR]skipping\-startup\-files\f[R])
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -651,6 +699,9 @@ Missing default startup files are silently skipped; unreadable custom
 T}
 .TE
 .SS Interactive line editing
+.nf
+\&
+.fi
 The interactive line editor defaults to \f[CR]emacs\f[R] mode
 (\f[CR]set \-o vi\f[R] and \f[CR]set \-o emacs\f[R] switch modes).
 .IP \(bu 2
@@ -700,6 +751,9 @@ automatically inserts matching closers for \f[CR](\f[R], \f[CR][\f[R],
 \f[CR]{\f[R], \f[CR]\(aq\f[R], and \f[CR]\(dq\f[R], steps over typed
 closers, and deletes empty pairs on \f[CR]Backspace\f[R].
 .SS Live synopsis hints and pre\-run diagnostics
+.nf
+\&
+.fi
 At the shell prompt, when the cursor advances past the command word, up
 to \f[CR]16\f[R] hint rows appear below the input line (hidden while
 completion menus or searches are active).
@@ -737,6 +791,9 @@ Because pressing \f[CR]Enter\f[R] submits the entire buffer without a
 immediately as syntax errors.
 Disabling both hint options also hides pending\-key hints.
 .SS Tab completion and candidate selectors
+.nf
+\&
+.fi
 Completion belongs to the shell prompt and to the minibuffers.
 In a \f[CR]slurp\f[R] document, \f[CR]Tab\f[R] inserts a literal tab in
 Emacs and Vi insert mode and does nothing in Vi normal mode, and
@@ -919,6 +976,9 @@ It clips long lines to the available width and adds \f[CR]...\f[R] to
 the third line if more lines follow.
 An accepted entry replaces the line with the complete command.
 .SS Terminal shell integration marks
+.nf
+\&
+.fi
 Interactive sessions attached to a terminal emit \f[CR]OSC 133\f[R]
 (\f[CR]A\f[R], \f[CR]B\f[R], \f[CR]C\f[R], \f[CR]D\f[R])
 prompt/command/status marks, \f[CR]OSC 7\f[R] working directory URIs,
@@ -926,7 +986,13 @@ and \f[CR]OSC 633\f[R] marks when \f[CR]TERM_PROGRAM=vscode\f[R].
 Emission is disabled when \f[CR]TERM=dumb\f[R] or
 \f[CR]KOSH_SHELL_INTEGRATION=0\f[R].
 .SS Editor keybinding reference
+.nf
+\&
+.fi
 .SS Emacs mode and Vi insert mode keys
+.nf
+\&
+.fi
 Vi insert mode supports all Emacs bindings below except
 \f[CR]Ctrl\-V\f[R], \f[CR]Alt\-X\f[R], and \f[CR]Ctrl\-X\f[R] chords;
 arrow keys in Vi insert mode recall history, and \f[CR]Escape\f[R]
@@ -1206,6 +1272,9 @@ editable query appear above the matches at the bottom of the screen, and
 \f[CR]Tab\f[R] or \f[CR]Enter\f[R] opens the selected file for editing.
 \f[CR]Escape\f[R] cancels the picker and restores the draft or buffer.
 .SS Vi command, visual, and rectangle mode keys
+.nf
+\&
+.fi
 In Vi command mode, arrow keys move across buffer rows without recalling
 history.
 .PP
@@ -1338,6 +1407,9 @@ Behave as in Emacs mode.
 T}
 .TE
 .SS Vi colon (\f[CR]:\f[R]) commands, Emacs \f[CR]M\-x\f[R] commands, and modal sub\-menus
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -1475,6 +1547,9 @@ on it; any other key accepts the match, then acts on the line.
 T}
 .TE
 .SS Prompt rendering and escape sequences
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Prompt lifecycle\f[R] \- Before reading interactive input, the
 shell executes \f[CR]PROMPT_COMMAND\f[R] (a single command or an indexed
@@ -1645,6 +1720,9 @@ control or invalid UTF\-8 byte as \f[CR]\(rsxHH\f[R].
 Prompt escapes and the \f[CR]\(atP\f[R] parameter transform work in
 builds without the line editor.
 .SS Command history persistence
+.nf
+\&
+.fi
 Interactive shells with \f[CR]history\f[R] enabled (default) record each
 submitted buffer as a single line\-escaped event (\f[CR]\(rsn\f[R] for
 newlines, \f[CR]\(rs\(rs\f[R] for backslashes) in
@@ -1684,7 +1762,13 @@ Legacy Bash history variables (\f[CR]HISTFILE\f[R], \f[CR]HISTSIZE\f[R],
 etc.)
 are ignored.
 .SS Koshka environment and shell variables
+.nf
+\&
+.fi
 .SS Shell\-maintained Koshka variables
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -1779,6 +1863,9 @@ Assignments are discarded, and the shell never exports it by itself.
 T}
 .TE
 .SS User\-configurable Koshka variables
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -1862,6 +1949,9 @@ and a startup file can set one (\f[CR]KOSH_WELCOME=$(date)\f[R]).
 T}
 .TE
 .SS Native Koshka builtins
+.nf
+\&
+.fi
 The six native Koshka builtins (\f[CR]assimilate\f[R], \f[CR]bench\f[R],
 \f[CR]koshconf\f[R], \f[CR]koshkit\f[R], \f[CR]slurp\f[R], \f[CR]z\f[R])
 are available in every mood.
@@ -2123,6 +2213,9 @@ Do not run \f[CR]slurp < FILE | sudo tee FILE\f[R] (with or without
 only when every line ends in CRLF; a file that mixes endings keeps each
 carriage return as text.
 .SS Bundled Koshkit utilities
+.nf
+\&
+.fi
 Koshka bundles 109 utilities plus 4 aliases (\f[CR]egrep\f[R] and
 \f[CR]fgrep\f[R] for \f[CR]grep\f[R]; \f[CR]vi\f[R] and \f[CR]emacs\f[R]
 for \f[CR]slurp \-V\f[R] and \f[CR]slurp \-e\f[R]).
@@ -2193,6 +2286,9 @@ When output is a terminal, \f[CR]ps\f[R], \f[CR]who\f[R],
 \f[CR]evilfiles\f[R] show control bytes in caret notation and bytes that
 are not UTF\-8 as the replacement character.
 .SS Koshka\-specific and system inspection utilities
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -2400,6 +2496,9 @@ builtin does, with the same options and operands (\f[CR]vi\f[R] implies
 T}
 .TE
 .SS Standard POSIX and Unix utilities
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -3519,6 +3618,9 @@ and \f[CR].DEFAULT_GOAL\f[R] are defined.
 \f[CR]rmso\f[R], \f[CR]rmul\f[R], \f[CR]sgr0\f[R], \f[CR]smso\f[R],
 \f[CR]smul\f[R], and \f[CR]cup\f[R] with a row and a column.
 .SS Windows platform semantics
+.nf
+\&
+.fi
 On Windows, Koshka executes the exact same shell grammar with the
 following OS adaptations:
 .IP \(bu 2
@@ -3543,6 +3645,9 @@ offset and sequential writers append to the stream.
 See Process substitution, \f[CR]echo\f[R], \f[CR]pwd \-W\f[R], and local
 \f[CR]assimilate\f[R] for more Windows behavior.
 .SS Runtime file paths
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -3600,7 +3705,13 @@ T}
 .PP
    *   *   *   *   *
 .SH BASH AND POSIX LANGUAGE SPECIFICATION
+.nf
+\&
+.fi
 .SS Invocation, operands, and compatibility startup
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Command string (\f[CB]\-c\f[B])\f[R] \- \f[CR]\-c\f[R] takes no
 value of its own and may stand anywhere in a cluster of short options,
@@ -3787,6 +3898,9 @@ T}
 On Windows these files keep their POSIX paths.
 Skipping rules are under Startup and configuration file loading.
 .SS Lexical grammar, reserved words, and quoting
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Lexical tokens\f[R] \- \f[B]Blanks\f[R] are spaces and tabs.
 \f[B]Metacharacters\f[R] (\f[CR]space\f[R], \f[CR]tab\f[R],
@@ -3863,6 +3977,9 @@ double quotes (unrecognized in the \f[CR]sh\f[R] mood, which keeps the
 \f[CR]$\f[R] as an ordinary character).
 .RE
 .SS Shell grammar constructs
+.nf
+\&
+.fi
 The \f[CR]sh\f[R] mood enforces \f[CR]dash\f[R] compatibility: it
 rejects \f[CR][[ ]]\f[R], C\-style \f[CR]for (( ))\f[R], \f[CR]|&\f[R],
 and \f[CR]<<<\f[R] at parse time; parses \f[CR]&>\f[R] as \f[CR]&\f[R]
@@ -4044,6 +4161,9 @@ files, and the caps shrink when the stack runs short (see Functions).
 T}
 .TE
 .SS Parameters, variables, and arrays
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Assignment evaluation\f[R] \- \f[CR]name=value\f[R] and
 \f[CR]name+=value\f[R] undergo tilde expansion (after \f[CR]=\f[R] and
@@ -4161,6 +4281,9 @@ is discarded unless the entry states otherwise.
 The shell ignores an inherited environment value of such a variable, and
 children receive that value unchanged.
 .SS Shell\-maintained variables
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -4387,6 +4510,9 @@ Yields a random 32\-bit integer from the system generator.
 T}
 .TE
 .SS Variables that affect the shell
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -4565,6 +4691,9 @@ These Bash variables have no effect: \f[CR]HISTCONTROL\f[R],
 \f[CR]FUNCNEST\f[R], \f[CR]auto_resume\f[R], and
 \f[CR]POSIXLY_CORRECT\f[R].
 .SS Word expansions, redirections, arithmetic, and conditionals
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Expansion order\f[R] \- Brace expansion, tilde expansion, then
 parameter expansion, arithmetic expansion, command substitution, and
@@ -4573,6 +4702,9 @@ expansion, and quote removal.
 Only brace expansion, field splitting, and pathname expansion can change
 the number of words.
 .SS Brace, tilde, process substitution, field splitting, and quote removal
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Brace expansion\f[R] \- Unquoted \f[CR]{a,b,...}\f[R] produces one
 word per item with the surrounding text (\f[CR]a{b,c}d\f[R] gives
@@ -4656,6 +4788,9 @@ matches an argument such as \f[CR]h[$k]=1\f[R] as any other word.
 \f[B]Quote removal\f[R] \- Removes unquoted backslashes, single quotes,
 and double quotes that did not result from an expansion.
 .SS Parameter and substitution forms
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -4792,6 +4927,9 @@ byte, invalid UTF\-8) takes the \f[CR]$\(aq...\(aq\f[R] form in
 T}
 .TE
 .SS Pathname globbing and pattern matching
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Pathname expansion\f[R] \- After field splitting, an unquoted word
 holding \f[CR]*\f[R], \f[CR]?\f[R], or \f[CR][\f[R] is a pattern
@@ -4854,6 +4992,9 @@ slash and a leading dot.
 The pattern of \f[CR][[ ]]\f[R] always accepts the extended forms.
 .RE
 .SS Redirections
+.nf
+\&
+.fi
 Redirections open, duplicate, or close descriptors for a command and
 process left to right.
 A number before the operator selects the descriptor, and
@@ -4961,6 +5102,9 @@ function, group, and \f[CR]exec\f[R] expand in the shell.
 \f[B]Device paths\f[R] \- \f[CR]/dev/tcp\f[R] is not emulated; a device
 path opens as an ordinary file system path.
 .SS Here\-documents
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Body\f[R] \- \f[CR][n]<<word\f[R] makes the lines after the
 command, up to a line that is exactly \f[CR]word\f[R], the input.
@@ -4979,6 +5123,9 @@ lines.
 \f[B]\f[CB]<<\-\f[B]\f[R] \- Strips leading tabs from the lines and the
 terminator.
 .SS Arithmetic evaluation (\f[CR]$(( ))\f[R], \f[CR](( ))\f[R], \f[CR]let\f[R])
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Contexts\f[R] \- \f[CR]$(( ))\f[R], \f[CR](( ))\f[R],
 \f[CR]let\f[R], the C\-style \f[CR]for\f[R] loop, array subscripts,
@@ -5147,6 +5294,9 @@ A variable that \f[CR]declare \-a\f[R], \f[CR]declare \-A\f[R],
 \f[CR]local \-a\f[R], or \f[CR]local \-A\f[R] creates without a value
 has no value until an assignment.
 .SS Conditional expressions (\f[CR][[ ]]\f[R], \f[CR]test\f[R], \f[CR][ ]\f[R])
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -5273,6 +5423,9 @@ and the outcome depends on the number of arguments, as POSIX specifies.
 .IP \(bu 2
 \f[B]Malformed \f[CB][[ ]]\f[B]\f[R] \- Fails with status \f[CR]2\f[R].
 .SS Aliases, functions, and command execution
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Aliases\f[R] \- Replace the first word of a simple command with a
 string, expanded when the command runs (an alias defined earlier on the
@@ -5395,7 +5548,13 @@ On Windows, names are case\-insensitive and a value holds at most
 truncated.
 .RE
 .SS Error handling, exit statuses, signals, and job control
+.nf
+\&
+.fi
 .SS Error termination matrix across moods
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -5728,6 +5887,9 @@ so background jobs continue after it exits, and it exits even while jobs
 are stopped.
 \f[CR]disown\f[R] removes a job from the table.
 .SS History expansion
+.nf
+\&
+.fi
 .IP \(bu 2
 \f[B]Scope\f[R] \- Interactive shells with \f[CR]histexpand\f[R] on
 (default; \f[CR]set +H\f[R] turns it off) replace each reference in a
@@ -5754,6 +5916,9 @@ from the previous event.
 The message points at the reference, and the line neither runs nor
 enters the history.
 .SS Event designators
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -5804,6 +5969,9 @@ replaced by \f[CR]new\f[R], as \f[CR]!!:s/old/new/\f[R] does.
 T}
 .TE
 .SS Word designators
+.nf
+\&
+.fi
 A colon separates a designator from the event and may be omitted before
 \f[CR]\(ha\f[R], \f[CR]$\f[R], \f[CR]*\f[R], and \f[CR]%\f[R].
 Words count from \f[CR]0\f[R], the command.
@@ -5857,6 +6025,9 @@ Words \f[CR]n\f[R] through the next to last.
 T}
 .TE
 .SS Modifiers
+.nf
+\&
+.fi
 .PP
 .TS
 tab(@);
@@ -5910,6 +6081,9 @@ Prints the result and records it in the history without running it.
 T}
 .TE
 .SS Standard shell builtins reference
+.nf
+\&
+.fi
 A builtin runs inside the shell.
 Special builtins are \f[CR]:\f[R], \f[CR].\f[R], \f[CR]break\f[R],
 \f[CR]continue\f[R], \f[CR]eval\f[R], \f[CR]exec\f[R], \f[CR]exit\f[R],
@@ -6749,6 +6923,9 @@ Of several of \f[CR]\-D\f[R], \f[CR]\-E\f[R], and \f[CR]\-I\f[R], the
 first in that order applies.
 .RE
 .SS Locale
+.nf
+\&
+.fi
 The first nonempty value of \f[CR]LC_ALL\f[R], \f[CR]LC_CTYPE\f[R], and
 \f[CR]LANG\f[R] selects the character locale.
 A \f[CR]UTF\-8\f[R] or \f[CR]utf8\f[R] codeset selects UTF\-8 when the
@@ -6772,6 +6949,9 @@ pattern is sorted.
 The first nonempty value of \f[CR]LC_ALL\f[R], \f[CR]LC_NUMERIC\f[R],
 and \f[CR]LANG\f[R] selects the numeric locale of \f[CR]printf\f[R].
 .SS Restricted shell
+.nf
+\&
+.fi
 A shell started with \f[CR]\-r\f[R] or as \f[CR]rbash\f[R] enters
 restricted mode after its startup files finish.
 No setting turns restricted mode off, child shells inherit it, and
@@ -6838,5 +7018,8 @@ It ignores the mood, semantic options,
 \f[CR]editor.history.file_path\f[R], and
 \f[CR]editor.history.max_entries\f[R] there with a warning.
 .SS Related shells
+.nf
+\&
+.fi
 The \f[CR]bash\f[R], \f[CR]dash\f[R], \f[CR]sh\f[R], \f[CR]fish\f[R],
 and \f[CR]busybox\f[R] manuals describe their respective shells.
